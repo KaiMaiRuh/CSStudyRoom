@@ -8,7 +8,7 @@ import QAPost from './QAPost';
  */
 export default function QAFeed({ posts }) {
   return (
-    <div>
+    <div className="feed-list">
       <h2>กระทู้ถาม-ตอบล่าสุด</h2>
       {posts.map(p => (
         <QAPost key={p.id} post={p} />

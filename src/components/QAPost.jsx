@@ -8,6 +8,7 @@ import React from 'react';
 export default function QAPost({ post }) {
   return (
     <div
+      className="post-card"
       key={post.id}
       style={{
         border: '1px solid #ccc',

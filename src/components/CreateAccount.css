@@ -1,0 +1,202 @@
+/* src/components/CreateAccount.css */
+.create-account-wrapper {
+  display: flex;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+}
+
+.create-account-container {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.left-panel {
+  flex: 1;
+  background-color: #1a2b48;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.logo-circle {
+  width: 200px;
+  height: 200px;
+  background-color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.logo-circle h2 {
+  color: #1a2b48;
+  font-size: 24px;
+  margin: 0;
+  font-weight: bold;
+}
+
+.right-panel {
+  flex: 1;
+  background-color: white;
+  padding: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.create-account-form h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #333;
+  font-size: 28px;
+}
+
+/* Ensure inputs on white panel use a dark text color so typed text is visible */
+.right-panel,
+.create-account-form,
+.create-account-form input,
+.create-account-form select,
+.create-account-form textarea {
+  color: #213547;
+}
+
+.create-account-form input::placeholder,
+.create-account-form textarea::placeholder {
+  color: #6b8793;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #555;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  font-size: 16px;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-bottom: 1px solid #1a2b48;
+}
+
+.form-group input.error,
+.form-group select.error {
+  border-bottom: 1px solid #e74c3c;
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.submit-button {
+  width: 100%;
+  padding: 14px;
+  background-color: #fcc419;
+  color: #1a2b48;
+  border: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 10px;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #e5b816;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.submit-button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.footer a {
+  color: #1a2b48;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .create-account-wrapper {
+    flex-direction: column;
+    min-height: auto;
+  }
+  
+  .create-account-container {
+    flex-direction: column;
+    max-width: 100%;
+    border-radius: 0;
+  }
+  
+  .left-panel {
+    padding: 30px;
+  }
+  
+  .logo-circle {
+    width: 150px;
+    height: 150px;
+    font-size: 18px;
+  }
+  
+  .right-panel {
+    padding: 30px;
+  }
+  
+  .create-account-form h2 {
+    font-size: 24px;
+  }
+}

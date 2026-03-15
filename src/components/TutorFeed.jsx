@@ -8,7 +8,7 @@ import TutorPost from './TutorPost';
  */
 export default function TutorFeed({ posts }) {
   return (
-    <div>
+    <div className="feed-list">
       <h2>กิจกรรมที่กำลังเปิดรับ</h2>
       {posts.map(p => (
         <TutorPost key={p.id} post={p} />
