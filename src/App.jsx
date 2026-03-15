@@ -8,10 +8,15 @@ import TutorFeed from './components/TutorFeed';
 import QAFeed from './components/QAFeed';
 import FeedData from './components/FeedData';
 import CreateAccount from './components/CreateAccount';
+import Profile from './components/Profile';
+import CreatePost from './components/CreatePost';
+import Navbar from './components/Navbar';
 
 function App() {
-  const { tutorPosts, qaPosts, activeFeed, setActiveFeed } = FeedData();
+  const { tutorPosts, qaPosts, activeFeed, setActiveFeed, addTutorPost, addQaPost } = FeedData();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showCreatePost, setShowCreatePost] = useState(false);
 
   const handleShowCreateAccount = () => {
     setShowCreateAccount(true);
@@ -19,6 +24,47 @@ function App() {
 
   const handleBackToHome = () => {
     setShowCreateAccount(false);
+  };
+
+  const handleShowProfile = () => {
+    setShowProfile(true);
+  };
+
+  const handleShowCreatePost = () => {
+    setShowCreatePost(true);
+  };
+
+  const handleCloseCreatePost = () => {
+    setShowCreatePost(false);
+  };
+
+  const handleCreatePost = (type, data) => {
+    // normalize and add to feed
+    if (type === 'tutor') {
+      addTutorPost({
+        author: data.author || 'You',
+        subject: data.subject,
+        location: data.location,
+        title: data.title,
+        description: data.description,
+        date: data.date,
+        time: data.time,
+        hours: data.hours,
+        capacity: data.capacity,
+        current: 1
+      });
+    } else {
+      addQaPost({
+        author: data.author || 'You',
+        subject: data.subject,
+        question: data.question || data.title,
+        description: data.description
+      });
+    }
+  };
+
+  const handleBackToHomeFromProfile = () => {
+    setShowProfile(false);
   };
 
   if (showCreateAccount) {
@@ -32,12 +78,28 @@ function App() {
     );
   }
 
-  return (
+  if (showProfile) {
+    return (
     <div className="app-root">
-      <h1>CS StudyRoom</h1>
-      <button onClick={handleShowCreateAccount} style={{ marginBottom: '20px' }}>
-        Create Account
+        <button onClick={handleBackToHomeFromProfile} style={{ marginBottom: '20px' }}>
+          Back to Home
       </button>
+        <Profile />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <Navbar
+        onCreatePost={handleShowCreatePost}
+        onCreateAccount={handleShowCreateAccount}
+        onViewProfile={handleShowProfile}
+        onLogout={() => {}}
+        isLoggedIn={false}
+      />
+      <div className="app-root">
+      <h1>CS StudyRoom</h1>
 
       {/* selector for feed tabs */}
       <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
@@ -49,9 +111,12 @@ function App() {
         ) : (
           <QAFeed posts={qaPosts} />
         )}
-      </div>
+    </div>
+    {showCreatePost && <CreatePost onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />}
+    </div>
     </div>
   )
 }
 
 export default App;
+

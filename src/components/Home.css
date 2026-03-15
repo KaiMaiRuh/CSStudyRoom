@@ -1,0 +1,121 @@
+/* src/components/Home.css */
+.home-container {
+  padding: 1rem;
+  background-color: white;
+  min-height: 100vh;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.main-title {
+  font-size: 2.5rem;
+  color: #1a2b48;
+  margin-bottom: 1.5rem;
+  font-weight: bold;
+}
+
+.toggle-container {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.toggle-button {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  background-color: #e0e0e0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.toggle-button.active {
+  background-color: #fcc419;
+  color: black;
+}
+
+.divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 1.5rem 0;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  padding: 0.8rem 1rem 0.8rem 2.5rem;
+  border-radius: 30px;
+  border: 1px solid #ddd;
+  background-color: #fdf8e4;
+  width: 250px;
+  font-size: 1rem;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  color: #888;
+}
+
+.category-dropdown {
+  padding: 0.8rem 1rem;
+  border-radius: 30px;
+  border: 1px solid #ddd;
+  background-color: #fdf8e4;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.feed-container {
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .home-container {
+    padding: 0.5rem;
+  }
+  
+  .main-title {
+    font-size: 2rem;
+  }
+  
+  .toggle-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .toggle-button {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .toolbar {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  
+  .search-input {
+    width: 100%;
+    max-width: 300px;
+  }
+}
