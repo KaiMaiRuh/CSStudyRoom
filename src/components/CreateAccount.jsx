@@ -23,7 +23,7 @@ const CreateAccount = () => {
       [name]: value
     }));
     
-    // Clear error when user starts typing
+    /* clear error */
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -72,14 +72,14 @@ const CreateAccount = () => {
     
     if (Object.keys(formErrors).length === 0) {
       setIsSubmitting(true);
-      // Here you would typically send the data to your backend
+      /* send to backend */
       console.log('Form submitted:', formData);
       
-      // Simulate API call
+      /* simulate API */
       setTimeout(() => {
         setIsSubmitting(false);
         alert('Account created successfully!');
-        // Reset form
+        /* reset form */
         setFormData({
           fullName: '',
           username: '',

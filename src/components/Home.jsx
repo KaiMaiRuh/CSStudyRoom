@@ -1,4 +1,4 @@
-// src/components/Home.jsx
+/* Home component */
 import React, { useState } from 'react';
 import './Home.css';
 import TutorFeed from './TutorFeed';
@@ -11,7 +11,7 @@ const Home = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    // Implement search functionality
+    /* search */
   };
 
   return (

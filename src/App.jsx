@@ -1,8 +1,8 @@
-// src/App.jsx
+/* App component */
 import { useState } from 'react';
 import './App.css';
 
-// component imports
+/* imports */
 import FeedSelector from './components/FeedSelector';
 import TutorFeed from './components/TutorFeed';
 import QAFeed from './components/QAFeed';
@@ -39,7 +39,7 @@ function App() {
   };
 
   const handleCreatePost = (type, data) => {
-    // normalize and add to feed
+    /* add to feed */
     if (type === 'tutor') {
       addTutorPost({
         author: data.author || 'You',
@@ -101,10 +101,10 @@ function App() {
       <div className="app-root">
       <h1>CS StudyRoom</h1>
 
-      {/* selector for feed tabs */}
+      {/* Feed selector */}
       <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
 
-      {/* render the chosen feed */}
+      {/* Feed */}
       <div>
         {activeFeed === 'tutor' ? (
           <TutorFeed posts={tutorPosts} />

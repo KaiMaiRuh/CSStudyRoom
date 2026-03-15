@@ -1,11 +1,11 @@
-// src/components/Profile.jsx
+/* Profile component */
 import React, { useState } from 'react';
 import './Profile.css';
 
 const Profile = () => {
-  const [activeTab, setActiveTab] = useState('posts'); // 'posts' or 'info'
+  const activeTab = 'posts';
 
-  // Mock data for the profile
+  /* mock data */
   const userProfile = {
     name: "ABC DEFG",
     education: {
@@ -48,7 +48,7 @@ const Profile = () => {
 
   return (
     <div className="profile-container">
-      {/* Top Section */}
+      {/* Top */}
       <div className="profile-header">
         <div className="profile-circle">
           <div className="camera-icon">📷</div>
@@ -61,9 +61,9 @@ const Profile = () => {
 
       <div className="divider"></div>
 
-      {/* Bottom Section */}
+      {/* Bottom */}
       <div className="profile-content">
-        {/* Left Panel - User Info */}
+        {/* Left - Info */}
         <div className="profile-left-panel">
           <div className="user-info-section">
             <h2>Education</h2>
@@ -107,7 +107,7 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Right Panel - Past Posts */}
+        {/* Right - Posts */}
         <div className="profile-right-panel">
           <div className="posts-header">
             <h2>Past Posts</h2>

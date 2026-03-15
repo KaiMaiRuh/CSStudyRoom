@@ -1,10 +1,6 @@
 import React from 'react';
 
-/**
- * A single tutor post card.
- * Props:
- *  - post: object { id, author, topic, detail, joined, maxSlots }
- */
+/* TutorPost: single tutor post card */
 export default function TutorPost({ post }) {
   return (
     <div

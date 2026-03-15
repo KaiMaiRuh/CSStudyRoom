@@ -1,4 +1,4 @@
-// src/components/QAFeed.jsx
+/* QAFeed component */
 import React, { useState } from 'react';
 import './QAFeed.css';
 

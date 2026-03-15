@@ -1,4 +1,4 @@
-// src/components/Navbar.jsx
+/* Navbar component */
 import React from 'react';
 import './Navbar.css';
 

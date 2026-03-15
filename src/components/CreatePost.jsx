@@ -1,9 +1,9 @@
-// src/components/CreatePost.jsx
+/* CreatePost component */
 import React, { useState, useRef } from 'react';
 import './CreatePost.css';
 
 const CreatePost = ({ onCancel, onCreate }) => {
-  const [postType, setPostType] = useState('tutor'); // 'tutor' or 'qa'
+  const [postType, setPostType] = useState('tutor'); /* post type */
   const [formData, setFormData] = useState({
     subject: '',
     location: '',
@@ -30,9 +30,9 @@ const CreatePost = ({ onCancel, onCreate }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // pass form data to parent to add to feed
+    /* send data to parent */
     if (onCreate) onCreate(postType, formData);
-    // close modal
+    /* close modal */
     if (onCancel) onCancel();
   };
 
@@ -92,13 +92,13 @@ const CreatePost = ({ onCancel, onCreate }) => {
                   <div className="input-with-icon date-wrapper" onClick={() => {
                       const el = dateRef.current;
                       if (!el) return;
-                      // Prefer showPicker where available
+                      /* use showPicker if available */
                       if (typeof el.showPicker === 'function') {
-                        try { el.showPicker(); return; } catch(e) {}
+                        try { el.showPicker(); return; } catch { /* ignore */ }
                       }
-                      // Fallback to focus + click
+                      /* fallback: focus/click */
                       el.focus();
-                      try { el.click(); } catch(e) {}
+                      try { el.click(); } catch { /* ignore */ }
                     }} onKeyPress={(e)=>{ if(e.key==='Enter'){ const el=dateRef.current; el && (el.showPicker?.() || el.focus()); } }}>
                     <input 
                       ref={dateRef}
@@ -117,10 +117,10 @@ const CreatePost = ({ onCancel, onCreate }) => {
                       const el = timeRef.current;
                       if (!el) return;
                       if (typeof el.showPicker === 'function') {
-                        try { el.showPicker(); return; } catch(e) {}
+                        try { el.showPicker(); return; } catch { /* ignore */ }
                       }
                       el.focus();
-                      try { el.click(); } catch(e) {}
+                      try { el.click(); } catch { /* ignore */ }
                     }} onKeyPress={(e)=>{ if(e.key==='Enter'){ const el=timeRef.current; el && (el.showPicker?.() || el.focus()); } }}>
                     <input 
                       ref={timeRef}

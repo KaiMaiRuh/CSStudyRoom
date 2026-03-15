@@ -1,11 +1,6 @@
 import React from 'react';
 
-/**
- * Selector that lets the user switch between the two feeds.
- * Props:
- *  - activeFeed: string ('tutor' or 'qa')
- *  - setActiveFeed: function to change the feed
- */
+/* FeedSelector: switch between tutor and QA feeds */
 export default function FeedSelector({ activeFeed, setActiveFeed }) {
   return (
     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>

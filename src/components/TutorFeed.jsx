@@ -1,4 +1,4 @@
-// src/components/TutorFeed.jsx
+/* TutorFeed component */
 import React, { useState } from 'react';
 import './TutorFeed.css';
 

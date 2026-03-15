@@ -5,7 +5,7 @@
   text-align: left;
 }
 
-/* App root: full width on desktop, comfortable padding */
+/* App root */
 .app-root {
   width: 100%;
   box-sizing: border-box;
@@ -19,7 +19,7 @@
   }
 }
 
-/* Feed list: vertical scroll container with per-post snap */
+/* Feed list */
 .feed-list {
   display: flex;
   flex-direction: column;
@@ -31,14 +31,14 @@
   padding-right: 8px;
 }
 
-/* Individual post card: snap target */
+/* Post card */
 .post-card {
   scroll-snap-align: start;
   background: linear-gradient(180deg, #eaf6fb, #f6fcff);
   box-shadow: 0 6px 10px rgba(0, 0, 0, 0.06);
 }
 
-/* Make the main content look like the create-account right-panel: white card on dark background */
+/* Main content */
 .app-root {
   background: #ffffff;
   max-width: none;
@@ -90,7 +90,7 @@ h1 {
   color: #888;
 }
 
-/* Profile-specific styles */
+/* Profile styles */
 .profile-container {
   max-width: 1200px;
   margin: 0 auto;

@@ -1,10 +1,6 @@
 import React from 'react';
 
-/**
- * A single Q/A post card.
- * Props:
- *  - post: object { id, author, question, answers }
- */
+/* QAPost: single Q/A post card */
 export default function QAPost({ post }) {
   return (
     <div

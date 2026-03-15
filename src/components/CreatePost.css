@@ -1,4 +1,4 @@
-/* src/components/CreatePost.css */
+/* CreatePost styles */
 .create-post-modal {
   position: fixed;
   top: 0;
@@ -105,7 +105,6 @@
   transition: border-color 0.3s;
 }
 
-/* Ensure typed text in create-post inputs is visible against white background */
 .create-post-form input,
 .create-post-form textarea,
 .create-post-form select {
@@ -170,11 +169,9 @@
   background-color: #0d1a30;
 }
 
-/* Added styles for the requested changes */
-/* Make date/time inputs more visible and clickable */
 .create-post-form input[type="date"],
 .create-post-form input[type="time"] {
-  background-color: white; /* keep white background as requested */
+  background-color: white; 
   border: 1px solid #cfdde6;
   color: #213547;
   padding: 0.6rem 0.8rem;
@@ -182,11 +179,9 @@
   box-sizing: border-box;
 }
 
-/* Make the native picker indicator show pointer and ensure editable text is visible */
 .create-post-form input[type="date"]::-webkit-calendar-picker-indicator,
 .create-post-form input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  /* try to ensure the indicator is visible (black) on white background */
   color: #000;
   filter: none;
   opacity: 1;
@@ -199,25 +194,22 @@
   cursor: pointer;
 }
 
-/* Ensure all input fields have white background by default */
 .create-post-form input,
 .create-post-form textarea,
 .create-post-form select {
   background-color: white;
 }
 
-/* Specific styling for Q&A question input */
 .create-post-form textarea[name="question"] {
   background-color: white;
 }
 
-/* Wrapper icons so calendar/clock are always visible on white background */
 .input-with-icon {
   position: relative;
 }
 .input-with-icon input {
-  padding-right: 2.6rem; /* space for our icon */
-  cursor: text; /* default/text cursor when over input */
+  padding-right: 2.6rem; /* icon spacing */
+  cursor: text;
 }
 .input-with-icon::after {
   content: '';
@@ -233,7 +225,7 @@
 .input-with-icon.date-wrapper::after { content: '📅'; }
 .input-with-icon.time-wrapper::after { content: '⏰'; }
 
-/* Hide native webkit indicator where it overlaps, show our custom icon instead */
+/* hide native picker indicator */
 .input-with-icon input::-webkit-calendar-picker-indicator {
   opacity: 0;
   pointer-events: none;
