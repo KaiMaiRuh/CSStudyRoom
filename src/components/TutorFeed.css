@@ -37,6 +37,17 @@
   border: 2px solid #1a2b48;
 }
 
+.profile-circle .avatar-icon,
+.profile-circle svg {
+  width: 36px;
+  height: 36px;
+  color: #1a2b48;
+}
+
+.location svg {
+  color: #1a2b48;
+}
+
 .post-info {
   flex: 1;
 }

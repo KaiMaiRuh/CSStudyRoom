@@ -1,12 +1,13 @@
 /* QAFeed component */
 import React, { useState } from 'react';
+import { FaUserCircle, FaCamera, FaThumbsUp, FaComment, FaShare } from 'react-icons/fa';
 import './QAFeed.css';
 
 const QAFeed = () => {
   const [posts] = useState([
     {
       id: 1,
-      user: { name: 'Alex Johnson', avatar: '👨' },
+      user: { name: 'Alex Johnson', avatar: '' },
       subject: 'Algorithm',
       question: 'ทำไมเรียนวิชานี้แล้วกินข้าวไม่อร่อย',
       date: '2023-05-15',
@@ -18,7 +19,7 @@ const QAFeed = () => {
     },
     {
       id: 2,
-      user: { name: 'Maria Garcia', avatar: '👩' },
+      user: { name: 'Maria Garcia', avatar: '' },
       subject: 'Mathematics',
       question: '1+1 เท่ากับเท่าไหร่ครับ',
       date: '2023-05-14',
@@ -35,7 +36,7 @@ const QAFeed = () => {
       {posts.map(post => (
         <div key={post.id} className="qa-card">
           <div className="card-header">
-            <div className="profile-circle">{post.user.avatar}</div>
+            <div className="profile-circle"><FaUserCircle className="avatar-icon" /></div>
             <div className="post-info">
               <div className="date-time">
                 <span className="date">{post.date}</span>
@@ -49,16 +50,16 @@ const QAFeed = () => {
             <div className="subject-tag">{post.subject}</div>
             <h3 className="question-text">{post.question}</h3>
             <div className="image-placeholder">
-              <span>📷</span> 
+              <FaCamera style={{ marginRight: 8 }} />
               <span>Image preview</span>
             </div>
           </div>
           
           <div className="card-footer">
             <div className="action-bar">
-              <span className="action-icon">👍</span>
-              <span className="action-icon">💬</span>
-              <span className="action-icon">📤</span>
+              <span className="action-icon"><FaThumbsUp /></span>
+              <span className="action-icon"><FaComment /></span>
+              <span className="action-icon"><FaShare /></span>
             </div>
             <div className="stats">
               <span>{post.likes} likes</span>

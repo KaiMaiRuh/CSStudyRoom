@@ -1,5 +1,6 @@
 /* Profile component */
 import React, { useState } from 'react';
+import { FaCamera, FaUserCircle } from 'react-icons/fa';
 import './Profile.css';
 
 const Profile = () => {
@@ -51,7 +52,7 @@ const Profile = () => {
       {/* Top */}
       <div className="profile-header">
         <div className="profile-circle">
-          <div className="camera-icon">📷</div>
+          <div className="camera-icon"><FaCamera /></div>
         </div>
         <div className="profile-info">
           <h1 className="profile-name">{userProfile.name}</h1>
@@ -116,7 +117,7 @@ const Profile = () => {
           <div className="posts-list">
             {userProfile.pastPosts.map((post) => (
               <div key={post.id} className="post-card">
-                <div className="post-icon">👤</div>
+                <div className="post-icon"><FaUserCircle /></div>
                 <div className="post-details">
                   <h3>{post.title}</h3>
                   <p>{post.description}</p>

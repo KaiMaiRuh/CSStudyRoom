@@ -1,5 +1,6 @@
 /* Home component */
 import React, { useState } from 'react';
+import { FaSearch } from 'react-icons/fa';
 import './Home.css';
 import TutorFeed from './TutorFeed';
 import QAFeed from './QAFeed';
@@ -45,7 +46,7 @@ const Home = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <span className="search-icon">🔍</span>
+            <span className="search-icon"><FaSearch /></span>
           </form>
           
           <select 

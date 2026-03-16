@@ -1,5 +1,6 @@
 /* CreatePost component */
 import React, { useState, useRef } from 'react';
+import { FaCalendarAlt, FaClock } from 'react-icons/fa';
 import './CreatePost.css';
 
 const CreatePost = ({ onCancel, onCreate }) => {
@@ -89,7 +90,7 @@ const CreatePost = ({ onCancel, onCreate }) => {
               <div className="form-row">
                 <div className="form-group">
                   <label>Date</label>
-                  <div className="input-with-icon date-wrapper" onClick={() => {
+                    <div className="input-with-icon date-wrapper" onClick={() => {
                       const el = dateRef.current;
                       if (!el) return;
                       /* use showPicker if available */
@@ -108,12 +109,15 @@ const CreatePost = ({ onCancel, onCreate }) => {
                       onChange={handleInputChange}
                       required
                     />
+                    <span className="input-icon" aria-hidden>
+                      <FaCalendarAlt />
+                    </span>
                   </div>
                 </div>
                 
                 <div className="form-group">
                   <label>Time</label>
-                  <div className="input-with-icon time-wrapper" onClick={() => {
+                    <div className="input-with-icon time-wrapper" onClick={() => {
                       const el = timeRef.current;
                       if (!el) return;
                       if (typeof el.showPicker === 'function') {
@@ -130,6 +134,9 @@ const CreatePost = ({ onCancel, onCreate }) => {
                       onChange={handleInputChange}
                       required
                     />
+                    <span className="input-icon" aria-hidden>
+                      <FaClock />
+                    </span>
                   </div>
                 </div>
               </div>

@@ -11,6 +11,7 @@ import CreateAccount from './components/CreateAccount';
 import Profile from './components/Profile';
 import CreatePost from './components/CreatePost';
 import Navbar from './components/Navbar';
+import FloatingMenu from './components/FloatingMenu';
 
 function App() {
   const { tutorPosts, qaPosts, activeFeed, setActiveFeed, addTutorPost, addQaPost } = FeedData();
@@ -99,23 +100,24 @@ function App() {
         isLoggedIn={false}
       />
       <div className="app-root">
-      <h1>CS StudyRoom</h1>
+        <h1>CS StudyRoom</h1>
 
-      {/* Feed selector */}
-      <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
+        {/* Feed selector */}
+        <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
 
-      {/* Feed */}
-      <div>
-        {activeFeed === 'tutor' ? (
-          <TutorFeed posts={tutorPosts} />
-        ) : (
-          <QAFeed posts={qaPosts} />
-        )}
+        {/* Feed */}
+        <div>
+          {activeFeed === 'tutor' ? (
+            <TutorFeed posts={tutorPosts} />
+          ) : (
+            <QAFeed posts={qaPosts} />
+          )}
+        </div>
+        {showCreatePost && <CreatePost onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />}
+      </div>
+      <FloatingMenu onCreatePost={handleShowCreatePost} />
     </div>
-    {showCreatePost && <CreatePost onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />}
-    </div>
-    </div>
-  )
+  );
 }
 
 export default App;

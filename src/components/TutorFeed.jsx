@@ -1,12 +1,13 @@
 /* TutorFeed component */
 import React, { useState } from 'react';
+import { FaUserCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import './TutorFeed.css';
 
 const TutorFeed = () => {
   const [posts] = useState([
     {
       id: 1,
-      user: { name: 'John Doe', avatar: '👨' },
+      user: { name: 'John Doe', avatar: '' },
       subject: 'Algorithm',
       location: 'My Room 😏',
       title: 'ช่วยอยู่กินข้าวเป็นเพื่อนตอนผมอ่าน Algo หน่อยครับ',
@@ -20,7 +21,7 @@ const TutorFeed = () => {
     },
     {
       id: 2,
-      user: { name: 'Jane Smith', avatar: '👩' },
+      user: { name: 'Jane Smith', avatar: '' },
       subject: 'Software Engineering',
       location: 'Discord',
       title: 'มาช่วยกุทำหน่อยไอพวกเห',
@@ -39,7 +40,7 @@ const TutorFeed = () => {
       {posts.map(post => (
         <div key={post.id} className="tutor-card">
           <div className="card-header">
-            <div className="profile-circle">{post.user.avatar}</div>
+            <div className="profile-circle"><FaUserCircle className="avatar-icon" /></div>
             <div className="post-info">
               <div className="date-time">
                 <span className="date">{post.date}</span>
@@ -52,7 +53,7 @@ const TutorFeed = () => {
           <div className="card-content">
             <div className="subject-tag">{post.subject}</div>
             <div className="location">
-              <span>📍</span> {post.location}
+              <FaMapMarkerAlt style={{ marginRight: 6 }} /> {post.location}
             </div>
             <h3 className="post-title">{post.title}</h3>
             <p className="post-description">{post.description}</p>

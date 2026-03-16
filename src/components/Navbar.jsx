@@ -1,5 +1,6 @@
 /* Navbar component */
 import React from 'react';
+import { FaBook, FaUserCircle } from 'react-icons/fa';
 import './Navbar.css';
 
 const Navbar = ({ onLogout, isLoggedIn, onCreatePost, onViewProfile, onCreateAccount }) => {
@@ -7,7 +8,7 @@ const Navbar = ({ onLogout, isLoggedIn, onCreatePost, onViewProfile, onCreateAcc
     <nav className="navbar">
       <div className="navbar-left">
         <div className="logo-container">
-          <div className="logo-icon">📚</div>
+          <div className="logo-icon"><FaBook /></div>
           <span className="logo-text">CS Study Room</span>
         </div>
       </div>
@@ -15,7 +16,9 @@ const Navbar = ({ onLogout, isLoggedIn, onCreatePost, onViewProfile, onCreateAcc
       <div className="navbar-right">
         <button className="nav-button home-button">Home</button>
         <button className="nav-button" onClick={onCreatePost}>Create Post</button>
-        <div className="profile-icon" role="button" tabIndex={0} onClick={onViewProfile} onKeyPress={(e)=>{ if(e.key==='Enter') onViewProfile(); }}>👤</div>
+        <div className="profile-icon" role="button" tabIndex={0} onClick={onViewProfile} onKeyPress={(e)=>{ if(e.key==='Enter') onViewProfile(); }}>
+          <FaUserCircle />
+        </div>
         {isLoggedIn ? (
           <button className="nav-button logout-button" onClick={onLogout}>Log out</button>
         ) : (

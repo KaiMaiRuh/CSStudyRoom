@@ -37,6 +37,13 @@
   border: 2px solid #1a2b48;
 }
 
+.profile-circle .avatar-icon,
+.profile-circle svg {
+  width: 36px;
+  height: 36px;
+  color: #1a2b48;
+}
+
 .post-info {
   flex: 1;
 }
@@ -95,6 +102,11 @@
   margin-bottom: 1rem;
 }
 
+.image-placeholder svg {
+  color: #666;
+  font-size: 1.1rem;
+}
+
 .card-footer {
   display: flex;
   justify-content: space-between;
@@ -112,6 +124,11 @@
   font-size: 1.2rem;
   cursor: pointer;
   transition: transform 0.2s;
+}
+
+.action-icon svg {
+  color: #666;
+  font-size: 1.2rem;
 }
 
 .action-icon:hover {

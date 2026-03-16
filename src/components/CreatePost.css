@@ -212,18 +212,26 @@
   cursor: text;
 }
 .input-with-icon::after {
-  content: '';
+  content: none; /* remove emoji pseudo-content; use explicit svg icons */
+}
+
+.input-icon {
   position: absolute;
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  pointer-events: auto; /* allow clicking the emoji */
-  font-size: 1.05rem;
-  line-height: 1;
-  cursor: pointer; /* pointer only on the emoji */
+  pointer-events: none;
+  color: #666;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.input-with-icon.date-wrapper::after { content: '📅'; }
-.input-with-icon.time-wrapper::after { content: '⏰'; }
+
+.input-with-icon input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  pointer-events: none;
+}
 
 /* hide native picker indicator */
 .input-with-icon input::-webkit-calendar-picker-indicator {

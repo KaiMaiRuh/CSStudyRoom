@@ -76,6 +76,11 @@
   color: #888;
 }
 
+.search-icon svg {
+  color: #888;
+}
+
+
 .category-dropdown {
   padding: 0.8rem 1rem;
   border-radius: 30px;

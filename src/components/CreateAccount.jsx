@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './CreateAccount.css';
 
 const CreateAccount = () => {
@@ -157,9 +158,9 @@ const CreateAccount = () => {
                     onChange={handleChange}
                     className={errors.password ? 'error' : ''}
                   />
-                  <span className="toggle-password" onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? '👁️' : '👁️‍🗨️'}
-                  </span>
+                  <button type="button" className="toggle-password" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
                 {errors.password && <span className="error-message">{errors.password}</span>}
               </div>
@@ -175,9 +176,9 @@ const CreateAccount = () => {
                     onChange={handleChange}
                     className={errors.confirmPassword ? 'error' : ''}
                   />
-                  <span className="toggle-password" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
-                  </span>
+                  <button type="button" className="toggle-password" aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'} onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
                 {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
               </div>

@@ -4,7 +4,7 @@ const FeedData = () => {
   const [tutorPosts, setTutorPosts] = useState([
     {
       id: 1,
-      user: { name: 'John Doe', avatar: '👨' },
+      user: { name: 'John Doe', avatar: '' },
       subject: 'Algorithm',
       location: 'Engineering Building',
       title: 'Help with Dynamic Programming',
@@ -18,7 +18,7 @@ const FeedData = () => {
     },
     {
       id: 2,
-      user: { name: 'Jane Smith', avatar: '👩' },
+      user: { name: 'Jane Smith', avatar: '' },
       subject: 'Database',
       location: 'Library',
       title: 'SQL Query Optimization',
@@ -35,7 +35,7 @@ const FeedData = () => {
   const [qaPosts, setQaPosts] = useState([
     {
       id: 1,
-      user: { name: 'Alex Johnson', avatar: '👨' },
+      user: { name: 'Alex Johnson', avatar: '' },
       subject: 'Algorithm',
       question: 'How to implement a binary search tree?',
       date: '2023-05-15',
@@ -47,7 +47,7 @@ const FeedData = () => {
     },
     {
       id: 2,
-      user: { name: 'Maria Garcia', avatar: '👩' },
+      user: { name: 'Maria Garcia', avatar: '' },
       subject: 'Mathematics',
       question: 'Can someone explain the concept of limits?',
       date: '2023-05-14',
@@ -65,7 +65,7 @@ const FeedData = () => {
     const id = Date.now();
     const newPost = {
       id,
-      user: { name: post.author || 'You', avatar: '🙂' },
+      user: { name: post.author || 'You', avatar: '' },
       subject: post.subject || post.title || 'Untitled',
       location: post.location || '',
       title: post.title || post.subject || 'Untitled',
@@ -84,7 +84,7 @@ const FeedData = () => {
     const id = Date.now();
     const newPost = {
       id,
-      user: { name: post.author || 'You', avatar: '🙂' },
+      user: { name: post.author || 'You', avatar: '' },
       subject: post.subject || '',
       question: post.question || post.title || 'Untitled question',
       date: post.date || new Date().toISOString().slice(0,10),

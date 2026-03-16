@@ -115,13 +115,24 @@
   position: relative;
 }
 
+.input-with-icon input {
+  padding-right: 2.6rem;
+}
+
 .toggle-password {
   position: absolute;
-  right: 0;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
   font-size: 16px;
+  background: none;
+  border: none;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a2b48;
 }
 
 .submit-button {
