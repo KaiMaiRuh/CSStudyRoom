@@ -1,18 +1,19 @@
 import React from 'react';
+import './FeedSelector.css';
 
 /* FeedSelector: switch between tutor and QA feeds */
 export default function FeedSelector({ activeFeed, setActiveFeed }) {
   return (
-    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+    <div className="feed-selector">
       <button
+        className={`selector-button ${activeFeed === 'tutor' ? 'active' : ''}`}
         onClick={() => setActiveFeed('tutor')}
-        style={{ fontWeight: activeFeed === 'tutor' ? 'bold' : 'normal', flex: 1 }}
       >
         นัดติว / จับกลุ่ม
       </button>
       <button
+        className={`selector-button ${activeFeed === 'qa' ? 'active' : ''}`}
         onClick={() => setActiveFeed('qa')}
-        style={{ fontWeight: activeFeed === 'qa' ? 'bold' : 'normal', flex: 1 }}
       >
         ถาม-ตอบ
       </button>

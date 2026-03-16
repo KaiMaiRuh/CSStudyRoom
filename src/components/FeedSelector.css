@@ -1,0 +1,58 @@
+/* FeedSelector styles */
+.feed-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.feed-selector .selector-button {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  background-color: #e0e0e0; /* inactive gray */
+  color: #213547;
+}
+.feed-selector .selector-button.active {
+  background-color: #fcc419; /* yellow */
+  color: #1a2b48;
+}
+
+/* make selector sticky under navbar */
+.feed-top {
+  position: sticky;
+  top: 64px; /* adjust depending on navbar height */
+  background: white;
+  z-index: 90;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* toolbar to the right */
+.feed-top .toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.search-form { position: relative; }
+.search-input {
+  padding: 0.6rem 1rem 0.6rem 2.6rem;
+  border-radius: 30px;
+  border: 1px solid #ddd;
+  background-color: #fdf8e4;
+  width: 220px;
+  color: #213547;
+}
+.search-icon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); }
+.category-dropdown {
+  padding: 0.6rem 1rem;
+  border-radius: 30px;
+  border: 1px solid #ddd;
+  background-color: #fdf8e4;
+  color: #1a2b48;
+}
+
+.category-dropdown option { color: #1a2b48; }

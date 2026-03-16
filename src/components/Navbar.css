@@ -52,19 +52,26 @@
   transition: all 0.3s;
 }
 
-.home-button {
+.nav-button.active,
+.nav-button.active.home-button,
+.nav-button.active.signup-button {
   background-color: #fcc419;
-  color: black;
+  color: #1a2b48;
+}
+
+.home-button {
+  background-color: transparent;
+  color: white;
 }
 
 .logout-button {
-  background-color: #fcc419;
-  color: black;
+  background-color: transparent;
+  color: white;
 }
 
 .signup-button {
-  background-color: #fcc419;
-  color: black;
+  background-color: transparent;
+  color: white;
 }
 
 .nav-link {
@@ -88,6 +95,12 @@
   font-size: 1.2rem;
   cursor: pointer;
 }
+
+ .profile-icon.active {
+   background-color: #fcc419;
+   color: #1a2b48;
+   border-color: #fcc419;
+ }
 
 .profile-icon svg {
   color: white;

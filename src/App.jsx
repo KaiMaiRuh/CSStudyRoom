@@ -4,6 +4,7 @@ import './App.css';
 
 /* imports */
 import FeedSelector from './components/FeedSelector';
+import { FaSearch } from 'react-icons/fa';
 import TutorFeed from './components/TutorFeed';
 import QAFeed from './components/QAFeed';
 import FeedData from './components/FeedData';
@@ -18,17 +19,24 @@ function App() {
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [activePage, setActivePage] = useState('home');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [category, setCategory] = useState('');
 
   const handleShowCreateAccount = () => {
     setShowCreateAccount(true);
+    setActivePage('createAccount');
   };
 
   const handleBackToHome = () => {
     setShowCreateAccount(false);
+    setShowProfile(false);
+    setActivePage('home');
   };
 
   const handleShowProfile = () => {
     setShowProfile(true);
+    setActivePage('profile');
   };
 
   const handleShowCreatePost = () => {
@@ -66,29 +74,9 @@ function App() {
 
   const handleBackToHomeFromProfile = () => {
     setShowProfile(false);
+    setActivePage('home');
   };
 
-  if (showCreateAccount) {
-    return (
-      <div className="app-root">
-        <button onClick={handleBackToHome} style={{ marginBottom: '20px' }}>
-          Back to Home
-        </button>
-        <CreateAccount />
-      </div>
-    );
-  }
-
-  if (showProfile) {
-    return (
-    <div className="app-root">
-        <button onClick={handleBackToHomeFromProfile} style={{ marginBottom: '20px' }}>
-          Back to Home
-      </button>
-        <Profile />
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -98,22 +86,73 @@ function App() {
         onViewProfile={handleShowProfile}
         onLogout={() => {}}
         isLoggedIn={false}
+        activePage={activePage}
+        onNavigate={(page) => {
+          // central navigation handler from Navbar
+          if (page === 'home') {
+            setShowCreateAccount(false);
+            setShowProfile(false);
+            setActivePage('home');
+          } else if (page === 'profile') {
+            setShowProfile(true);
+            setShowCreateAccount(false);
+            setActivePage('profile');
+          } else if (page === 'createAccount') {
+            setShowCreateAccount(true);
+            setShowProfile(false);
+            setActivePage('createAccount');
+          } else if (page === 'createPost') {
+            setShowCreatePost(true);
+          }
+        }}
       />
       <div className="app-root">
         <h1>CS StudyRoom</h1>
 
-        {/* Feed selector */}
-        <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
+        {/* Feed selector + search (only on Home) */}
+        {activePage === 'home' && (
+          <>
+            <div className="feed-top">
+              <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
+              <div className="toolbar">
+                <form className="search-form" onSubmit={(e)=>e.preventDefault()}>
+                  <input
+                    type="text"
+                    placeholder="Search posts..."
+                    className="search-input"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <span className="search-icon"><FaSearch /></span>
+                </form>
 
-        {/* Feed */}
-        <div>
-          {activeFeed === 'tutor' ? (
-            <TutorFeed posts={tutorPosts} />
-          ) : (
-            <QAFeed posts={qaPosts} />
-          )}
-        </div>
+                <select
+                  className="category-dropdown"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option value="">หมวดหมู่วิชา</option>
+                  <option value="computer-science">Computer Science</option>
+                  <option value="mathematics">Mathematics</option>
+                  <option value="physics">Physics</option>
+                  <option value="chemistry">Chemistry</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Feed */}
+            <div>
+              {activeFeed === 'tutor' ? (
+                <TutorFeed posts={tutorPosts} />
+              ) : (
+                <QAFeed posts={qaPosts} />
+              )}
+            </div>
+          </>
+        )}
         {showCreatePost && <CreatePost onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />}
+      {showCreateAccount && <CreateAccount />}
+      {showProfile && <Profile />}
       </div>
       <FloatingMenu onCreatePost={handleShowCreatePost} />
     </div>
