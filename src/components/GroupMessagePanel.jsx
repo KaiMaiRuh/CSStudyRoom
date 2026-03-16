@@ -9,19 +9,19 @@ const GroupMessagePanel = ({ onClose }) => {
       id: 1,
       date: "Friday, 27 February 2026, 5:00 PM",
       subject: "Algorithm",
-      author: "Dr. Smith"
+      author: "Gu eng"
     },
     {
       id: 2,
       date: "Thursday, 26 February 2026, 3:30 PM",
       subject: "Software Engineering",
-      author: "Prof. Johnson"
+      author: "Prof. Thuai"
     },
     {
       id: 3,
       date: "Wednesday, 25 February 2026, 2:15 PM",
       subject: "Intelligent System",
-      author: "Dr. Williams"
+      author: "Dr. Sukhid"
     }
   ];
 
