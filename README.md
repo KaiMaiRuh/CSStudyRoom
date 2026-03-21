@@ -15,3 +15,11 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Firebase
+
+This project can run in 2 modes:
+- **Mock mode**: no Firebase config needed (uses in-memory sample data)
+- **Firebase mode**: set up `.env.local` and the app will use Firebase Auth + Firestore + Storage
+
+Setup guide: see [docs/firebase-setup.md](docs/firebase-setup.md)
+

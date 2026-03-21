@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local env and credentials
+# Prevent accidental check-in of local environment files and secrets
+.env
+.env.local
+.env.*
+.runtimeconfig.json
+
+# Firebase and service account files
+.firebase
+.firebaserc
+firebase-debug.log
+serviceAccountKey.json
+google-services.json
+firebase-adminsdk-*.json
+
+# Other sensitive files
+credentials.json

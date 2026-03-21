@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Optional: lock the app to a student email domain
+    // Replace the domain with your real one, e.g. ".*@ku\.th$"
+    function allowedEmail() {
+      return signedIn();
+      // return signedIn() && request.auth.token.email.matches('.*@example\.edu$');
+    }
+
+    function isOwner(uid) {
+      return allowedEmail() && request.auth.uid == uid;
+    }
+
+    // Users
+    match /users/{uid} {
+      // Option A (safer): user can read only their own profile
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid);
+      allow delete: if false;
+    }
+
+    // Tutor posts
+    match /tutorPosts/{postId} {
+      // Choose your read policy:
+      // allow read: if true;         // public
+      allow read: if allowedEmail();  // auth-only
+
+      allow create: if allowedEmail() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if allowedEmail() && resource.data.authorId == request.auth.uid;
+
+      // Joining info (recommended structure)
+      match /joins/{uid} {
+        allow read: if allowedEmail();
+        allow create, delete: if allowedEmail() && uid == request.auth.uid;
+        allow update: if false;
+      }
+    }
+
+    // Q&A posts
+    match /qaPosts/{postId} {
+      // allow read: if true;         // public
+      allow read: if allowedEmail();  // auth-only
+
+      allow create: if allowedEmail() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if allowedEmail() && resource.data.authorId == request.auth.uid;
+
+      // Comments (recommended as subcollection)
+      match /comments/{commentId} {
+        allow read: if allowedEmail();
+        allow create: if allowedEmail() && request.resource.data.authorId == request.auth.uid;
+        allow update: if false;
+        allow delete: if allowedEmail() && resource.data.authorId == request.auth.uid;
+      }
+    }
+  }
+}

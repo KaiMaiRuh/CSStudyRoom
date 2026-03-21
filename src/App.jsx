@@ -1,5 +1,5 @@
 /* App component */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 
 /* imports */
@@ -14,8 +14,10 @@ import Profile from './components/Profile';
 import CreatePost from './components/CreatePost';
 import Navbar from './components/Navbar';
 import FloatingMenu from './components/FloatingMenu';
+import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
+  const { user, loading: authLoading, signOut } = useAuth();
   const { tutorPosts, qaPosts, activeFeed, setActiveFeed, addTutorPost, addQaPost } = FeedData();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -40,38 +42,81 @@ function App() {
   };
 
   const handleCreatePost = (type, data) => {
-    /* add to feed */
-    if (type === 'tutor') {
-      addTutorPost({
-        author: data.author || 'You',
-        subject: data.subject,
-        location: data.location,
-        title: data.title,
-        description: data.description,
-        date: data.date,
-        time: data.time,
-        hours: data.hours,
-        capacity: data.capacity,
-        current: 1
-      });
-    } else {
-      addQaPost({
-        author: data.author || 'You',
-        subject: data.subject,
-        question: data.question || data.title,
-        description: data.description
-      });
-    }
+    const promise = (async () => {
+      /* add to feed */
+      if (type === 'tutor') {
+        await addTutorPost({
+          author: data.author || user?.displayName || 'You',
+          subject: data.subject,
+          location: data.location,
+          title: data.title,
+          description: data.description,
+          date: data.date,
+          time: data.time,
+          hours: data.hours,
+          capacity: data.capacity,
+          current: 1,
+          image: data.image ?? null,
+        });
+      } else {
+        await addQaPost({
+          author: data.author || user?.displayName || 'You',
+          subject: data.subject,
+          question: data.question || data.title,
+          description: data.description,
+          image: data.image ?? null,
+        });
+      }
+    })();
+
+    promise.catch((err) => {
+      alert(err?.message || 'Failed to create post');
+    });
   };
+
+  useEffect(() => {
+    // Wait for auth to initialize
+    if (authLoading) return;
+
+    // If user is not signed in, prevent access to Home and Profile
+    if (!user) {
+      if (activePage === 'home' || activePage === 'profile' || showProfile) {
+        setShowSignIn(true);
+        setShowCreateAccount(false);
+        setShowProfile(false);
+        setShowCreatePost(false);
+        setActivePage('signin');
+        setIsFeedDetailOpen(false);
+      }
+    }
+  }, [user, authLoading, activePage, showProfile]);
 
   return (
     <div>
       <Navbar
-        onLogout={() => {}}
-        isLoggedIn={false}
+        onLogout={() => {
+          const p = Promise.resolve(signOut());
+          p.finally(() => {
+            setShowCreateAccount(false);
+            setShowProfile(false);
+            setShowSignIn(false);
+            setActivePage('home');
+            setIsFeedDetailOpen(false);
+          });
+        }}
+        isLoggedIn={Boolean(user)}
         activePage={activePage}
         disableCreatePost={isAuthPage}
-        onNavigate={(page) => {
+          onNavigate={(page) => {
+            // Prevent unauthenticated navigation to Home/Profile
+            if (!user && (page === 'home' || page === 'profile')) {
+              setShowSignIn(true);
+              setShowCreateAccount(false);
+              setShowProfile(false);
+              setActivePage('signin');
+              setIsFeedDetailOpen(false);
+              return;
+            }
           // central navigation handler from Navbar
           if (page === 'home') {
             setShowCreateAccount(false);
@@ -170,6 +215,12 @@ function App() {
           setShowSignIn(false);
           setShowCreateAccount(true);
           setActivePage('createAccount');
+        } else if (p === 'home') {
+          setShowSignIn(false);
+          setShowCreateAccount(false);
+          setShowProfile(false);
+          setActivePage('home');
+          setIsFeedDetailOpen(false);
         }
       }} />}
       {showProfile && <Profile />}

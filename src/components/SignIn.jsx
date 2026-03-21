@@ -1,21 +1,27 @@
 import React, { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './CreateAccount.css';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 export default function SignIn({ onNavigate }) {
+  const { signIn, resetPassword } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      await signIn(form.email, form.password);
       setIsSubmitting(false);
-      alert('Signed in (mock)');
-    }, 800);
+      onNavigate?.('home');
+    } catch (err) {
+      setIsSubmitting(false);
+      alert(err?.message || 'Sign in failed');
+    }
   };
 
   return (
@@ -40,7 +46,22 @@ export default function SignIn({ onNavigate }) {
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
                   <label htmlFor="password" style={{ margin: 0 }}>password</label>
-                  <button type="button" className="link-button" onClick={() => {}}>
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={async () => {
+                      try {
+                        if (!form.email) {
+                          alert('Please enter your email first.');
+                          return;
+                        }
+                        await resetPassword(form.email);
+                        alert('Password reset email sent.');
+                      } catch (err) {
+                        alert(err?.message || 'Failed to send reset email');
+                      }
+                    }}
+                  >
                     Forgot Password?
                   </button>
                 </div>

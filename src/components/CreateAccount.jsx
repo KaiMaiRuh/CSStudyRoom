@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './CreateAccount.css';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const CreateAccount = ({ onNavigate }) => {
+  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     username: '',
@@ -16,6 +18,7 @@ const CreateAccount = ({ onNavigate }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [serverError, setServerError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,6 +26,8 @@ const CreateAccount = ({ onNavigate }) => {
       ...prev,
       [name]: value
     }));
+
+    if (serverError) setServerError('');
     
     /* clear error */
     if (errors[name]) {
@@ -67,17 +72,22 @@ const CreateAccount = ({ onNavigate }) => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError('');
     const formErrors = validateForm();
     
     if (Object.keys(formErrors).length === 0) {
       setIsSubmitting(true);
-      /* send to backend */
-      console.log('Form submitted:', formData);
-      
-      /* simulate API */
-      setTimeout(() => {
+      try {
+        await signUp({
+          email: formData.email,
+          password: formData.password,
+          fullName: formData.fullName,
+          username: formData.username,
+          year: formData.year,
+        });
+
         setIsSubmitting(false);
         alert('Account created successfully!');
         /* reset form */
@@ -89,7 +99,11 @@ const CreateAccount = ({ onNavigate }) => {
           confirmPassword: '',
           year: ''
         });
-      }, 1000);
+        onNavigate?.('home');
+      } catch (err) {
+        setIsSubmitting(false);
+        setServerError(err?.message || 'Failed to create account');
+      }
     } else {
       setErrors(formErrors);
     }
@@ -107,6 +121,13 @@ const CreateAccount = ({ onNavigate }) => {
         <div className="right-panel">
           <div className="create-account-form">
             <h2>Create Account</h2>
+
+            {serverError && (
+              <div className="error-message" role="alert" style={{ marginBottom: 10 }}>
+                {serverError}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label htmlFor="fullName">Full Name</label>
@@ -208,7 +229,20 @@ const CreateAccount = ({ onNavigate }) => {
             </form>
             
             <div className="footer">
-              <p>Already have an account? <button type="button" className="link-button" onClick={(e)=>{e.preventDefault(); onNavigate?.('signin');}}>Sign in</button></p>
+              <p>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setServerError('');
+                    onNavigate?.('signin');
+                  }}
+                >
+                  Sign in
+                </button>
+              </p>
             </div>
           </div>
         </div>

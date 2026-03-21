@@ -1,34 +1,11 @@
 /* TutorFeed component */
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { FaUserCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import './TutorFeed.css';
 import TutorPostDetail from './TutorPostDetail';
 
 const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
   const [selectedPost, setSelectedPost] = useState(null);
-
-  const fallbackPosts = useMemo(
-    () => [
-      {
-        id: 1,
-        user: { name: 'John Doe', avatar: '' },
-        subject: 'Algorithm',
-        location: 'Engineering Building',
-        title: 'Help with Dynamic Programming',
-        description: 'Looking for someone to help with DP problems for final exam',
-        experience: '',
-        date: '2023-05-15',
-        time: '14:30',
-        minutesAgo: 30,
-        capacity: 3,
-        current: 2,
-        hours: 2
-      },
-    ],
-    []
-  );
-
-  const effectivePosts = posts.length ? posts : fallbackPosts;
 
   const handleOpenDetail = (post) => {
     setSelectedPost(post);
@@ -50,7 +27,7 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
 
   return (
     <div className="tutor-feed">
-      {effectivePosts.map(post => {
+      {posts.map(post => {
         const joinedCount = post.joinedCount ?? post.current ?? 0;
         return (
         <div key={post.id} className="tutor-card">

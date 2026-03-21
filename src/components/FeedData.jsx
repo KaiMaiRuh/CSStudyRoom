@@ -1,100 +1,213 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  addDoc,
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  doc,
+} from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 
 const FeedData = () => {
-  const [tutorPosts, setTutorPosts] = useState([
-    {
-      id: 1,
-      user: { name: 'John Doe', avatar: '' },
-      subject: 'Algorithm',
-      location: 'Engineering Building',
-      title: 'Help with Dynamic Programming',
-      description: 'Looking for someone to help with DP problems for final exam',
-      date: '2023-05-15',
-      time: '14:30',
-      minutesAgo: 30,
-      capacity: 3,
-      current: 2,
-      hours: 2
-    },
-    {
-      id: 2,
-      user: { name: 'Jane Smith', avatar: '' },
-      subject: 'Database',
-      location: 'Library',
-      title: 'SQL Query Optimization',
-      description: 'Need help with optimizing complex queries',
-      date: '2023-05-14',
-      time: '10:00',
-      minutesAgo: 120,
-      capacity: 5,
-      current: 5,
-      hours: 1.5
-    }
-  ]);
-
-  const [qaPosts, setQaPosts] = useState([
-    {
-      id: 1,
-      user: { name: 'Alex Johnson', avatar: '' },
-      subject: 'Algorithm',
-      question: 'How to implement a binary search tree?',
-      date: '2023-05-15',
-      time: '15:45',
-      minutesAgo: 45,
-      likes: 12,
-      comments: 3,
-      shares: 1
-    },
-    {
-      id: 2,
-      user: { name: 'Maria Garcia', avatar: '' },
-      subject: 'Mathematics',
-      question: 'Can someone explain the concept of limits?',
-      date: '2023-05-14',
-      time: '09:20',
-      minutesAgo: 150,
-      likes: 8,
-      comments: 2,
-      shares: 0
-    }
-  ]);
+  const [tutorPosts, setTutorPosts] = useState([]);
+  const [qaPosts, setQaPosts] = useState([]);
 
   const [activeFeed, setActiveFeed] = useState('tutor');
 
-  const addTutorPost = (post) => {
-    const id = Date.now();
-    const newPost = {
-      id,
-      user: { name: post.author || 'You', avatar: '' },
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+
+    let unsubTutor = null;
+    let unsubQa = null;
+
+    try {
+      const { db } = getFirebaseServices();
+
+      const tutorQuery = query(collection(db, 'tutorPosts'), orderBy('createdAt', 'desc'));
+      unsubTutor = onSnapshot(
+        tutorQuery,
+        (snap) => {
+          const next = snap.docs.map((d) => {
+            const data = d.data() || {};
+            const createdAtDate = data.createdAt?.toDate?.() ?? null;
+            const minutesAgo = createdAtDate
+              ? Math.max(0, Math.round((Date.now() - createdAtDate.getTime()) / 60000))
+              : 0;
+
+            return {
+              id: d.id,
+              user: { name: data.authorName || 'Unknown', avatar: data.authorAvatar || '' },
+              subject: data.subject || '',
+              location: data.location || '',
+              title: data.title || '',
+              description: data.description || '',
+              experience: data.experience || '',
+              date: data.date || '',
+              time: data.time || '',
+              minutesAgo,
+              capacity: data.capacity ?? 0,
+              current: data.current ?? data.joinedCount ?? 0,
+              joinedCount: data.joinedCount ?? data.current ?? 0,
+              hours: data.hours ?? 0,
+              imageUrl: data.imageUrl || null,
+              authorId: data.authorId || null,
+            };
+          });
+          setTutorPosts(next);
+        },
+        (err) => {
+          console.error('Failed to subscribe tutorPosts:', err);
+        }
+      );
+
+      const qaQuery = query(collection(db, 'qaPosts'), orderBy('createdAt', 'desc'));
+      unsubQa = onSnapshot(
+        qaQuery,
+        (snap) => {
+          const next = snap.docs.map((d) => {
+            const data = d.data() || {};
+            const createdAtDate = data.createdAt?.toDate?.() ?? null;
+            const minutesAgo = createdAtDate
+              ? Math.max(0, Math.round((Date.now() - createdAtDate.getTime()) / 60000))
+              : 0;
+
+            return {
+              id: d.id,
+              user: { name: data.authorName || 'Unknown', avatar: data.authorAvatar || '' },
+              subject: data.subject || '',
+              question: data.question || '',
+              description: data.description || '',
+              date: data.date || '',
+              time: data.time || '',
+              minutesAgo,
+              likes: data.likes ?? data.likeCount ?? 0,
+              comments: data.comments ?? data.commentCount ?? 0,
+              shares: data.shares ?? data.shareCount ?? 0,
+              imageUrl: data.imageUrl || null,
+              authorId: data.authorId || null,
+              commentList: data.commentList || null,
+            };
+          });
+          setQaPosts(next);
+        },
+        (err) => {
+          console.error('Failed to subscribe qaPosts:', err);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+    }
+
+    return () => {
+      if (typeof unsubTutor === 'function') unsubTutor();
+      if (typeof unsubQa === 'function') unsubQa();
+    };
+  }, []);
+
+  const addTutorPost = async (post) => {
+    if (!isFirebaseConfigured()) {
+      const id = Date.now();
+      const newPost = {
+        id,
+        user: { name: post.author || 'You', avatar: '' },
+        subject: post.subject || post.title || 'Untitled',
+        location: post.location || '',
+        title: post.title || post.subject || 'Untitled',
+        description: post.description || '',
+        date: post.date || new Date().toISOString().slice(0, 10),
+        time: post.time || '',
+        minutesAgo: 0,
+        capacity: post.capacity ? Number(post.capacity) : 1,
+        current: post.current ? Number(post.current) : 1,
+        hours: post.hours ? Number(post.hours) : 1,
+      };
+      setTutorPosts((prev) => [newPost, ...prev]);
+      return;
+    }
+
+    const { auth, db, storage } = getFirebaseServices();
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Please sign in before creating a post.');
+
+    const baseDoc = {
+      type: 'tutor',
+      authorId: currentUser.uid,
+      authorName: post.author || currentUser.displayName || currentUser.email || 'You',
       subject: post.subject || post.title || 'Untitled',
       location: post.location || '',
       title: post.title || post.subject || 'Untitled',
       description: post.description || '',
-      date: post.date || new Date().toISOString().slice(0,10),
+      experience: post.experience || '',
+      date: post.date || new Date().toISOString().slice(0, 10),
       time: post.time || '',
-      minutesAgo: 0,
       capacity: post.capacity ? Number(post.capacity) : 1,
-      current: post.current ? Number(post.current) : 1,
-      hours: post.hours ? Number(post.hours) : 1
+      joinedCount: post.current ? Number(post.current) : 1,
+      hours: post.hours ? Number(post.hours) : 1,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
-    setTutorPosts(prev => [newPost, ...prev]);
+
+    const docRef = await addDoc(collection(db, 'tutorPosts'), baseDoc);
+
+    const imageFile = post.image;
+    if (imageFile instanceof File) {
+      const imageRef = ref(storage, `posts/tutor/${currentUser.uid}/${docRef.id}/${imageFile.name}`);
+      await uploadBytes(imageRef, imageFile);
+      const imageUrl = await getDownloadURL(imageRef);
+      await updateDoc(doc(db, 'tutorPosts', docRef.id), { imageUrl, updatedAt: serverTimestamp() });
+    }
   };
 
-  const addQaPost = (post) => {
-    const id = Date.now();
-    const newPost = {
-      id,
-      user: { name: post.author || 'You', avatar: '' },
+  const addQaPost = async (post) => {
+    if (!isFirebaseConfigured()) {
+      const id = Date.now();
+      const newPost = {
+        id,
+        user: { name: post.author || 'You', avatar: '' },
+        subject: post.subject || '',
+        question: post.question || post.title || 'Untitled question',
+        date: post.date || new Date().toISOString().slice(0, 10),
+        time: post.time || '',
+        minutesAgo: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+      };
+      setQaPosts((prev) => [newPost, ...prev]);
+      return;
+    }
+
+    const { auth, db, storage } = getFirebaseServices();
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Please sign in before creating a post.');
+
+    const baseDoc = {
+      type: 'qa',
+      authorId: currentUser.uid,
+      authorName: post.author || currentUser.displayName || currentUser.email || 'You',
       subject: post.subject || '',
       question: post.question || post.title || 'Untitled question',
-      date: post.date || new Date().toISOString().slice(0,10),
-      time: post.time || '',
-      minutesAgo: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0
+      description: post.description || '',
+      likeCount: 0,
+      commentCount: 0,
+      shareCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
-    setQaPosts(prev => [newPost, ...prev]);
+
+    const docRef = await addDoc(collection(db, 'qaPosts'), baseDoc);
+
+    const imageFile = post.image;
+    if (imageFile instanceof File) {
+      const imageRef = ref(storage, `posts/qa/${currentUser.uid}/${docRef.id}/${imageFile.name}`);
+      await uploadBytes(imageRef, imageFile);
+      const imageUrl = await getDownloadURL(imageRef);
+      await updateDoc(doc(db, 'qaPosts', docRef.id), { imageUrl, updatedAt: serverTimestamp() });
+    }
   };
 
   return {
