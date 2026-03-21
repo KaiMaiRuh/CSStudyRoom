@@ -137,7 +137,11 @@ function App() {
                 onDetailClose={() => setIsFeedDetailOpen(false)}
               />
             ) : (
-              <QAFeed posts={qaPosts} />
+              <QAFeed
+                posts={qaPosts}
+                onDetailOpen={() => setIsFeedDetailOpen(true)}
+                onDetailClose={() => setIsFeedDetailOpen(false)}
+              />
             )}
           </div>
         )}
