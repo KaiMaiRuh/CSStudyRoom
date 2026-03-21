@@ -20,7 +20,7 @@ export default function SignIn({ onNavigate }) {
       onNavigate?.('home');
     } catch (err) {
       setIsSubmitting(false);
-      alert(err?.message || 'Sign in failed');
+      alert(err?.message || 'Sign In Failed');
     }
   };
 
@@ -50,15 +50,15 @@ export default function SignIn({ onNavigate }) {
                     type="button"
                     className="link-button"
                     onClick={async () => {
-                      try {
+                        try {
                         if (!form.email) {
                           alert('Please enter your email first.');
                           return;
                         }
                         await resetPassword(form.email);
-                        alert('Password reset email sent.');
+                        alert('Password Reset Email Sent');
                       } catch (err) {
-                        alert(err?.message || 'Failed to send reset email');
+                        alert(err?.message || 'Failed To Send Reset Email');
                       }
                     }}
                   >

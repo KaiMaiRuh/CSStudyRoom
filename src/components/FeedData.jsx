@@ -60,7 +60,7 @@ const FeedData = () => {
           setTutorPosts(next);
         },
         (err) => {
-          console.error('Failed to subscribe tutorPosts:', err);
+          console.error('Failed To Subscribe To Tutor Posts:', err);
         }
       );
 
@@ -95,11 +95,11 @@ const FeedData = () => {
           setQaPosts(next);
         },
         (err) => {
-          console.error('Failed to subscribe qaPosts:', err);
+          console.error('Failed To Subscribe To QA Posts:', err);
         }
       );
     } catch (err) {
-      console.error(err);
+      console.error('FeedData Error', err);
     }
 
     return () => {
@@ -131,7 +131,7 @@ const FeedData = () => {
 
     const { auth, db, storage } = getFirebaseServices();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Please sign in before creating a post.');
+    if (!currentUser) throw new Error('Please Sign In Before Creating A Post.');
 
     const baseDoc = {
       type: 'tutor',
@@ -183,7 +183,7 @@ const FeedData = () => {
 
     const { auth, db, storage } = getFirebaseServices();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Please sign in before creating a post.');
+    if (!currentUser) throw new Error('Please Sign In Before Creating A Post.');
 
     const baseDoc = {
       type: 'qa',

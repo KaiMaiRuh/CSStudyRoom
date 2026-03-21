@@ -89,7 +89,7 @@ const CreateAccount = ({ onNavigate }) => {
         });
 
         setIsSubmitting(false);
-        alert('Account created successfully!');
+        alert('Account Created Successfully!');
         /* reset form */
         setFormData({
           fullName: '',
@@ -102,7 +102,7 @@ const CreateAccount = ({ onNavigate }) => {
         onNavigate?.('home');
       } catch (err) {
         setIsSubmitting(false);
-        setServerError(err?.message || 'Failed to create account');
+        setServerError(err?.message || 'Failed To Create Account');
       }
     } else {
       setErrors(formErrors);

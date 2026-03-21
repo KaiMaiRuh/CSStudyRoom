@@ -66,10 +66,10 @@ export function AuthProvider({ children }) {
             { merge: true }
           );
         } catch (e) {
-          console.error('Failed to update visit on signIn', e);
+          console.error('Failed To Update Visit On Sign In', e);
         }
       } catch (err) {
-        console.error('Failed to log sign_in activity', err);
+        console.error('Failed To Log Sign-In Activity', err);
       }
       return cred.user;
     }
@@ -97,15 +97,15 @@ export function AuthProvider({ children }) {
         const allowed = exactSnap.exists() || Boolean(lowerSnap?.exists());
 
         if (!allowed) {
-          throw new Error('อีเมลนี้ไม่ได้รับสิทธิ์ให้สมัครสมาชิก');
+          throw new Error('This email is not authorized to sign up');
         }
       } catch (err) {
         // If the error is "not allowed", keep it.
-        if (err?.message === 'อีเมลนี้ไม่ได้รับสิทธิ์ให้สมัครสมาชิก') {
+        if (err?.message === 'This email is not authorized to sign up') {
           throw err;
         }
         // Otherwise (network / permission / etc.), fail safely with a friendly message.
-        throw new Error('ไม่สามารถตรวจสอบสิทธิ์อีเมลได้ กรุณาลองใหม่');
+        throw new Error('Unable to verify email authorization. Please try again');
       }
 
       const cred = await createUserWithEmailAndPassword(auth, normalizedEmailLower, password);
@@ -137,7 +137,7 @@ export function AuthProvider({ children }) {
           createdAt: serverTimestamp(),
         });
       } catch (err) {
-        console.error('Failed to log account_created activity', err);
+        console.error('Failed to Log Account Created Activity', err);
       }
 
       return cred.user;
@@ -170,29 +170,29 @@ export function AuthProvider({ children }) {
         // If this is a page view, increment per-day visit counter and set lastPage/lastSeen
         if (type === 'page_view') {
           try {
-            const d = new Date();
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            const key = `${yyyy}-${mm}-${dd}`;
-            const visitRef = doc(db, `users/${uid}/visits`, key);
-            const lastPage = meta?.page ?? null;
-            await setDoc(
-              visitRef,
-              {
-                count: increment(1),
-                date: serverTimestamp(),
-                lastPage,
-                lastSeen: serverTimestamp(),
-              },
-              { merge: true }
-            );
-          } catch (err) {
-            console.error('Failed to increment daily visit counter', err);
-          }
+              const d = new Date();
+              const yyyy = d.getFullYear();
+              const mm = String(d.getMonth() + 1).padStart(2, '0');
+              const dd = String(d.getDate()).padStart(2, '0');
+              const key = `${yyyy}-${mm}-${dd}`;
+              const visitRef = doc(db, `users/${uid}/visits`, key);
+              const lastPage = meta?.page ?? null;
+              await setDoc(
+                visitRef,
+                {
+                  count: increment(1),
+                  date: serverTimestamp(),
+                  lastPage,
+                  lastSeen: serverTimestamp(),
+                },
+                { merge: true }
+              );
+            } catch (err) {
+              console.error('Failed to Increment Daily Visit Counter', err);
+            }
         }
       } catch (err) {
-        console.error('Failed to log activity', err);
+          console.error('Failed to Log Activity', err);
       }
     }
 

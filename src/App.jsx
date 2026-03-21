@@ -98,7 +98,7 @@ function App() {
     try {
       logActivity?.('page_view', { page: activePage, path: window.location.pathname });
     } catch (err) {
-      console.error('Failed to log page_view', err);
+      console.error('Failed To Log Page View', err);
     }
   }, [user, activePage, logActivity]);
 
