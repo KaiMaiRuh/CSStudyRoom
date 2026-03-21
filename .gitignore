@@ -40,3 +40,9 @@ firebase-adminsdk-*.json
 
 # Other sensitive files
 credentials.json
+
+# Do not track generated or sensitive docs containing rules/infra config
+docs/firestore.rules
+docs/storage.rules
+docs/firebase-setup.md
+docs/firestore-backend-design.md
