@@ -23,23 +23,11 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
 
-  const handleShowCreateAccount = () => {
-    setShowCreateAccount(true);
-    setActivePage('createAccount');
-  };
-
-  const handleBackToHome = () => {
-    setShowCreateAccount(false);
-    setShowProfile(false);
-    setActivePage('home');
-  };
-
-  const handleShowProfile = () => {
-    setShowProfile(true);
-    setActivePage('profile');
-  };
+  const isHome = activePage === 'home';
+  const isCreateAccountPage = activePage === 'createAccount';
 
   const handleShowCreatePost = () => {
+    if (isCreateAccountPage) return;
     setShowCreatePost(true);
   };
 
@@ -72,21 +60,13 @@ function App() {
     }
   };
 
-  const handleBackToHomeFromProfile = () => {
-    setShowProfile(false);
-    setActivePage('home');
-  };
-
-
   return (
     <div>
       <Navbar
-        onCreatePost={handleShowCreatePost}
-        onCreateAccount={handleShowCreateAccount}
-        onViewProfile={handleShowProfile}
         onLogout={() => {}}
         isLoggedIn={false}
         activePage={activePage}
+        disableCreatePost={isCreateAccountPage}
         onNavigate={(page) => {
           // central navigation handler from Navbar
           if (page === 'home') {
@@ -102,42 +82,43 @@ function App() {
             setShowProfile(false);
             setActivePage('createAccount');
           } else if (page === 'createPost') {
-            setShowCreatePost(true);
+            if (!isCreateAccountPage) setShowCreatePost(true);
           }
         }}
       />
       <div className="app-root">
-        <h1>CS StudyRoom</h1>
+        {isHome && <h1>CS StudyRoom</h1>}
 
         {/* Feed selector + search (only on Home) */}
-        {activePage === 'home' && (
+        {isHome && (
           <>
             <div className="feed-top">
               <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
-              <div className="toolbar">
-                <form className="search-form" onSubmit={(e)=>e.preventDefault()}>
-                  <input
-                    type="text"
-                    placeholder="Search posts..."
-                    className="search-input"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <span className="search-icon"><FaSearch /></span>
-                </form>
+            </div>
 
-                <select
-                  className="category-dropdown"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  <option value="">หมวดหมู่วิชา</option>
-                  <option value="computer-science">Computer Science</option>
-                  <option value="mathematics">Mathematics</option>
-                  <option value="physics">Physics</option>
-                  <option value="chemistry">Chemistry</option>
-                </select>
-              </div>
+            <div className="toolbar">
+              <form className="search-form" onSubmit={(e) => e.preventDefault()}>
+                <input
+                  type="text"
+                  placeholder="Search posts..."
+                  className="search-input"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <span className="search-icon"><FaSearch /></span>
+              </form>
+
+              <select
+                className="category-dropdown"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="">หมวดหมู่วิชา</option>
+                <option value="computer-science">Computer Science</option>
+                <option value="mathematics">Mathematics</option>
+                <option value="physics">Physics</option>
+                <option value="chemistry">Chemistry</option>
+              </select>
             </div>
 
             {/* Feed */}
@@ -154,7 +135,7 @@ function App() {
       {showCreateAccount && <CreateAccount />}
       {showProfile && <Profile />}
       </div>
-      <FloatingMenu onCreatePost={handleShowCreatePost} />
+      {!isCreateAccountPage && !showCreatePost && <FloatingMenu onCreatePost={handleShowCreatePost} />}
     </div>
   );
 }

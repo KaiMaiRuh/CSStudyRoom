@@ -1,11 +1,9 @@
 /* Profile component */
-import React, { useState } from 'react';
+import React from 'react';
 import { FaCamera, FaUserCircle } from 'react-icons/fa';
 import './Profile.css';
 
 const Profile = () => {
-  const activeTab = 'posts';
-
   /* mock data */
   const userProfile = {
     name: "ABC DEFG",
