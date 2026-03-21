@@ -1,0 +1,303 @@
+.tutor-post-detail {
+  position: relative;
+  height: 100vh;
+  overflow-y: auto;
+  padding-bottom: 80px;
+  animation: tutorDetailEnter 220ms ease-out both;
+}
+
+@keyframes tutorDetailEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Top Section */
+.tutor-post-detail .top-section {
+  position: relative;
+  background-color: #ffffff;
+  height: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-bottom: 0;
+}
+
+.tutor-post-detail .back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.tutor-post-detail .profile-circle {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 70px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: 6px solid #1a2b48;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+}
+
+/* Middle Section */
+.tutor-post-detail .middle-section {
+  background-color: #1a2b48;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  padding: 30px 20px 20px;
+  margin-top: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* Full-screen Join Info page (opened from See All) */
+.tutor-post-detail.tutor-joininfo {
+  padding-bottom: 0;
+  overflow: hidden;
+  animation: tutorDetailEnter 220ms ease-out both;
+}
+
+.tutor-post-detail.tutor-joininfo .joininfo-topbar {
+  height: 80px;
+  background-color: #1a2b48;
+  position: relative;
+}
+
+.tutor-post-detail.tutor-joininfo .joininfo-back {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+}
+
+.tutor-post-detail.tutor-joininfo .joininfo-body {
+  height: calc(100vh - 80px);
+  background-color: #ffffff;
+  padding: 30px 20px 120px;
+  overflow-y: auto;
+}
+
+.tutor-post-detail.tutor-joininfo .joiners-list {
+  justify-content: flex-start;
+  gap: 24px;
+}
+
+.tutor-post-detail.tutor-joininfo .joiner-item {
+  width: auto;
+}
+
+.tutor-post-detail .header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.tutor-post-detail .user-name {
+  color: #ffffff;
+  margin: 0 0 5px 0;
+  font-size: 24px;
+}
+
+.tutor-post-detail .subject {
+  color: #ffffff;
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.tutor-post-detail .summary-card {
+  background-color: #fdf8e4;
+  border-radius: 15px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+}
+
+.tutor-post-detail .summary-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.tutor-post-detail .bold-text {
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 5px;
+}
+
+.tutor-post-detail .small-text {
+  font-size: 12px;
+  color: #1a2b48;
+  opacity: 0.8;
+}
+
+.tutor-post-detail .see-all-button {
+  background-color: #fcc419;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 5px;
+}
+
+.tutor-post-detail .details-section,
+.tutor-post-detail .experience-section {
+  margin-bottom: 20px;
+}
+
+.tutor-post-detail .section-title {
+  color: #ffffff;
+  margin: 0 0 10px 0;
+  font-size: 18px;
+}
+
+.tutor-post-detail .detail-box,
+.tutor-post-detail .experience-box {
+  background-color: #fdf8e4;
+  border-radius: 10px;
+  padding: 15px;
+  min-height: 100px;
+}
+
+/* Bottom Section */
+.tutor-post-detail .bottom-section {
+  background-color: #ffffff;
+  padding: 20px;
+  margin-top: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+.tutor-post-detail .location-box {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.tutor-post-detail .location-icon {
+  background-color: #e6f2f9;
+  border-radius: 10px;
+  padding: 10px;
+  margin-right: 10px;
+}
+
+.tutor-post-detail .location-text {
+  margin: 0;
+  font-size: 16px;
+  color: #1a2b48;
+}
+
+.tutor-post-detail .joined-status {
+  background-color: #fdf8e4;
+  border-radius: 20px;
+  padding: 8px 15px;
+  display: inline-block;
+  margin-bottom: 15px;
+}
+
+.tutor-post-detail .joined-text {
+  font-size: 14px;
+  color: #1a2b48;
+}
+
+.tutor-post-detail .joiners-list {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.tutor-post-detail .joiner-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 20%;
+  margin-bottom: 15px;
+}
+
+.tutor-post-detail .profile-icon {
+  margin-bottom: 5px;
+}
+
+.tutor-post-detail .joiner-name {
+  margin: 0 0 3px 0;
+  font-size: 12px;
+  color: #1a2b48;
+}
+
+/* Floating Action Button */
+.tutor-post-detail .join-button {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background-color: #fcc419;
+  color: #000000;
+  border: none;
+  border-radius: 30px;
+  padding: 15px 30px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .tutor-post-detail .top-section {
+    height: 320px;
+  }
+
+  .tutor-post-detail .profile-circle {
+    top: 60px;
+    width: 220px;
+    height: 220px;
+  }
+
+  .tutor-post-detail .joiner-item {
+    width: 23%;
+  }
+
+  .tutor-post-detail .summary-card {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .tutor-post-detail .summary-column {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .tutor-post-detail .top-section {
+    height: 300px;
+  }
+
+  .tutor-post-detail .profile-circle {
+    top: 55px;
+    width: 200px;
+    height: 200px;
+    border-width: 5px;
+  }
+}

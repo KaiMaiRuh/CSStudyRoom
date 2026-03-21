@@ -1,43 +1,58 @@
 /* TutorFeed component */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FaUserCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import './TutorFeed.css';
+import TutorPostDetail from './TutorPostDetail';
 
-const TutorFeed = () => {
-  const [posts] = useState([
-    {
-      id: 1,
-      user: { name: 'John Doe', avatar: '' },
-      subject: 'Algorithm',
-      location: 'My Room 😏',
-      title: 'ช่วยอยู่กินข้าวเป็นเพื่อนตอนผมอ่าน Algo หน่อยครับ',
-      description: 'ผมอ่านวิชานี้แล้วกินข้าวไม่อร่อย',
-      date: '2023-05-15',
-      time: '14:30',
-      minutesAgo: 'โคตรหลาย',
-      capacity: 3,
-      current: 2,
-      hours: 2
-    },
-    {
-      id: 2,
-      user: { name: 'Jane Smith', avatar: '' },
-      subject: 'Software Engineering',
-      location: 'Discord',
-      title: 'มาช่วยกุทำหน่อยไอพวกเห',
-      description: 'Need help อ้ากกๆๆๆๆๆ',
-      date: '2023-05-14',
-      time: '10:00',
-      minutesAgo: 'โคตรของโคตรจะหลาย',
-      capacity: 5,
-      current: 5,
-      hours: 1.5
-    }
-  ]);
+const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
+  const [selectedPost, setSelectedPost] = useState(null);
+
+  const fallbackPosts = useMemo(
+    () => [
+      {
+        id: 1,
+        user: { name: 'John Doe', avatar: '' },
+        subject: 'Algorithm',
+        location: 'Engineering Building',
+        title: 'Help with Dynamic Programming',
+        description: 'Looking for someone to help with DP problems for final exam',
+        experience: '',
+        date: '2023-05-15',
+        time: '14:30',
+        minutesAgo: 30,
+        capacity: 3,
+        current: 2,
+        hours: 2
+      },
+    ],
+    []
+  );
+
+  const effectivePosts = posts.length ? posts : fallbackPosts;
+
+  const handleOpenDetail = (post) => {
+    setSelectedPost(post);
+    onDetailOpen?.();
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedPost(null);
+    onDetailClose?.();
+  };
+
+  if (selectedPost) {
+    const detailPost = {
+      ...selectedPost,
+      joinedCount: selectedPost.joinedCount ?? selectedPost.current,
+    };
+    return <TutorPostDetail post={detailPost} onBack={handleCloseDetail} />;
+  }
 
   return (
     <div className="tutor-feed">
-      {posts.map(post => (
+      {effectivePosts.map(post => {
+        const joinedCount = post.joinedCount ?? post.current ?? 0;
+        return (
         <div key={post.id} className="tutor-card">
           <div className="card-header">
             <div className="profile-circle"><FaUserCircle className="avatar-icon" /></div>
@@ -61,12 +76,15 @@ const TutorFeed = () => {
           
           <div className="card-footer">
             <div className="capacity">
-              เข้าร่วมแล้ว: {post.current}/{post.capacity} คน
+              เข้าร่วมแล้ว: {joinedCount}/{post.capacity} คน
             </div>
-            <button className="read-more-button">Read more</button>
+            <button className="read-more-button" type="button" onClick={() => handleOpenDetail(post)}>
+              Read more
+            </button>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

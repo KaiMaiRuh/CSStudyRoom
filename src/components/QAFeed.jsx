@@ -1,36 +1,9 @@
 /* QAFeed component */
-import React, { useState } from 'react';
+import React from 'react';
 import { FaUserCircle, FaCamera, FaThumbsUp, FaComment, FaShare } from 'react-icons/fa';
 import './QAFeed.css';
 
-const QAFeed = () => {
-  const [posts] = useState([
-    {
-      id: 1,
-      user: { name: 'Alex Johnson', avatar: '' },
-      subject: 'Algorithm',
-      question: 'ทำไมเรียนวิชานี้แล้วกินข้าวไม่อร่อย',
-      date: '2023-05-15',
-      time: '15:45',
-      minutesAgo: 'หลาย',
-      likes: 12,
-      comments: 3,
-      shares: 1
-    },
-    {
-      id: 2,
-      user: { name: 'Maria Garcia', avatar: '' },
-      subject: 'Mathematics',
-      question: '1+1 เท่ากับเท่าไหร่ครับ',
-      date: '2023-05-14',
-      time: '09:20',
-      minutesAgo: 'หลาย',
-      likes: 8,
-      comments: 2,
-      shares: 0
-    }
-  ]);
-
+const QAFeed = ({ posts = [] }) => {
   return (
     <div className="qa-feed">
       {posts.map(post => (

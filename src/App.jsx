@@ -22,6 +22,7 @@ function App() {
   const [activePage, setActivePage] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
+  const [isFeedDetailOpen, setIsFeedDetailOpen] = useState(false);
 
   const isHome = activePage === 'home';
   const isCreateAccountPage = activePage === 'createAccount';
@@ -73,24 +74,27 @@ function App() {
             setShowCreateAccount(false);
             setShowProfile(false);
             setActivePage('home');
+            setIsFeedDetailOpen(false);
           } else if (page === 'profile') {
             setShowProfile(true);
             setShowCreateAccount(false);
             setActivePage('profile');
+            setIsFeedDetailOpen(false);
           } else if (page === 'createAccount') {
             setShowCreateAccount(true);
             setShowProfile(false);
             setActivePage('createAccount');
+            setIsFeedDetailOpen(false);
           } else if (page === 'createPost') {
             if (!isCreateAccountPage) setShowCreatePost(true);
           }
         }}
       />
       <div className="app-root">
-        {isHome && <h1>CS StudyRoom</h1>}
+        {isHome && !isFeedDetailOpen && <h1>CS StudyRoom</h1>}
 
-        {/* Feed selector + search (only on Home) */}
-        {isHome && (
+        {/* Feed header/controls (Home only; hide when viewing a detail) */}
+        {isHome && !isFeedDetailOpen && (
           <>
             <div className="feed-top">
               <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
@@ -120,16 +124,22 @@ function App() {
                 <option value="chemistry">Chemistry</option>
               </select>
             </div>
-
-            {/* Feed */}
-            <div>
-              {activeFeed === 'tutor' ? (
-                <TutorFeed posts={tutorPosts} />
-              ) : (
-                <QAFeed posts={qaPosts} />
-              )}
-            </div>
           </>
+        )}
+
+        {/* Feed (still renders while viewing a detail) */}
+        {isHome && (
+          <div>
+            {activeFeed === 'tutor' ? (
+              <TutorFeed
+                posts={tutorPosts}
+                onDetailOpen={() => setIsFeedDetailOpen(true)}
+                onDetailClose={() => setIsFeedDetailOpen(false)}
+              />
+            ) : (
+              <QAFeed posts={qaPosts} />
+            )}
+          </div>
         )}
         {showCreatePost && <CreatePost onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />}
       {showCreateAccount && <CreateAccount />}
