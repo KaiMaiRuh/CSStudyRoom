@@ -9,6 +9,7 @@ import TutorFeed from './components/TutorFeed';
 import QAFeed from './components/QAFeed';
 import FeedData from './components/FeedData';
 import CreateAccount from './components/CreateAccount';
+import SignIn from './components/SignIn';
 import Profile from './components/Profile';
 import CreatePost from './components/CreatePost';
 import Navbar from './components/Navbar';
@@ -19,6 +20,7 @@ function App() {
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [showSignIn, setShowSignIn] = useState(false);
   const [activePage, setActivePage] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
@@ -26,9 +28,10 @@ function App() {
 
   const isHome = activePage === 'home';
   const isCreateAccountPage = activePage === 'createAccount';
+  const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
 
   const handleShowCreatePost = () => {
-    if (isCreateAccountPage) return;
+    if (isAuthPage) return;
     setShowCreatePost(true);
   };
 
@@ -67,7 +70,7 @@ function App() {
         onLogout={() => {}}
         isLoggedIn={false}
         activePage={activePage}
-        disableCreatePost={isCreateAccountPage}
+        disableCreatePost={isAuthPage}
         onNavigate={(page) => {
           // central navigation handler from Navbar
           if (page === 'home') {
@@ -75,16 +78,25 @@ function App() {
             setShowProfile(false);
             setActivePage('home');
             setIsFeedDetailOpen(false);
+              setShowSignIn(false);
           } else if (page === 'profile') {
             setShowProfile(true);
             setShowCreateAccount(false);
             setActivePage('profile');
             setIsFeedDetailOpen(false);
+              setShowSignIn(false);
           } else if (page === 'createAccount') {
             setShowCreateAccount(true);
             setShowProfile(false);
             setActivePage('createAccount');
             setIsFeedDetailOpen(false);
+              setShowSignIn(false);
+            } else if (page === 'signin') {
+              setShowSignIn(true);
+              setShowCreateAccount(false);
+              setShowProfile(false);
+              setActivePage('signin');
+              setIsFeedDetailOpen(false);
           } else if (page === 'createPost') {
             if (!isCreateAccountPage) setShowCreatePost(true);
           }
@@ -146,10 +158,23 @@ function App() {
           </div>
         )}
         {showCreatePost && <CreatePost onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />}
-      {showCreateAccount && <CreateAccount />}
+      {showCreateAccount && <CreateAccount onNavigate={(p)=> {
+        if (p === 'signin') {
+          setShowCreateAccount(false);
+          setShowSignIn(true);
+          setActivePage('signin');
+        }
+      }} />}
+      {showSignIn && <SignIn onNavigate={(p)=>{
+        if (p === 'createAccount') {
+          setShowSignIn(false);
+          setShowCreateAccount(true);
+          setActivePage('createAccount');
+        }
+      }} />}
       {showProfile && <Profile />}
       </div>
-      {!isCreateAccountPage && !showCreatePost && <FloatingMenu onCreatePost={handleShowCreatePost} />}
+      {!isAuthPage && !showCreatePost && <FloatingMenu onCreatePost={handleShowCreatePost} />}
     </div>
   );
 }

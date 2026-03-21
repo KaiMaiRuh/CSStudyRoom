@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './CreateAccount.css';
 
-const CreateAccount = () => {
+const CreateAccount = ({ onNavigate }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     username: '',
@@ -208,7 +208,7 @@ const CreateAccount = () => {
             </form>
             
             <div className="footer">
-              <p>Already have an account? <a href="/signin">Sign in</a></p>
+              <p>Already have an account? <button type="button" className="link-button" onClick={(e)=>{e.preventDefault(); onNavigate?.('signin');}}>Sign in</button></p>
             </div>
           </div>
         </div>

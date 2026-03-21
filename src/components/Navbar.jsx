@@ -31,7 +31,7 @@ const Navbar = ({ onLogout, isLoggedIn, activePage, onNavigate, disableCreatePos
         {isLoggedIn ? (
           <button className="nav-button logout-button" onClick={onLogout}>Log out</button>
         ) : (
-          <button className={`nav-button signup-button ${activePage === 'createAccount' ? 'active' : ''}`} onClick={() => onNavigate?.('createAccount')}>Sign up</button>
+          <button className={`nav-button signup-button ${activePage === 'signin' ? 'active' : ''}`} onClick={() => onNavigate?.('signin')}>Sign in</button>
         )}
       </div>
     </nav>
