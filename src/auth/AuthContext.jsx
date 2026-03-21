@@ -7,7 +7,7 @@ import {
   signOut as firebaseSignOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, addDoc, collection, increment } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 
 const AuthContext = createContext(null);
@@ -40,6 +40,37 @@ export function AuthProvider({ children }) {
       if (!isFirebaseConfigured()) throw notConfiguredError();
       const { auth } = getFirebaseServices();
       const cred = await signInWithEmailAndPassword(auth, email, password);
+      try {
+        const { db } = getFirebaseServices();
+        await addDoc(collection(db, `users/${cred.user.uid}/activity`), {
+          type: 'sign_in',
+          meta: { email: cred.user.email },
+          createdAt: serverTimestamp(),
+        });
+        // update today's visit doc with lastSignIn and lastSeen
+        try {
+          const d = new Date();
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          const key = `${yyyy}-${mm}-${dd}`;
+          const visitRef = doc(db, `users/${cred.user.uid}/visits`, key);
+          await setDoc(
+            visitRef,
+            {
+              count: increment(1),
+              date: serverTimestamp(),
+              lastSignIn: serverTimestamp(),
+              lastSeen: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (e) {
+          console.error('Failed to update visit on signIn', e);
+        }
+      } catch (err) {
+        console.error('Failed to log sign_in activity', err);
+      }
       return cred.user;
     }
 
@@ -98,6 +129,17 @@ export function AuthProvider({ children }) {
         { merge: true }
       );
 
+      // Log account creation activity
+      try {
+        await addDoc(collection(db, `users/${cred.user.uid}/activity`), {
+          type: 'account_created',
+          meta: { email: cred.user.email },
+          createdAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error('Failed to log account_created activity', err);
+      }
+
       return cred.user;
     }
 
@@ -113,7 +155,48 @@ export function AuthProvider({ children }) {
       await sendPasswordResetEmail(auth, email);
     }
 
-    return { user, loading, signIn, signUp, signOut, resetPassword };
+    async function logActivity(type, meta = {}) {
+      if (!isFirebaseConfigured()) return;
+      try {
+        const { db } = getFirebaseServices();
+        const uid = user?.uid;
+        if (!uid) return;
+        await addDoc(collection(db, `users/${uid}/activity`), {
+          type,
+          meta,
+          createdAt: serverTimestamp(),
+        });
+
+        // If this is a page view, increment per-day visit counter and set lastPage/lastSeen
+        if (type === 'page_view') {
+          try {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const key = `${yyyy}-${mm}-${dd}`;
+            const visitRef = doc(db, `users/${uid}/visits`, key);
+            const lastPage = meta?.page ?? null;
+            await setDoc(
+              visitRef,
+              {
+                count: increment(1),
+                date: serverTimestamp(),
+                lastPage,
+                lastSeen: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          } catch (err) {
+            console.error('Failed to increment daily visit counter', err);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to log activity', err);
+      }
+    }
+
+    return { user, loading, signIn, signUp, signOut, resetPassword, logActivity };
   }, [user, loading]);
 
   return <AuthContext.Provider value={api}>{children}</AuthContext.Provider>;

@@ -17,7 +17,7 @@ import FloatingMenu from './components/FloatingMenu';
 import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, logActivity } = useAuth();
   const { tutorPosts, qaPosts, activeFeed, setActiveFeed, addTutorPost, addQaPost } = FeedData();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -90,6 +90,17 @@ function App() {
       }
     }
   }, [user, authLoading, activePage, showProfile]);
+
+  useEffect(() => {
+    // Log page visits / navigation for authenticated users
+    if (!user) return;
+    // fire-and-forget
+    try {
+      logActivity?.('page_view', { page: activePage, path: window.location.pathname });
+    } catch (err) {
+      console.error('Failed to log page_view', err);
+    }
+  }, [user, activePage, logActivity]);
 
   return (
     <div>

@@ -39,7 +39,7 @@ export default function SignIn({ onNavigate }) {
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="email">username or email address (student email)</label>
+                <label htmlFor="email">Username or Email address</label>
                 <input id="email" name="email" value={form.email} onChange={handleChange} />
               </div>
 
