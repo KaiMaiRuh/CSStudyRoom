@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react';
 import {
   addDoc,
   collection,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
-  updateDoc,
   doc,
 } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 
 const FeedData = () => {
@@ -125,19 +124,29 @@ const FeedData = () => {
         capacity: post.capacity ? Number(post.capacity) : 1,
         current: post.current ? Number(post.current) : 1,
         hours: post.hours ? Number(post.hours) : 1,
+        imageUrl: post.imageUrl || null,
       };
       setTutorPosts((prev) => [newPost, ...prev]);
       return;
     }
 
-    const { auth, db, storage } = getFirebaseServices();
+    const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Sign In Before Creating A Post.');
+
+    let authorAvatar = '';
+    try {
+      const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+      authorAvatar = userSnap.data()?.avatarUrl || '';
+    } catch (err) {
+      console.warn('Failed to read user avatarUrl for authorAvatar', err);
+    }
 
     const baseDoc = {
       type: 'tutor',
       authorId: currentUser.uid,
       authorName: post.author || currentUser.displayName || currentUser.email || 'You',
+      authorAvatar,
       subject: post.subject || post.title || 'Untitled',
       location: post.location || '',
       title: post.title || post.subject || 'Untitled',
@@ -148,19 +157,12 @@ const FeedData = () => {
       capacity: post.capacity ? Number(post.capacity) : 1,
       joinedCount: post.current ? Number(post.current) : 1,
       hours: post.hours ? Number(post.hours) : 1,
+      imageUrl: post.imageUrl || null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
-    const docRef = await addDoc(collection(db, 'tutorPosts'), baseDoc);
-
-    const imageFile = post.image;
-    if (imageFile instanceof File) {
-      const imageRef = ref(storage, `posts/tutor/${currentUser.uid}/${docRef.id}/${imageFile.name}`);
-      await uploadBytes(imageRef, imageFile);
-      const imageUrl = await getDownloadURL(imageRef);
-      await updateDoc(doc(db, 'tutorPosts', docRef.id), { imageUrl, updatedAt: serverTimestamp() });
-    }
+    await addDoc(collection(db, 'tutorPosts'), baseDoc);
   };
 
   const addQaPost = async (post) => {
@@ -177,45 +179,48 @@ const FeedData = () => {
         likes: 0,
         comments: 0,
         shares: 0,
+        imageUrl: post.imageUrl || null,
       };
       setQaPosts((prev) => [newPost, ...prev]);
       return;
     }
 
-    const { auth, db, storage } = getFirebaseServices();
+    const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Sign In Before Creating A Post.');
+
+    let authorAvatar = '';
+    try {
+      const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+      authorAvatar = userSnap.data()?.avatarUrl || '';
+    } catch (err) {
+      console.warn('Failed to read user avatarUrl for authorAvatar', err);
+    }
 
     const baseDoc = {
       type: 'qa',
       authorId: currentUser.uid,
       authorName: post.author || currentUser.displayName || currentUser.email || 'You',
+      authorAvatar,
       subject: post.subject || '',
       question: post.question || post.title || 'Untitled question',
       description: post.description || '',
       likeCount: 0,
       commentCount: 0,
       shareCount: 0,
+      imageUrl: post.imageUrl || null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
-    const docRef = await addDoc(collection(db, 'qaPosts'), baseDoc);
-
-    const imageFile = post.image;
-    if (imageFile instanceof File) {
-      const imageRef = ref(storage, `posts/qa/${currentUser.uid}/${docRef.id}/${imageFile.name}`);
-      await uploadBytes(imageRef, imageFile);
-      const imageUrl = await getDownloadURL(imageRef);
-      await updateDoc(doc(db, 'qaPosts', docRef.id), { imageUrl, updatedAt: serverTimestamp() });
-    }
+    await addDoc(collection(db, 'qaPosts'), baseDoc);
   };
 
   const updateTutorPost = async (postId, updates) => {
     if (!postId) throw new Error('postId is required');
     if (!isFirebaseConfigured()) return;
 
-    const { auth, db, storage } = getFirebaseServices();
+    const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Sign In Before Editing A Post.');
 
@@ -232,12 +237,10 @@ const FeedData = () => {
       capacity: updates.capacity ? Number(updates.capacity) : 1,
     };
 
-    const imageFile = updates.image;
-    if (imageFile instanceof File) {
-      const imageRef = ref(storage, `posts/tutor/${currentUser.uid}/${postId}/${imageFile.name}`);
-      await uploadBytes(imageRef, imageFile);
-      const imageUrl = await getDownloadURL(imageRef);
-      payload.imageUrl = imageUrl;
+    if (typeof updates.imageUrl === 'string') {
+      payload.imageUrl = updates.imageUrl;
+    } else if (updates.imageUrl === null) {
+      payload.imageUrl = null;
     }
 
     await runTransaction(db, async (tx) => {
@@ -264,7 +267,7 @@ const FeedData = () => {
     if (!postId) throw new Error('postId is required');
     if (!isFirebaseConfigured()) return;
 
-    const { auth, db, storage } = getFirebaseServices();
+    const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Sign In Before Editing A Post.');
 
@@ -275,12 +278,10 @@ const FeedData = () => {
       description: updates.description || '',
     };
 
-    const imageFile = updates.image;
-    if (imageFile instanceof File) {
-      const imageRef = ref(storage, `posts/qa/${currentUser.uid}/${postId}/${imageFile.name}`);
-      await uploadBytes(imageRef, imageFile);
-      const imageUrl = await getDownloadURL(imageRef);
-      payload.imageUrl = imageUrl;
+    if (typeof updates.imageUrl === 'string') {
+      payload.imageUrl = updates.imageUrl;
+    } else if (updates.imageUrl === null) {
+      payload.imageUrl = null;
     }
 
     await runTransaction(db, async (tx) => {

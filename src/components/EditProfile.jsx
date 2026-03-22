@@ -2,7 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import './EditProfile.css';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  addDoc,
+} from 'firebase/firestore';
 import { updateProfile as updateAuthProfile } from 'firebase/auth';
 
 function toCommaString(value) {
@@ -35,6 +43,25 @@ export default function EditProfile({ onCancel, onDone }) {
   const [bio, setBio] = useState('');
 
   const uid = user?.uid ?? null;
+
+  const pickProfileRevisionFields = (data) => {
+    const safe = data && typeof data === 'object' ? data : {};
+    return {
+      displayName: safe.displayName ?? null,
+      username: safe.username ?? null,
+      year: safe.year ?? safe.education?.year ?? null,
+      education: {
+        year: safe.education?.year ?? safe.year ?? null,
+        major: safe.education?.major ?? null,
+        university: safe.education?.university ?? null,
+      },
+      subjectsToTutor: Array.isArray(safe.subjectsToTutor) ? safe.subjectsToTutor : [],
+      subjectsNeedingHelp: Array.isArray(safe.subjectsNeedingHelp) ? safe.subjectsNeedingHelp : [],
+      role: safe.role ?? null,
+      contactText: safe.contactText ?? null,
+      bio: safe.bio ?? null,
+    };
+  };
 
   useEffect(() => {
     if (!uid) {
@@ -120,32 +147,51 @@ export default function EditProfile({ onCancel, onDone }) {
       setSaving(true);
       const { auth, db } = getFirebaseServices();
 
+      const userRef = doc(db, 'users', uid);
+      let beforeProfile = null;
+      try {
+        const beforeSnap = await getDoc(userRef);
+        beforeProfile = beforeSnap.exists() ? pickProfileRevisionFields(beforeSnap.data()) : null;
+      } catch (err) {
+        console.warn('Failed to read profile before saving revision', err);
+      }
+
       if (auth.currentUser) {
         await updateAuthProfile(auth.currentUser, { displayName: nextDisplayName });
       }
 
-      await setDoc(
-        doc(db, 'users', uid),
-        {
-          uid,
-          email: user?.email || null,
-          displayName: nextDisplayName,
-          username: nextUsername,
+      const nextProfileDoc = {
+        uid,
+        email: user?.email || null,
+        displayName: nextDisplayName,
+        username: nextUsername,
+        year: year ? String(year).trim() : null,
+        education: {
           year: year ? String(year).trim() : null,
-          education: {
-            year: year ? String(year).trim() : null,
-            major: major ? String(major).trim() : null,
-            university: university ? String(university).trim() : null,
-          },
-          subjectsToTutor: toStringArray(subjectsToTutor),
-          subjectsNeedingHelp: toStringArray(subjectsNeedingHelp),
-          role: role ? String(role).trim() : null,
-          contactText: contact ? String(contact).trim() : null,
-          bio: bio ? String(bio).trim() : null,
-          updatedAt: serverTimestamp(),
+          major: major ? String(major).trim() : null,
+          university: university ? String(university).trim() : null,
         },
-        { merge: true }
-      );
+        subjectsToTutor: toStringArray(subjectsToTutor),
+        subjectsNeedingHelp: toStringArray(subjectsNeedingHelp),
+        role: role ? String(role).trim() : null,
+        contactText: contact ? String(contact).trim() : null,
+        bio: bio ? String(bio).trim() : null,
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(userRef, nextProfileDoc, { merge: true });
+
+      try {
+        await addDoc(collection(db, 'users', uid, 'revisions'), {
+          type: 'profile',
+          editorId: uid,
+          createdAt: serverTimestamp(),
+          before: beforeProfile,
+          after: pickProfileRevisionFields(nextProfileDoc),
+        });
+      } catch (err) {
+        console.warn('Failed to write profile revision history', err);
+      }
 
       onDone?.();
     } catch (err) {

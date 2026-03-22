@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { MdArrowBack, MdLocationOn } from 'react-icons/md';
 import { FaRegUserCircle } from 'react-icons/fa';
 import './TutorPostDetail.css';
+import ImagePreviewModal from './ImagePreviewModal';
 
 const TutorPostDetail = ({ post, onBack }) => {
   const [isJoinInfoOpen, setIsJoinInfoOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState(null);
 
   if (!post) return null;
 
@@ -26,6 +28,7 @@ const TutorPostDetail = ({ post, onBack }) => {
   if (isJoinInfoOpen) {
     return (
       <div className="tutor-post-detail tutor-joininfo">
+        {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
         <div className="joininfo-topbar">
           <button
             className="joininfo-back"
@@ -73,14 +76,23 @@ const TutorPostDetail = ({ post, onBack }) => {
 
   return (
     <div className="tutor-post-detail">
+      {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
       {/* Top Section */}
       <div className="top-section">
         <button className="back-button" onClick={onBack} type="button" aria-label="Back">
           <MdArrowBack size={24} />
         </button>
-        <div className="profile-circle" aria-hidden="true">
-          <FaRegUserCircle size={100} />
-        </div>
+        <button
+          type="button"
+          className="profile-circle tutor-avatar-button"
+          aria-label="Open profile image"
+          onClick={() => {
+            if (user?.avatar) setPreviewSrc(user.avatar);
+          }}
+          disabled={!user?.avatar}
+        >
+          {user?.avatar ? <img className="tutor-avatar-img" src={user.avatar} alt="" /> : <FaRegUserCircle size={100} />}
+        </button>
       </div>
 
       {/* Middle Section */}
@@ -89,6 +101,17 @@ const TutorPostDetail = ({ post, onBack }) => {
           <h1 className="user-name">{user?.name}</h1>
           <p className="subject">Subject : {subject}</p>
         </div>
+
+        {post.imageUrl ? (
+          <button
+            type="button"
+            aria-label="Open image"
+            onClick={() => setPreviewSrc(post.imageUrl)}
+            style={{ background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'pointer' }}
+          >
+            <img className="tutor-post-image" src={post.imageUrl} alt="" />
+          </button>
+        ) : null}
 
         <div className="summary-card">
           <div className="summary-column">

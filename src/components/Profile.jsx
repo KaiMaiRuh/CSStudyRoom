@@ -4,11 +4,28 @@ import { FaCamera, FaUserCircle } from 'react-icons/fa';
 import './Profile.css';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
+import { imageFileToBase64DataUrl } from './imageBase64';
+import ImagePreviewModal from './ImagePreviewModal';
 
 const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePost }) => {
   const { user } = useAuth();
   const [profileState, setProfileState] = useState({ uid: null, data: null });
+  const [isAvatarSaving, setIsAvatarSaving] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const [previewSrc, setPreviewSrc] = useState(null);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -42,6 +59,7 @@ const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePo
     return {
       name: displayName,
       username: docData.username || '',
+      avatarUrl: docData.avatarUrl || '',
       education: {
         year: mergedYear,
         major: education.major || '',
@@ -54,6 +72,73 @@ const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePo
       bio: docData.bio || '',
     };
   }, [profileDoc, user?.displayName, user?.email]);
+
+  const handleAvatarChange = async (file) => {
+    if (!file) return;
+    if (!user?.uid) return;
+    if (!isFirebaseConfigured()) return;
+
+    try {
+      setAvatarError('');
+      setIsAvatarSaving(true);
+      const dataUrl = await imageFileToBase64DataUrl(file, { targetBytes: 300 * 1024 });
+      const { db } = getFirebaseServices();
+      const ref = doc(db, 'users', user.uid);
+
+      let beforeAvatarUrl = '';
+      try {
+        const beforeSnap = await getDoc(ref);
+        beforeAvatarUrl = beforeSnap.data()?.avatarUrl || '';
+      } catch (err) {
+        console.warn('Failed to read current avatarUrl before update', err);
+      }
+
+      await setDoc(
+        ref,
+        {
+          avatarUrl: dataUrl,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'revisions'), {
+          type: 'avatar',
+          editorId: user.uid,
+          createdAt: serverTimestamp(),
+          before: { avatarUrl: beforeAvatarUrl || '' },
+          after: { avatarUrl: dataUrl },
+          file: {
+            name: file?.name || null,
+            size: typeof file?.size === 'number' ? file.size : null,
+            type: file?.type || null,
+          },
+        });
+      } catch (err) {
+        console.warn('Failed to write avatar revision history', err);
+      }
+
+      const tutorQ = query(collection(db, 'tutorPosts'), where('authorId', '==', user.uid));
+      const qaQ = query(collection(db, 'qaPosts'), where('authorId', '==', user.uid));
+      const [tutorSnap, qaSnap] = await Promise.all([getDocs(tutorQ), getDocs(qaQ)]);
+      const allRefs = [...tutorSnap.docs, ...qaSnap.docs].map((d) => d.ref);
+
+      for (let start = 0; start < allRefs.length; start += 450) {
+        const batch = writeBatch(db);
+        const slice = allRefs.slice(start, start + 450);
+        slice.forEach((postRef) => {
+          batch.update(postRef, { authorAvatar: dataUrl, updatedAt: serverTimestamp() });
+        });
+        await batch.commit();
+      }
+    } catch (err) {
+      console.error('Failed to update avatar', err);
+      setAvatarError(err?.message || 'Failed to update profile image');
+    } finally {
+      setIsAvatarSaving(false);
+    }
+  };
 
   const pastPosts = useMemo(() => {
     const uid = user?.uid;
@@ -92,10 +177,46 @@ const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePo
 
   return (
     <div className="profile-container">
+      {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
       {/* Top */}
       <div className="profile-header">
-        <div className="profile-circle">
-          <div className="camera-icon"><FaCamera /></div>
+        <div className="profile-avatar-block">
+          <div className="profile-circle-wrap">
+            <div className="profile-circle">
+              {userProfile.avatarUrl ? (
+                <img
+                  className="profile-avatar-img"
+                  src={userProfile.avatarUrl}
+                  alt=""
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setPreviewSrc(userProfile.avatarUrl)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setPreviewSrc(userProfile.avatarUrl);
+                  }}
+                />
+              ) : (
+                <FaUserCircle className="profile-avatar-fallback" />
+              )}
+            </div>
+
+            <label
+              className="camera-icon"
+              title="Change profile image"
+              style={isAvatarSaving ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FaCamera className="camera-icon-camera" />
+              <input
+                className="profile-avatar-input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleAvatarChange(e.target.files?.[0])}
+              />
+            </label>
+          </div>
+
+          {avatarError ? <div className="profile-avatar-error">{avatarError}</div> : null}
         </div>
         <div className="profile-info">
           <h1 className="profile-name">{userProfile.name}</h1>

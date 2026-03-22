@@ -35,6 +35,14 @@
   justify-content: center;
   font-size: 1.5rem;
   border: 2px solid #1a2b48;
+  overflow: hidden;
+}
+
+.feed-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .profile-circle .avatar-icon,
@@ -106,6 +114,14 @@
   color: #333;
   line-height: 1.5;
   margin-bottom: 1rem;
+}
+
+.tutor-feed-image {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 10px;
+  background-color: #f0f0f0;
 }
 
 .card-footer {

@@ -60,6 +60,27 @@
   color: #666;
 }
 
+.qa-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.qa-avatar-button {
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.qa-avatar-button:disabled {
+  cursor: default;
+}
+
+.qa-avatar-button:not(:disabled) {
+  cursor: pointer;
+}
+
 .qa-meta {
   display: flex;
   flex-direction: column;
@@ -80,10 +101,43 @@
   margin-top: 14px;
 }
 
+.qa-subject-tag {
+  background-color: #fcc419;
+  color: #1a2b48;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  display: inline-block;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.qa-question-text {
+  font-weight: 700;
+  color: #1a2b48;
+  margin-bottom: 10px;
+}
+
 .qa-body-text {
   font-weight: 600;
   color: #1a2b48;
   margin-bottom: 12px;
+}
+
+.qa-post-image-link {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+}
+
+.qa-post-image {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+  background-color: #8b8b8b;
 }
 
 .qa-media-row {
@@ -153,6 +207,13 @@
   color: #666;
 }
 
+.qa-comment-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .qa-comment-content {
   flex: 1;
 }
@@ -166,6 +227,25 @@
 .qa-comment-text {
   color: #1a2b48;
   opacity: 0.9;
+}
+
+.qa-comment-image-link {
+  margin-top: 8px;
+  display: inline-block;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.qa-comment-image {
+  width: 220px;
+  max-width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+  background-color: #8b8b8b;
 }
 
 .qa-replies {
@@ -190,6 +270,39 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  z-index: 6;
+}
+
+.qa-composer-image-input {
+  display: none;
+}
+
+.qa-composer-image-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.qa-composer-image-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.qa-composer-error {
+  position: fixed;
+  left: 18px;
+  right: 18px;
+  bottom: 74px;
+  color: #e74c3c;
+  font-size: 12px;
+  font-weight: 600;
   z-index: 6;
 }
 

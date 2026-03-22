@@ -72,7 +72,7 @@ function App() {
           hours: data.hours,
           capacity: data.capacity,
           current: 1,
-          image: data.image ?? null,
+          imageUrl: data.imageUrl ?? null,
         });
       } else {
         await addQaPost({
@@ -80,7 +80,7 @@ function App() {
           subject: data.subject,
           question: data.question || data.title,
           description: data.description,
-          image: data.image ?? null,
+          imageUrl: data.imageUrl ?? null,
         });
       }
     })();

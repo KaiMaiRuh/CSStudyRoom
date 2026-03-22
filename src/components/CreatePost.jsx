@@ -2,6 +2,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { FaCalendarAlt, FaClock } from 'react-icons/fa';
 import './CreatePost.css';
+import { imageFileToBase64DataUrl } from './imageBase64';
 
 const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, onUpdate }) => {
   const initialType = initialPost?.type || 'tutor';
@@ -18,7 +19,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
       hours: initialPost?.hours != null ? String(initialPost.hours) : '',
       capacity: initialPost?.capacity != null ? String(initialPost.capacity) : '',
       question: initialPost?.question || '',
-      image: null,
+      imageUrl: initialPost?.imageUrl || null,
     }),
     [initialPost]
   );
@@ -36,12 +37,15 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
           hours: '',
           capacity: '',
           question: '',
-          image: null,
+          imageUrl: null,
         }
   );
 
+  const [imageError, setImageError] = useState('');
+
   const dateRef = useRef(null);
   const timeRef = useRef(null);
+  const pendingImagePromiseRef = useRef(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -51,8 +55,18 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const pending = pendingImagePromiseRef.current;
+    if (pending && typeof pending.then === 'function') {
+      try {
+        await pending;
+      } finally {
+        pendingImagePromiseRef.current = null;
+      }
+    }
+
     /* send data to parent */
     if (mode === 'edit') {
       onUpdate?.(postType, formData, initialPost?.id);
@@ -61,6 +75,24 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
     }
     /* close modal */
     if (onCancel) onCancel();
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageError('');
+
+    const p = (async () => {
+      const dataUrl = await imageFileToBase64DataUrl(file, { targetBytes: 300 * 1024 });
+      setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
+    })();
+
+    pendingImagePromiseRef.current = p.catch((err) => {
+      console.error('Failed to process image', err);
+      setImageError(err?.message || 'Failed to process image');
+      return null;
+    });
   };
 
   return (
@@ -245,9 +277,10 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
             <input 
               type="file" 
               name="image"
-              onChange={(e) => setFormData(prev => ({...prev, image: e.target.files[0]}))}
+              onChange={handleImageChange}
               accept="image/*"
             />
+            {imageError ? <span className="error-message">{imageError}</span> : null}
           </div>
           
           <div className="form-actions">

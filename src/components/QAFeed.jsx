@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { FaUserCircle, FaCamera, FaThumbsUp, FaComment, FaShare } from 'react-icons/fa';
 import './QAFeed.css';
 import QAPostDetail from './QAPostDetail';
+import ImagePreviewModal from './ImagePreviewModal';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 import { subscribeQaPostLikeStatus, toggleQaPostLike } from './qaPostApi';
@@ -50,6 +51,7 @@ const QALikeAction = ({ postId, busy, onToggle }) => {
 const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [busyPostId, setBusyPostId] = useState(null);
+  const [previewSrc, setPreviewSrc] = useState(null);
   const { user } = useAuth();
 
   const handleOpenDetail = (post) => {
@@ -92,6 +94,7 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
 
   return (
     <div className="qa-feed">
+      {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
       {posts.map(post => (
         <div
           key={post.id}
@@ -104,7 +107,23 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
           }}
         >
           <div className="card-header">
-            <div className="profile-circle"><FaUserCircle className="avatar-icon" /></div>
+            <button
+              type="button"
+              className="profile-circle"
+              aria-label="Open profile image"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (post.user?.avatar) setPreviewSrc(post.user.avatar);
+              }}
+              disabled={!post.user?.avatar}
+              style={{ background: 'white', border: '2px solid #1a2b48', padding: 0, cursor: post.user?.avatar ? 'pointer' : 'default' }}
+            >
+              {post.user?.avatar ? (
+                <img className="feed-avatar-img" src={post.user.avatar} alt="" />
+              ) : (
+                <FaUserCircle className="avatar-icon" />
+              )}
+            </button>
             <div className="post-info">
               <div className="date-time">
                 <span className="date">{post.date}</span>
@@ -117,37 +136,52 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
           <div className="card-content">
             <div className="subject-tag">{post.subject}</div>
             <h3 className="question-text">{post.question}</h3>
-            <div className="image-placeholder">
-              <FaCamera style={{ marginRight: 8 }} />
-              <span>Image preview</span>
-            </div>
+            {post.imageUrl ? (
+              <button
+                type="button"
+                aria-label="Open image"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewSrc(post.imageUrl);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  width: '100%',
+                  cursor: 'pointer',
+                }}
+              >
+                <img className="qa-feed-image" src={post.imageUrl} alt="" />
+              </button>
+            ) : (
+              <div className="image-placeholder">
+                <FaCamera style={{ marginRight: 8 }} />
+                <span>Image preview</span>
+              </div>
+            )}
           </div>
           
           <div className="card-footer">
             <div className="action-bar" onClick={(e) => e.stopPropagation()}>
-              <QALikeAction
-                postId={post.id}
-                busy={busyPostId === post.id}
-                onToggle={handleToggleLike}
-              />
-              <span
-                className="action-icon"
-                role="button"
-                tabIndex={0}
-                aria-label="Comment"
-                onClick={() => handleOpenDetail(post)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') handleOpenDetail(post);
-                }}
-              >
-                <FaComment />
-              </span>
-              <span className="action-icon"><FaShare /></span>
-            </div>
-            <div className="stats">
-              <span>{post.likes} likes</span>
-              <span>{post.comments} comments</span>
-              <span>{post.shares} shares</span>
+              <div className="action-with-count">
+                <QALikeAction
+                  postId={post.id}
+                  busy={busyPostId === post.id}
+                  onToggle={handleToggleLike}
+                />
+                <span className="action-count">{post.likes ?? 0}</span>
+              </div>
+
+              <div className="action-with-count" role="button" tabIndex={0} onClick={() => handleOpenDetail(post)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenDetail(post); }}>
+                <span className="action-icon" aria-label="Comment"><FaComment /></span>
+                <span className="action-count">{post.comments ?? 0}</span>
+              </div>
+
+              <div className="action-with-count">
+                <span className="action-icon" aria-label="Share"><FaShare /></span>
+                <span className="action-count">{post.shares ?? 0}</span>
+              </div>
             </div>
           </div>
         </div>

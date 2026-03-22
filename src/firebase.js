@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 const REQUIRED_ENV_KEYS = [
   'VITE_FIREBASE_API_KEY',
@@ -43,8 +42,7 @@ export function getFirebaseServices() {
   const app = initializeApp(buildFirebaseConfig());
   const auth = getAuth(app);
   const db = getFirestore(app);
-  const storage = getStorage(app);
 
-  cachedServices = { app, auth, db, storage };
+  cachedServices = { app, auth, db };
   return cachedServices;
 }

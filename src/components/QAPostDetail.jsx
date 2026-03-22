@@ -1,17 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MdArrowBack } from 'react-icons/md';
 import {
   FaUserCircle,
   FaThumbsUp,
   FaComment,
   FaShare,
-  FaLink,
   FaImage,
   FaPaperPlane,
 } from 'react-icons/fa';
 import './QAPostDetail.css';
+import ImagePreviewModal from './ImagePreviewModal';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { imageFileToBase64DataUrl, isDataUrlImage } from './imageBase64';
 import {
   addQaPostComment,
   subscribeQaPost,
@@ -27,7 +29,13 @@ const QAPostDetail = ({ post, onBack }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isLikeBusy, setIsLikeBusy] = useState(false);
   const [isSendBusy, setIsSendBusy] = useState(false);
+  const [isImageBusy, setIsImageBusy] = useState(false);
+  const [commentImageUrl, setCommentImageUrl] = useState(null);
+  const [composerError, setComposerError] = useState('');
+  const [previewSrc, setPreviewSrc] = useState(null);
   const { user } = useAuth();
+
+  const imageInputRef = useRef(null);
 
   const postId = post?.id ?? null;
 
@@ -90,15 +98,19 @@ const QAPostDetail = ({ post, onBack }) => {
   }, [post, livePost]);
 
   const authorName = mergedPost?.user?.name ?? mergedPost?.authorName ?? mergedPost?.author ?? 'Unknown';
+  const authorAvatar = mergedPost?.user?.avatar ?? mergedPost?.authorAvatar ?? '';
   const postedLabel = mergedPost?.minutesAgo != null ? `posted ${mergedPost.minutesAgo} mins ago` : '';
-  const bodyText = mergedPost?.description ?? mergedPost?.question ?? '';
+  const subjectText = mergedPost?.subject || '';
+  const questionText = mergedPost?.question || '';
+  const descriptionText = mergedPost?.description || '';
 
   const comments = useMemo(() => {
     if (Array.isArray(liveComments)) {
       return liveComments.map((c) => ({
         id: c.id,
-        user: { name: c.authorName || 'Unknown' },
+        user: { name: c.authorName || 'Unknown', avatar: c.authorAvatar || '' },
         text: c.text || '',
+        imageUrl: isDataUrlImage(c.imageUrl) ? c.imageUrl : null,
         parentId: c.parentId ?? null,
         createdAt: c.createdAt ?? null,
       }));
@@ -165,27 +177,74 @@ const QAPostDetail = ({ post, onBack }) => {
       return;
     }
 
+    const cleanedText = String(commentText || '').trim();
+    const hasText = Boolean(cleanedText);
+    const hasImage = Boolean(commentImageUrl);
+    if (!hasText && !hasImage) {
+      setComposerError('Comment cannot be empty');
+      return;
+    }
+
     try {
+      setComposerError('');
       setIsSendBusy(true);
       const { db } = getFirebaseServices();
+
+      let authorAvatar = '';
+      try {
+        const userSnap = await getDoc(doc(db, 'users', user.uid));
+        authorAvatar = userSnap.data()?.avatarUrl || '';
+      } catch (err) {
+        console.warn('Failed to read avatarUrl for comment authorAvatar', err);
+      }
+
       await addQaPostComment({
         db,
         postId,
         uid: user.uid,
         authorName: user.displayName || user.email || 'User',
-        text: commentText,
+        authorAvatar,
+        text: cleanedText,
+        imageUrl: commentImageUrl,
       });
       setCommentText('');
+      setCommentImageUrl(null);
     } catch (err) {
       console.error('Failed to add comment', err);
-      alert(err?.message || 'Failed to add comment');
+      setComposerError(err?.message || 'Failed to add comment');
     } finally {
       setIsSendBusy(false);
     }
   };
 
+  const handlePickCommentImage = () => {
+    if (isSendBusy || isImageBusy) return;
+    setComposerError('');
+    imageInputRef.current?.click();
+  };
+
+  const handleCommentImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    // allow selecting the same file again
+    e.target.value = '';
+    if (!file) return;
+
+    try {
+      setComposerError('');
+      setIsImageBusy(true);
+      const dataUrl = await imageFileToBase64DataUrl(file, { targetBytes: 300 * 1024 });
+      setCommentImageUrl(dataUrl);
+    } catch (err) {
+      console.error('Failed to process comment image', err);
+      setComposerError(err?.message || 'Failed to process image');
+    } finally {
+      setIsImageBusy(false);
+    }
+  };
+
   return (
     <div className="qa-post-detail">
+      {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
       <button className="qa-back" type="button" onClick={onBack} aria-label="Back">
         <MdArrowBack size={24} />
       </button>
@@ -193,9 +252,17 @@ const QAPostDetail = ({ post, onBack }) => {
       <div className="qa-detail-scroll">
         <div className="qa-detail-card">
           <div className="qa-detail-header">
-            <div className="qa-avatar" aria-hidden="true">
-              <FaUserCircle size={42} />
-            </div>
+            <button
+              type="button"
+              className="qa-avatar qa-avatar-button"
+              aria-label="Open profile image"
+              onClick={() => {
+                if (authorAvatar) setPreviewSrc(authorAvatar);
+              }}
+              disabled={!authorAvatar}
+            >
+              {authorAvatar ? <img className="qa-avatar-img" src={authorAvatar} alt="" /> : <FaUserCircle size={42} />}
+            </button>
             <div className="qa-meta">
               <div className="qa-author">{authorName}</div>
               <div className="qa-posted">{postedLabel}</div>
@@ -203,12 +270,20 @@ const QAPostDetail = ({ post, onBack }) => {
           </div>
 
           <div className="qa-detail-body">
-            <div className="qa-body-text">{bodyText}</div>
+            {subjectText ? <div className="qa-subject-tag">{subjectText}</div> : null}
+            {questionText ? <div className="qa-question-text">{questionText}</div> : null}
+            {descriptionText ? <div className="qa-body-text">{descriptionText}</div> : null}
 
-            <div className="qa-media-row" aria-hidden="true">
-              <div className="qa-media" />
-              <div className="qa-media" />
-            </div>
+            {mergedPost?.imageUrl ? (
+              <button
+                className="qa-post-image-link"
+                type="button"
+                aria-label="Open image"
+                onClick={() => setPreviewSrc(mergedPost.imageUrl)}
+              >
+                <img className="qa-post-image" src={mergedPost.imageUrl} alt="" />
+              </button>
+            ) : null}
           </div>
 
           <div className="qa-actions" onClick={(e) => e.stopPropagation()}>
@@ -243,11 +318,26 @@ const QAPostDetail = ({ post, onBack }) => {
           {comments.map((c) => (
             <div key={c.id} className="qa-comment">
               <div className="qa-comment-avatar" aria-hidden="true">
-                <FaUserCircle size={34} />
+                {c.user?.avatar ? (
+                  <img className="qa-comment-avatar-img" src={c.user.avatar} alt="" />
+                ) : (
+                  <FaUserCircle size={34} />
+                )}
               </div>
               <div className="qa-comment-content">
                 <div className="qa-comment-name">{c.user?.name}</div>
-                <div className="qa-comment-text">{c.text}</div>
+                {c.text ? <div className="qa-comment-text">{c.text}</div> : null}
+
+                {c.imageUrl ? (
+                  <button
+                    className="qa-comment-image-link"
+                    type="button"
+                    aria-label="Open comment image"
+                    onClick={() => setPreviewSrc(c.imageUrl)}
+                  >
+                    <img className="qa-comment-image" src={c.imageUrl} alt="" />
+                  </button>
+                ) : null}
 
                 {Array.isArray(c.replies) && c.replies.length > 0 && (
                   <div className="qa-replies">
@@ -281,23 +371,51 @@ const QAPostDetail = ({ post, onBack }) => {
             if (e.key === 'Enter') handleSendComment();
           }}
         />
-        <button className="qa-icon-btn" type="button" aria-label="Attach link">
-          <FaLink />
-        </button>
-        <button className="qa-icon-btn" type="button" aria-label="Attach image">
+
+        {commentImageUrl ? (
+          <button
+            className="qa-composer-image-thumb"
+            type="button"
+            aria-label="Open attached image"
+            onClick={() => setPreviewSrc(commentImageUrl)}
+          >
+            <img className="qa-composer-image-thumb-img" src={commentImageUrl} alt="" />
+          </button>
+        ) : null}
+
+        <button
+          className="qa-icon-btn"
+          type="button"
+          aria-label="Attach image"
+          onClick={handlePickCommentImage}
+          disabled={isSendBusy || isImageBusy}
+          style={isSendBusy || isImageBusy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+        >
           <FaImage />
         </button>
+        <input
+          ref={imageInputRef}
+          className="qa-composer-image-input"
+          type="file"
+          accept="image/*"
+          onChange={handleCommentImageChange}
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+
         <button
           className="qa-send"
           type="button"
           aria-label="Send"
           onClick={handleSendComment}
-          disabled={isSendBusy}
-          style={isSendBusy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+          disabled={isSendBusy || isImageBusy}
+          style={isSendBusy || isImageBusy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
         >
           <FaPaperPlane />
         </button>
       </div>
+
+      {composerError ? <div className="qa-composer-error">{composerError}</div> : null}
     </div>
   );
 };

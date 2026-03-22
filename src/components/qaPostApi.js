@@ -7,6 +7,7 @@ import {
   runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
+import { isDataUrlImage } from './imageBase64';
 
 export function subscribeQaPost(db, postId, onData, onError) {
   if (!db || !postId) return () => {};
@@ -85,13 +86,18 @@ export async function toggleQaPostLike({ db, postId, uid, authorName }) {
   });
 }
 
-export async function addQaPostComment({ db, postId, uid, authorName, text }) {
+export async function addQaPostComment({ db, postId, uid, authorName, authorAvatar, text, imageUrl = null }) {
   if (!db) throw new Error('Firestore is not available');
   if (!postId) throw new Error('postId is required');
   if (!uid) throw new Error('Please sign in to comment');
 
   const cleaned = String(text || '').trim();
-  if (!cleaned) throw new Error('Comment cannot be empty');
+  const cleanedImageUrl = typeof imageUrl === 'string' ? imageUrl.trim() : '';
+  const hasText = Boolean(cleaned);
+  const hasImage = Boolean(cleanedImageUrl);
+
+  if (!hasText && !hasImage) throw new Error('Comment cannot be empty');
+  if (hasImage && !isDataUrlImage(cleanedImageUrl)) throw new Error('Invalid comment image');
 
   const postRef = doc(db, 'qaPosts', postId);
   const commentRef = doc(collection(db, 'qaPosts', postId, 'comments'));
@@ -106,7 +112,9 @@ export async function addQaPostComment({ db, postId, uid, authorName, text }) {
     tx.set(commentRef, {
       authorId: uid,
       authorName: authorName || null,
+      authorAvatar: authorAvatar || null,
       text: cleaned,
+      imageUrl: hasImage ? cleanedImageUrl : null,
       parentId: null,
       createdAt: serverTimestamp(),
     });

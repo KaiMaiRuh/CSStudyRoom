@@ -9,11 +9,9 @@
 @keyframes tutorDetailEnter {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -53,6 +51,27 @@
   align-items: center;
   justify-content: center;
   z-index: 0;
+  overflow: hidden;
+}
+
+.tutor-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tutor-avatar-button {
+  padding: 0;
+  background: none;
+}
+
+.tutor-avatar-button:disabled {
+  cursor: default;
+}
+
+.tutor-avatar-button:not(:disabled) {
+  cursor: pointer;
 }
 
 /* Middle Section */
@@ -109,6 +128,15 @@
 .tutor-post-detail .header {
   text-align: center;
   margin-bottom: 20px;
+}
+
+.tutor-post-detail .tutor-post-image {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  background-color: #fdf8e4;
 }
 
 .tutor-post-detail .user-name {
@@ -248,19 +276,36 @@
 
 /* Floating Action Button */
 .tutor-post-detail .join-button {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  /* Make Join button part of the page flow so it no longer overlaps fixed UI.
+     Center on small screens and align to the right on wider screens. */
+  position: relative;
+  display: inline-block;
+  margin: 18px auto 28px auto;
   background-color: #fcc419;
   color: #000000;
   border: none;
   border-radius: 30px;
-  padding: 15px 30px;
+  padding: 12px 26px;
   font-weight: bold;
   font-size: 16px;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  z-index: 100;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.tutor-post-detail.tutor-joininfo .join-button {
+  position: relative;
+  margin: 18px auto 28px auto;
+}
+
+@media (min-width: 768px) {
+  .tutor-post-detail .join-button {
+    margin-left: auto;
+    margin-right: 18px;
+  }
+  .tutor-post-detail.tutor-joininfo .join-button {
+    margin-left: auto;
+    margin-right: 18px;
+  }
 }
 
 /* Responsive adjustments */
