@@ -1,22 +1,44 @@
 /* CreatePost component */
-import React, { useState, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { FaCalendarAlt, FaClock } from 'react-icons/fa';
 import './CreatePost.css';
 
-const CreatePost = ({ onCancel, onCreate }) => {
-  const [postType, setPostType] = useState('tutor'); /* post type */
-  const [formData, setFormData] = useState({
-    subject: '',
-    location: '',
-    title: '',
-    description: '',
-    date: '',
-    time: '',
-    hours: '',
-    capacity: '',
-    question: '',
-    image: null
-  });
+const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, onUpdate }) => {
+  const initialType = initialPost?.type || 'tutor';
+  const isEdit = mode === 'edit' && Boolean(initialPost);
+  const [postType, setPostType] = useState(() => (isEdit ? initialType : 'tutor')); /* post type */
+  const initialForm = useMemo(
+    () => ({
+      subject: initialPost?.subject || '',
+      location: initialPost?.location || '',
+      title: initialPost?.title || '',
+      description: initialPost?.description || '',
+      date: initialPost?.date || '',
+      time: initialPost?.time || '',
+      hours: initialPost?.hours != null ? String(initialPost.hours) : '',
+      capacity: initialPost?.capacity != null ? String(initialPost.capacity) : '',
+      question: initialPost?.question || '',
+      image: null,
+    }),
+    [initialPost]
+  );
+
+  const [formData, setFormData] = useState(() =>
+    isEdit
+      ? initialForm
+      : {
+          subject: '',
+          location: '',
+          title: '',
+          description: '',
+          date: '',
+          time: '',
+          hours: '',
+          capacity: '',
+          question: '',
+          image: null,
+        }
+  );
 
   const dateRef = useRef(null);
   const timeRef = useRef(null);
@@ -32,7 +54,11 @@ const CreatePost = ({ onCancel, onCreate }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     /* send data to parent */
-    if (onCreate) onCreate(postType, formData);
+    if (mode === 'edit') {
+      onUpdate?.(postType, formData, initialPost?.id);
+    } else {
+      onCreate?.(postType, formData);
+    }
     /* close modal */
     if (onCancel) onCancel();
   };
@@ -41,7 +67,7 @@ const CreatePost = ({ onCancel, onCreate }) => {
     <div className="create-post-modal">
       <div className="create-post-container">
         <div className="modal-header">
-          <h2 className="modal-title">Create New Post</h2>
+          <h2 className="modal-title">{mode === 'edit' ? 'Edit Post' : 'Create New Post'}</h2>
           <button className="close-button" onClick={onCancel}>×</button>
         </div>
         
@@ -49,12 +75,16 @@ const CreatePost = ({ onCancel, onCreate }) => {
           <button 
             className={`type-button ${postType === 'tutor' ? 'active' : ''}`}
             onClick={() => setPostType('tutor')}
+            type="button"
+            disabled={mode === 'edit'}
           >
             Tutor Post
           </button>
           <button 
             className={`type-button ${postType === 'qa' ? 'active' : ''}`}
             onClick={() => setPostType('qa')}
+            type="button"
+            disabled={mode === 'edit'}
           >
             Q&A Post
           </button>
@@ -222,7 +252,7 @@ const CreatePost = ({ onCancel, onCreate }) => {
           
           <div className="form-actions">
             <button type="button" className="cancel-button" onClick={onCancel}>Cancel</button>
-            <button type="submit" className="submit-button">Create Post</button>
+            <button type="submit" className="submit-button">{mode === 'edit' ? 'Save' : 'Create Post'}</button>
           </div>
         </form>
       </div>

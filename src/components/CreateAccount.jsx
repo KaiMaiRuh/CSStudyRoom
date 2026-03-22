@@ -10,8 +10,7 @@ const CreateAccount = ({ onNavigate }) => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    year: ''
+    confirmPassword: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -65,10 +64,6 @@ const CreateAccount = ({ onNavigate }) => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (!formData.year) {
-      newErrors.year = 'Year is required';
-    }
-
     return newErrors;
   };
 
@@ -85,7 +80,6 @@ const CreateAccount = ({ onNavigate }) => {
           password: formData.password,
           fullName: formData.fullName,
           username: formData.username,
-          year: formData.year,
         });
 
         setIsSubmitting(false);
@@ -96,10 +90,9 @@ const CreateAccount = ({ onNavigate }) => {
           username: '',
           email: '',
           password: '',
-          confirmPassword: '',
-          year: ''
+          confirmPassword: ''
         });
-        onNavigate?.('home');
+        onNavigate?.('editProfile');
       } catch (err) {
         setIsSubmitting(false);
         setServerError(err?.message || 'Failed To Create Account');
@@ -202,25 +195,6 @@ const CreateAccount = ({ onNavigate }) => {
                   </button>
                 </div>
                 {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="year">Year</label>
-                <select
-                  id="year"
-                  name="year"
-                  value={formData.year}
-                  onChange={handleChange}
-                  className={errors.year ? 'error' : ''}
-                >
-                  <option value="">Select Year</option>
-                  <option value="1st Year">1st Year</option>
-                  <option value="2nd Year">2nd Year</option>
-                  <option value="3rd Year">3rd Year</option>
-                  <option value="4th Year">4th Year</option>
-                  <option value="Graduate">Graduate</option>
-                </select>
-                {errors.year && <span className="error-message">{errors.year}</span>}
               </div>
 
               <button type="submit" disabled={isSubmitting} className="submit-button">

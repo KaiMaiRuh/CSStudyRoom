@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   addDoc,
   collection,
+  deleteDoc,
   onSnapshot,
   orderBy,
   query,
@@ -210,13 +211,95 @@ const FeedData = () => {
     }
   };
 
+  const updateTutorPost = async (postId, updates) => {
+    if (!postId) throw new Error('postId is required');
+    if (!isFirebaseConfigured()) return;
+
+    const { auth, db, storage } = getFirebaseServices();
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Please Sign In Before Editing A Post.');
+
+    const postRef = doc(db, 'tutorPosts', postId);
+    const payload = {
+      subject: updates.subject || updates.title || '',
+      location: updates.location || '',
+      title: updates.title || '',
+      description: updates.description || '',
+      experience: updates.experience || '',
+      date: updates.date || '',
+      time: updates.time || '',
+      hours: updates.hours ? Number(updates.hours) : 0,
+      capacity: updates.capacity ? Number(updates.capacity) : 1,
+      updatedAt: serverTimestamp(),
+    };
+
+    const imageFile = updates.image;
+    if (imageFile instanceof File) {
+      const imageRef = ref(storage, `posts/tutor/${currentUser.uid}/${postId}/${imageFile.name}`);
+      await uploadBytes(imageRef, imageFile);
+      const imageUrl = await getDownloadURL(imageRef);
+      payload.imageUrl = imageUrl;
+    }
+
+    await updateDoc(postRef, payload);
+  };
+
+  const updateQaPost = async (postId, updates) => {
+    if (!postId) throw new Error('postId is required');
+    if (!isFirebaseConfigured()) return;
+
+    const { auth, db, storage } = getFirebaseServices();
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Please Sign In Before Editing A Post.');
+
+    const postRef = doc(db, 'qaPosts', postId);
+    const payload = {
+      subject: updates.subject || '',
+      question: updates.question || updates.title || '',
+      description: updates.description || '',
+      updatedAt: serverTimestamp(),
+    };
+
+    const imageFile = updates.image;
+    if (imageFile instanceof File) {
+      const imageRef = ref(storage, `posts/qa/${currentUser.uid}/${postId}/${imageFile.name}`);
+      await uploadBytes(imageRef, imageFile);
+      const imageUrl = await getDownloadURL(imageRef);
+      payload.imageUrl = imageUrl;
+    }
+
+    await updateDoc(postRef, payload);
+  };
+
+  const deleteTutorPost = async (postId) => {
+    if (!postId) throw new Error('postId is required');
+    if (!isFirebaseConfigured()) return;
+    const { auth, db } = getFirebaseServices();
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Please Sign In Before Deleting A Post.');
+    await deleteDoc(doc(db, 'tutorPosts', postId));
+  };
+
+  const deleteQaPost = async (postId) => {
+    if (!postId) throw new Error('postId is required');
+    if (!isFirebaseConfigured()) return;
+    const { auth, db } = getFirebaseServices();
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Please Sign In Before Deleting A Post.');
+    await deleteDoc(doc(db, 'qaPosts', postId));
+  };
+
   return {
     tutorPosts,
     qaPosts,
     activeFeed,
     setActiveFeed,
     addTutorPost,
-    addQaPost
+    addQaPost,
+    updateTutorPost,
+    updateQaPost,
+    deleteTutorPost,
+    deleteQaPost,
   };
 };
 

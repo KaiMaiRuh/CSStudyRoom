@@ -1,49 +1,94 @@
 /* Profile component */
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FaCamera, FaUserCircle } from 'react-icons/fa';
 import './Profile.css';
+import { useAuth } from '../auth/AuthContext';
+import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
-const Profile = () => {
-  /* mock data */
-  const userProfile = {
-    name: "ABC DEFG",
-    education: {
-      year: "2077",
-      major: "Computer Science",
-      university: "Mor Gu Ni Lae"
-    },
-    subjectsToTutor: ["Mathematics", "Physics", "Programming"],
-    subjectsNeedingHelp: ["Chemistry", "Biology"],
-    role: "Both",
-    contact: {
-      discord: "abc_defg#1234",
-      line: "@abcde123 meejaitakma"
-    },
-    bio: "I want to Gen AI all the things",
-    pastPosts: [
-      {
-        id: 1,
-        type: "tutor",
-        title: "Cooking Study Group",
-        date: "2023-05-15",
-        description: "Cooking the omelet Why it's so hard"
+const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePost }) => {
+  const { user } = useAuth();
+  const [profileState, setProfileState] = useState({ uid: null, data: null });
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (!isFirebaseConfigured()) return;
+
+    const { db } = getFirebaseServices();
+    const ref = doc(db, 'users', user.uid);
+
+    return onSnapshot(
+      ref,
+      (snap) => {
+        setProfileState({ uid: user.uid, data: snap.exists() ? snap.data() : null });
       },
-      {
-        id: 2,
-        type: "qa",
-        title: "How to create a web",
-        date: "2023-05-10",
-        description: "I can't create a web I can't write a code someone help me please"
-      },
-      {
-        id: 3,
-        type: "tutor",
-        title: "ใส่อะไรดีวะตรงนี้",
-        date: "2023-05-05",
-        description: "เดี๋ยวเจนaiมาใส่"
+      (err) => {
+        console.error('Failed to load profile', err);
       }
-    ]
-  };
+    );
+  }, [user?.uid]);
+
+  const profileDoc = user?.uid && profileState.uid === user.uid ? profileState.data : null;
+
+  const userProfile = useMemo(() => {
+    const docData = profileDoc || {};
+    const displayName = docData.displayName || user?.displayName || user?.email || 'User';
+    const education = docData.education || {};
+    const contact = docData.contact || {};
+    const contactFromLegacy = [contact.discord, contact.line].filter(Boolean).join(' / ');
+
+    const mergedYear = docData.year || education.year || '';
+
+    return {
+      name: displayName,
+      username: docData.username || '',
+      education: {
+        year: mergedYear,
+        major: education.major || '',
+        university: education.university || '',
+      },
+      subjectsToTutor: Array.isArray(docData.subjectsToTutor) ? docData.subjectsToTutor : [],
+      subjectsNeedingHelp: Array.isArray(docData.subjectsNeedingHelp) ? docData.subjectsNeedingHelp : [],
+      role: docData.role || '',
+      contactText: docData.contactText || contactFromLegacy || '',
+      bio: docData.bio || '',
+    };
+  }, [profileDoc, user?.displayName, user?.email]);
+
+  const pastPosts = useMemo(() => {
+    const uid = user?.uid;
+    if (!uid) return [];
+
+    const tutor = (Array.isArray(tutorPosts) ? tutorPosts : [])
+      .filter((p) => p?.authorId === uid)
+      .map((p) => ({
+        id: `tutor-${p.id}`,
+        rawId: p.id,
+        type: 'tutor',
+        title: p.title || p.subject || 'Tutor post',
+        date: p.date || '',
+        description: p.description || '',
+        raw: p,
+      }));
+
+    const qa = (Array.isArray(qaPosts) ? qaPosts : [])
+      .filter((p) => p?.authorId === uid)
+      .map((p) => ({
+        id: `qa-${p.id}`,
+        rawId: p.id,
+        type: 'qa',
+        title: p.question || p.subject || 'Q&A post',
+        date: p.date || '',
+        description: p.description || '',
+        raw: p,
+      }));
+
+    return [...tutor, ...qa].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  }, [tutorPosts, qaPosts, user?.uid]);
+
+  const normalizedRole = String(userProfile.role || '').toLowerCase();
+  const showTutorSubjects = normalizedRole === 'tutor' || normalizedRole === 'both';
+  const showStudentSubjects = normalizedRole === 'student' || normalizedRole === 'both';
 
   return (
     <div className="profile-container">
@@ -54,7 +99,10 @@ const Profile = () => {
         </div>
         <div className="profile-info">
           <h1 className="profile-name">{userProfile.name}</h1>
-          <button className="edit-profile-btn">Edit profile</button>
+          {userProfile.username && <div style={{ color: '#666', marginTop: 4 }}>@{userProfile.username}</div>}
+          <button className="edit-profile-btn" type="button" onClick={() => onEdit?.()}>
+            Edit profile
+          </button>
         </div>
       </div>
 
@@ -71,38 +119,41 @@ const Profile = () => {
             <p><strong>University:</strong> {userProfile.education.university}</p>
           </div>
 
-          <div className="subjects-section">
-            <h2>Subjects to Tutor</h2>
-            <ul>
-              {userProfile.subjectsToTutor.map((subject, index) => (
-                <li key={index}>{subject}</li>
-              ))}
-            </ul>
-          </div>
+          {showTutorSubjects && (
+            <div className="subjects-section">
+              <h2>Subjects to Tutor</h2>
+              <ul>
+                {(userProfile.subjectsToTutor.length ? userProfile.subjectsToTutor : ['-']).map((subject, index) => (
+                  <li key={index}>{subject}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-          <div className="subjects-section">
-            <h2>Subjects Needing Help</h2>
-            <ul>
-              {userProfile.subjectsNeedingHelp.map((subject, index) => (
-                <li key={index}>{subject}</li>
-              ))}
-            </ul>
-          </div>
+          {showStudentSubjects && (
+            <div className="subjects-section">
+              <h2>Subjects Needing Help</h2>
+              <ul>
+                {(userProfile.subjectsNeedingHelp.length ? userProfile.subjectsNeedingHelp : ['-']).map((subject, index) => (
+                  <li key={index}>{subject}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="info-section">
             <h2>Role</h2>
-            <p>{userProfile.role}</p>
+            <p>{userProfile.role || '-'}</p>
           </div>
 
           <div className="contact-section">
             <h2>Contact</h2>
-            <p><strong>Discord:</strong> {userProfile.contact.discord}</p>
-            <p><strong>Line:</strong> {userProfile.contact.line}</p>
+            <p>{userProfile.contactText || '-'}</p>
           </div>
 
           <div className="bio-section">
             <h2>Bio/Experience</h2>
-            <p>{userProfile.bio}</p>
+            <p>{userProfile.bio || '-'}</p>
           </div>
         </div>
 
@@ -113,7 +164,7 @@ const Profile = () => {
           </div>
           
           <div className="posts-list">
-            {userProfile.pastPosts.map((post) => (
+            {pastPosts.map((post) => (
               <div key={post.id} className="post-card">
                 <div className="post-icon"><FaUserCircle /></div>
                 <div className="post-details">
@@ -122,8 +173,20 @@ const Profile = () => {
                   <p className="post-date">{post.date}</p>
                 </div>
                 <div className="post-actions">
-                  <button className="edit-btn">Edit</button>
-                  <button className="delete-btn">Delete</button>
+                  <button
+                    className="edit-btn"
+                    type="button"
+                    onClick={() => onEditPost?.({ type: post.type, id: post.rawId, post: post.raw })}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="delete-btn"
+                    type="button"
+                    onClick={() => onDeletePost?.({ type: post.type, id: post.rawId, post: post.raw })}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}

@@ -11,6 +11,7 @@ import FeedData from './components/FeedData';
 import CreateAccount from './components/CreateAccount';
 import SignIn from './components/SignIn';
 import Profile from './components/Profile';
+import EditProfile from './components/EditProfile';
 import CreatePost from './components/CreatePost';
 import Navbar from './components/Navbar';
 import FloatingMenu from './components/FloatingMenu';
@@ -18,10 +19,23 @@ import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
   const { user, loading: authLoading, signOut, logActivity } = useAuth();
-  const { tutorPosts, qaPosts, activeFeed, setActiveFeed, addTutorPost, addQaPost } = FeedData();
+  const {
+    tutorPosts,
+    qaPosts,
+    activeFeed,
+    setActiveFeed,
+    addTutorPost,
+    addQaPost,
+    updateTutorPost,
+    updateQaPost,
+    deleteTutorPost,
+    deleteQaPost,
+  } = FeedData();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [editingPost, setEditingPost] = useState(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [activePage, setActivePage] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,10 +49,12 @@ function App() {
   const handleShowCreatePost = () => {
     if (isAuthPage) return;
     setShowCreatePost(true);
+    setEditingPost(null);
   };
 
   const handleCloseCreatePost = () => {
     setShowCreatePost(false);
+    setEditingPost(null);
   };
 
   const handleCreatePost = (type, data) => {
@@ -74,6 +90,39 @@ function App() {
     });
   };
 
+  const handleUpdatePost = (type, data, postId) => {
+    const promise = (async () => {
+      if (!postId) throw new Error('Missing post id');
+      if (type === 'tutor') {
+        await updateTutorPost(postId, data);
+      } else {
+        await updateQaPost(postId, data);
+      }
+    })();
+
+    promise.catch((err) => {
+      alert(err?.message || 'Failed to update post');
+    });
+  };
+
+  const handleDeletePost = ({ type, id }) => {
+    const ok = window.confirm('Delete this post?');
+    if (!ok) return;
+
+    const promise = (async () => {
+      if (!id) throw new Error('Missing post id');
+      if (type === 'tutor') {
+        await deleteTutorPost(id);
+      } else {
+        await deleteQaPost(id);
+      }
+    })();
+
+    promise.catch((err) => {
+      alert(err?.message || 'Failed to delete post');
+    });
+  };
+
   useEffect(() => {
     // Wait for auth to initialize
     if (authLoading) return;
@@ -84,6 +133,7 @@ function App() {
         setShowSignIn(true);
         setShowCreateAccount(false);
         setShowProfile(false);
+        setShowEditProfile(false);
         setShowCreatePost(false);
         setActivePage('signin');
         setIsFeedDetailOpen(false);
@@ -110,6 +160,7 @@ function App() {
           p.finally(() => {
             setShowCreateAccount(false);
             setShowProfile(false);
+            setShowEditProfile(false);
             setShowSignIn(false);
             setActivePage('home');
             setIsFeedDetailOpen(false);
@@ -124,6 +175,7 @@ function App() {
               setShowSignIn(true);
               setShowCreateAccount(false);
               setShowProfile(false);
+              setShowEditProfile(false);
               setActivePage('signin');
               setIsFeedDetailOpen(false);
               return;
@@ -132,11 +184,13 @@ function App() {
           if (page === 'home') {
             setShowCreateAccount(false);
             setShowProfile(false);
+            setShowEditProfile(false);
             setActivePage('home');
             setIsFeedDetailOpen(false);
               setShowSignIn(false);
           } else if (page === 'profile') {
             setShowProfile(true);
+            setShowEditProfile(false);
             setShowCreateAccount(false);
             setActivePage('profile');
             setIsFeedDetailOpen(false);
@@ -144,6 +198,7 @@ function App() {
           } else if (page === 'createAccount') {
             setShowCreateAccount(true);
             setShowProfile(false);
+            setShowEditProfile(false);
             setActivePage('createAccount');
             setIsFeedDetailOpen(false);
               setShowSignIn(false);
@@ -151,6 +206,7 @@ function App() {
               setShowSignIn(true);
               setShowCreateAccount(false);
               setShowProfile(false);
+              setShowEditProfile(false);
               setActivePage('signin');
               setIsFeedDetailOpen(false);
           } else if (page === 'createPost') {
@@ -213,12 +269,30 @@ function App() {
             )}
           </div>
         )}
-        {showCreatePost && <CreatePost onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />}
-      {showCreateAccount && <CreateAccount onNavigate={(p)=> {
+        {showCreatePost && (
+          editingPost ? (
+            <CreatePost
+              key={`edit-${editingPost.type}-${editingPost.id}`}
+              mode="edit"
+              initialPost={editingPost}
+              onCancel={handleCloseCreatePost}
+              onUpdate={handleUpdatePost}
+            />
+          ) : (
+            <CreatePost key="create" onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />
+          )
+        )}
+        {showCreateAccount && <CreateAccount onNavigate={(p)=> {
         if (p === 'signin') {
           setShowCreateAccount(false);
           setShowSignIn(true);
           setActivePage('signin');
+          } else if (p === 'editProfile') {
+            setShowCreateAccount(false);
+            setShowSignIn(false);
+            setShowProfile(false);
+            setShowEditProfile(true);
+            setActivePage('profile');
         }
       }} />}
       {showSignIn && <SignIn onNavigate={(p)=>{
@@ -234,7 +308,59 @@ function App() {
           setIsFeedDetailOpen(false);
         }
       }} />}
-      {showProfile && <Profile />}
+      {showProfile && (
+        <Profile
+          tutorPosts={tutorPosts}
+          qaPosts={qaPosts}
+          onEdit={() => {
+            setShowEditProfile(true);
+            setShowProfile(false);
+            setActivePage('profile');
+          }}
+          onEditPost={({ type, id, post }) => {
+            const base = post || {};
+            if (type === 'tutor') {
+              setEditingPost({
+                type: 'tutor',
+                id,
+                subject: base.subject || '',
+                location: base.location || '',
+                title: base.title || '',
+                description: base.description || '',
+                date: base.date || '',
+                time: base.time || '',
+                hours: base.hours ?? '',
+                capacity: base.capacity ?? '',
+              });
+            } else {
+              setEditingPost({
+                type: 'qa',
+                id,
+                subject: base.subject || '',
+                question: base.question || '',
+                description: base.description || '',
+              });
+            }
+            setShowCreatePost(true);
+          }}
+          onDeletePost={handleDeletePost}
+        />
+      )}
+
+      {showEditProfile && (
+        <EditProfile
+          onCancel={() => {
+            setShowEditProfile(false);
+            setShowProfile(true);
+            setActivePage('profile');
+          }}
+          onDone={() => {
+            setShowEditProfile(false);
+            setShowProfile(true);
+            setActivePage('profile');
+          }}
+        />
+      )}
       </div>
       {!isAuthPage && !showCreatePost && <FloatingMenu onCreatePost={handleShowCreatePost} />}
     </div>
