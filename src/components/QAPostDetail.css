@@ -108,6 +108,19 @@
   color: #1a2b48;
   cursor: pointer;
   font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qa-action-liked {
+  color: #fcc419;
+}
+
+.qa-action-count {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .qa-comments-title {

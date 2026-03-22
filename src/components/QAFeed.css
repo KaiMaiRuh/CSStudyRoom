@@ -131,6 +131,10 @@
   font-size: 1.2rem;
 }
 
+.action-icon-liked svg {
+  color: #fcc419;
+}
+
 .action-icon:hover {
   transform: scale(1.2);
 }

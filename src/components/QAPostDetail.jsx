@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { MdArrowBack } from 'react-icons/md';
 import {
   FaUserCircle,
@@ -10,18 +10,101 @@ import {
   FaPaperPlane,
 } from 'react-icons/fa';
 import './QAPostDetail.css';
+import { useAuth } from '../auth/AuthContext';
+import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
+import {
+  addQaPostComment,
+  subscribeQaPost,
+  subscribeQaPostComments,
+  subscribeQaPostLikeStatus,
+  toggleQaPostLike,
+} from './qaPostApi';
 
 const QAPostDetail = ({ post, onBack }) => {
   const [commentText, setCommentText] = useState('');
+  const [livePost, setLivePost] = useState(null);
+  const [liveComments, setLiveComments] = useState(null);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isLikeBusy, setIsLikeBusy] = useState(false);
+  const [isSendBusy, setIsSendBusy] = useState(false);
+  const { user } = useAuth();
 
-  if (!post) return null;
+  const postId = post?.id ?? null;
 
-  const authorName = post.user?.name ?? post.author ?? 'Unknown';
-  const postedLabel = post.minutesAgo != null ? `posted ${post.minutesAgo} mins ago` : '';
-  const bodyText = post.description ?? post.question ?? '';
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    if (!postId) return;
+
+    const { db } = getFirebaseServices();
+    const unsubs = [];
+
+    unsubs.push(
+      subscribeQaPost(
+        db,
+        postId,
+        (data) => setLivePost(data),
+        (err) => console.error('Failed to subscribe qaPost', err)
+      )
+    );
+
+    unsubs.push(
+      subscribeQaPostComments(
+        db,
+        postId,
+        (next) => setLiveComments(next),
+        (err) => console.error('Failed to subscribe qaPost comments', err)
+      )
+    );
+
+    if (user?.uid) {
+      unsubs.push(
+        subscribeQaPostLikeStatus(
+          db,
+          postId,
+          user.uid,
+          (liked) => setIsLiked(liked),
+          (err) => console.error('Failed to subscribe qaPost like status', err)
+        )
+      );
+    } else {
+      setIsLiked(false);
+    }
+
+    return () => {
+      unsubs.forEach((u) => {
+        if (typeof u === 'function') u();
+      });
+    };
+  }, [postId, user?.uid]);
+
+  const mergedPost = useMemo(() => {
+    if (!post) return null;
+    if (!livePost) return post;
+    return {
+      ...post,
+      ...livePost,
+      likes: livePost.likeCount ?? livePost.likes ?? post.likes,
+      comments: livePost.commentCount ?? livePost.comments ?? post.comments,
+      shares: livePost.shareCount ?? livePost.shares ?? post.shares,
+    };
+  }, [post, livePost]);
+
+  const authorName = mergedPost?.user?.name ?? mergedPost?.authorName ?? mergedPost?.author ?? 'Unknown';
+  const postedLabel = mergedPost?.minutesAgo != null ? `posted ${mergedPost.minutesAgo} mins ago` : '';
+  const bodyText = mergedPost?.description ?? mergedPost?.question ?? '';
 
   const comments = useMemo(() => {
-    if (Array.isArray(post.commentList)) return post.commentList;
+    if (Array.isArray(liveComments)) {
+      return liveComments.map((c) => ({
+        id: c.id,
+        user: { name: c.authorName || 'Unknown' },
+        text: c.text || '',
+        parentId: c.parentId ?? null,
+        createdAt: c.createdAt ?? null,
+      }));
+    }
+
+    if (Array.isArray(mergedPost?.commentList)) return mergedPost.commentList;
 
     return [
       {
@@ -47,7 +130,59 @@ const QAPostDetail = ({ post, onBack }) => {
         text: 'อ๋อเข้า ข้อเดียวกับผมเลยครับ',
       },
     ];
-  }, [post.commentList]);
+  }, [liveComments, mergedPost?.commentList]);
+
+  if (!post) return null;
+
+  const handleToggleLike = async () => {
+    if (!isFirebaseConfigured()) return;
+    if (!user?.uid) {
+      alert('Please sign in to like posts');
+      return;
+    }
+
+    try {
+      setIsLikeBusy(true);
+      const { db } = getFirebaseServices();
+      await toggleQaPostLike({
+        db,
+        postId,
+        uid: user.uid,
+        authorName: user.displayName || user.email || 'User',
+      });
+    } catch (err) {
+      console.error('Failed to toggle like', err);
+      alert(err?.message || 'Failed to like post');
+    } finally {
+      setIsLikeBusy(false);
+    }
+  };
+
+  const handleSendComment = async () => {
+    if (!isFirebaseConfigured()) return;
+    if (!user?.uid) {
+      alert('Please sign in to comment');
+      return;
+    }
+
+    try {
+      setIsSendBusy(true);
+      const { db } = getFirebaseServices();
+      await addQaPostComment({
+        db,
+        postId,
+        uid: user.uid,
+        authorName: user.displayName || user.email || 'User',
+        text: commentText,
+      });
+      setCommentText('');
+    } catch (err) {
+      console.error('Failed to add comment', err);
+      alert(err?.message || 'Failed to add comment');
+    } finally {
+      setIsSendBusy(false);
+    }
+  };
 
   return (
     <div className="qa-post-detail">
@@ -77,11 +212,24 @@ const QAPostDetail = ({ post, onBack }) => {
           </div>
 
           <div className="qa-actions" onClick={(e) => e.stopPropagation()}>
-            <span className="qa-action" role="button" tabIndex={0} aria-label="Like">
+            <span
+              className={`qa-action ${isLiked ? 'qa-action-liked' : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-label="Like"
+              aria-pressed={isLiked}
+              onClick={handleToggleLike}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleToggleLike();
+              }}
+              style={isLikeBusy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+            >
               <FaThumbsUp />
+              <span className="qa-action-count">{mergedPost?.likes ?? 0}</span>
             </span>
             <span className="qa-action" role="button" tabIndex={0} aria-label="Comment">
               <FaComment />
+              <span className="qa-action-count">{mergedPost?.comments ?? 0}</span>
             </span>
             <span className="qa-action" role="button" tabIndex={0} aria-label="Share">
               <FaShare />
@@ -129,6 +277,9 @@ const QAPostDetail = ({ post, onBack }) => {
           onChange={(e) => setCommentText(e.target.value)}
           placeholder="Comment..."
           type="text"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSendComment();
+          }}
         />
         <button className="qa-icon-btn" type="button" aria-label="Attach link">
           <FaLink />
@@ -136,7 +287,14 @@ const QAPostDetail = ({ post, onBack }) => {
         <button className="qa-icon-btn" type="button" aria-label="Attach image">
           <FaImage />
         </button>
-        <button className="qa-send" type="button" aria-label="Send">
+        <button
+          className="qa-send"
+          type="button"
+          aria-label="Send"
+          onClick={handleSendComment}
+          disabled={isSendBusy}
+          style={isSendBusy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+        >
           <FaPaperPlane />
         </button>
       </div>

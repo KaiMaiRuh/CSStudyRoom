@@ -1,12 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { MdArrowBack, MdLocationOn } from 'react-icons/md';
 import { FaRegUserCircle } from 'react-icons/fa';
 import './TutorPostDetail.css';
 
 const TutorPostDetail = ({ post, onBack }) => {
-  if (!post) return null;
-
   const [isJoinInfoOpen, setIsJoinInfoOpen] = useState(false);
+
+  if (!post) return null;
 
   const {
     user,
@@ -23,12 +23,6 @@ const TutorPostDetail = ({ post, onBack }) => {
   const safeJoinedCount = joinedCount ?? joiners.length;
 
   const capacityNumber = capacity ?? 0;
-  const joinedLabel = useMemo(() => {
-    const left = safeJoinedCount;
-    const right = capacityNumber;
-    return `${left}/${right} joined`;
-  }, [safeJoinedCount, capacityNumber]);
-
   if (isJoinInfoOpen) {
     return (
       <div className="tutor-post-detail tutor-joininfo">
