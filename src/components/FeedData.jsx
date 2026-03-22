@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import {
   addDoc,
   collection,
-  deleteDoc,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   updateDoc,
   doc,
@@ -230,7 +230,6 @@ const FeedData = () => {
       time: updates.time || '',
       hours: updates.hours ? Number(updates.hours) : 0,
       capacity: updates.capacity ? Number(updates.capacity) : 1,
-      updatedAt: serverTimestamp(),
     };
 
     const imageFile = updates.image;
@@ -241,7 +240,24 @@ const FeedData = () => {
       payload.imageUrl = imageUrl;
     }
 
-    await updateDoc(postRef, payload);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(postRef);
+      if (!snap.exists()) throw new Error('Post not found');
+
+      const before = snap.data() || {};
+      const revisionRef = doc(collection(db, 'tutorPosts', postId, 'revisions'));
+
+      tx.set(revisionRef, {
+        postId,
+        editorId: currentUser.uid,
+        editorName: currentUser.displayName || currentUser.email || null,
+        type: 'edit',
+        before,
+        createdAt: serverTimestamp(),
+      });
+
+      tx.update(postRef, { ...payload, updatedAt: serverTimestamp() });
+    });
   };
 
   const updateQaPost = async (postId, updates) => {
@@ -257,7 +273,6 @@ const FeedData = () => {
       subject: updates.subject || '',
       question: updates.question || updates.title || '',
       description: updates.description || '',
-      updatedAt: serverTimestamp(),
     };
 
     const imageFile = updates.image;
@@ -268,7 +283,24 @@ const FeedData = () => {
       payload.imageUrl = imageUrl;
     }
 
-    await updateDoc(postRef, payload);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(postRef);
+      if (!snap.exists()) throw new Error('Post not found');
+
+      const before = snap.data() || {};
+      const revisionRef = doc(collection(db, 'qaPosts', postId, 'revisions'));
+
+      tx.set(revisionRef, {
+        postId,
+        editorId: currentUser.uid,
+        editorName: currentUser.displayName || currentUser.email || null,
+        type: 'edit',
+        before,
+        createdAt: serverTimestamp(),
+      });
+
+      tx.update(postRef, { ...payload, updatedAt: serverTimestamp() });
+    });
   };
 
   const deleteTutorPost = async (postId) => {
@@ -277,7 +309,25 @@ const FeedData = () => {
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Sign In Before Deleting A Post.');
-    await deleteDoc(doc(db, 'tutorPosts', postId));
+
+    const postRef = doc(db, 'tutorPosts', postId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(postRef);
+      if (!snap.exists()) throw new Error('Post not found');
+      const before = snap.data() || {};
+
+      const revisionRef = doc(collection(db, 'tutorPosts', postId, 'revisions'));
+      tx.set(revisionRef, {
+        postId,
+        editorId: currentUser.uid,
+        editorName: currentUser.displayName || currentUser.email || null,
+        type: 'delete',
+        before,
+        createdAt: serverTimestamp(),
+      });
+
+      tx.delete(postRef);
+    });
   };
 
   const deleteQaPost = async (postId) => {
@@ -286,7 +336,25 @@ const FeedData = () => {
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Sign In Before Deleting A Post.');
-    await deleteDoc(doc(db, 'qaPosts', postId));
+
+    const postRef = doc(db, 'qaPosts', postId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(postRef);
+      if (!snap.exists()) throw new Error('Post not found');
+      const before = snap.data() || {};
+
+      const revisionRef = doc(collection(db, 'qaPosts', postId, 'revisions'));
+      tx.set(revisionRef, {
+        postId,
+        editorId: currentUser.uid,
+        editorName: currentUser.displayName || currentUser.email || null,
+        type: 'delete',
+        before,
+        createdAt: serverTimestamp(),
+      });
+
+      tx.delete(postRef);
+    });
   };
 
   return {
