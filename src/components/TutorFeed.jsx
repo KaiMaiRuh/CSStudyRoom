@@ -19,6 +19,18 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
     onDetailClose?.();
   };
 
+  const formatPostedTime = (minutesAgo) => {
+    if (minutesAgo == null || Number.isNaN(minutesAgo)) return '';
+    const mins = Number(minutesAgo);
+    if (mins < 60) return `posted ${mins} mins ago`;
+    if (mins < 1440) {
+      const hours = Math.floor(mins / 60);
+      return `posted ${hours} ${hours === 1 ? 'hr' : 'hrs'} ago`;
+    }
+    const days = Math.floor(mins / 1440);
+    return `posted ${days} ${days === 1 ? 'day' : 'days'} ago`;
+  };
+
   if (selectedPost) {
     const detailPost = {
       ...selectedPost,
@@ -56,7 +68,7 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
               <div className="date-time">
                 <span className="date">{post.date}</span>
                 <span className="time">เวลา {post.time}</span>
-                <span className="ago">posted {post.minutesAgo} mins ago</span>
+                <span className="ago">{formatPostedTime(post.minutesAgo)}</span>
               </div>
             </div>
           </div>
@@ -68,7 +80,31 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
             </div>
             <h3 className="post-title">{post.title}</h3>
             <p className="post-description">{post.description}</p>
-            {post.imageUrl ? (
+            {Array.isArray(post.images) && post.images.length > 0 ? (
+              <div className="tutor-feed-images">
+                {post.images.slice(0, 3).map((imageUrl, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={`Open image ${index + 1}`}
+                    onClick={() => setPreviewSrc(imageUrl)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <img className="tutor-feed-image" src={imageUrl} alt="" />
+                  </button>
+                ))}
+                {post.images.length > 3 && (
+                  <div className="more-images-indicator">
+                    +{post.images.length - 3} more
+                  </div>
+                )}
+              </div>
+            ) : post.imageUrl ? (
               <button
                 type="button"
                 aria-label="Open image"

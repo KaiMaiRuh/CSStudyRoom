@@ -29,7 +29,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
       hours: initialPost?.hours != null ? String(initialPost.hours) : '',
       capacity: initialPost?.capacity != null ? String(initialPost.capacity) : '',
       question: initialPost?.question || '',
-      imageUrl: initialPost?.imageUrl || null,
+      images: Array.isArray(initialPost?.images) ? initialPost.images : (initialPost?.imageUrl ? [initialPost.imageUrl] : []),
     }),
     [initialPost]
   );
@@ -47,7 +47,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
           hours: '',
           capacity: '',
           question: '',
-          imageUrl: null,
+          images: [],
         }
   );
 
@@ -77,6 +77,15 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const getMinTime = () => {
+    const today = new Date().toISOString().split('T')[0];
+    if (formData.date === today) {
+      const now = new Date();
+      return now.toTimeString().slice(0, 5); // HH:MM format
+    }
+    return undefined;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -99,22 +108,43 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
     if (onCancel) onCancel();
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImageChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const currentImageCount = formData.images.length;
+    const newImageCount = files.length;
+    const totalImages = currentImageCount + newImageCount;
+
+    if (totalImages > 20) {
+      setImageError(`Cannot add ${newImageCount} images. Maximum 20 images allowed. Currently have ${currentImageCount} images.`);
+      return;
+    }
 
     setImageError('');
 
-    const p = (async () => {
-      const dataUrl = await imageFileToBase64DataUrl(file, { targetBytes: 300 * 1024 });
-      setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
-    })();
+    try {
+      const processedImages = await Promise.all(
+        files.map(async (file) => {
+          return await imageFileToBase64DataUrl(file, { targetBytes: 300 * 1024 });
+        })
+      );
 
-    pendingImagePromiseRef.current = p.catch((err) => {
-      console.error('Failed to process image', err);
-      setImageError(err?.message || 'Failed to process image');
-      return null;
-    });
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...processedImages]
+      }));
+    } catch (err) {
+      console.error('Failed to process images', err);
+      setImageError(err?.message || 'Failed to process images');
+    }
+  };
+
+  const removeImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
   };
 
   return (
@@ -217,7 +247,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
                       name="time"
                       value={formData.time}
                       onChange={handleInputChange}
-                      min={minTime}
+                      min={getMinTime()}
                       required
                     />
                     <span className="input-icon" aria-hidden>
@@ -250,7 +280,8 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
                     value={formData.capacity}
                     onChange={handleInputChange}
                     placeholder="Maximum participants"
-                    min="1"
+                    min="2"
+                    max="20"
                     required
                   />
                 </div>
@@ -297,14 +328,40 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
           )}
           
           <div className="form-group">
-            <label>Image (Optional)</label>
+            <label>Images (Optional) - Max 20 images</label>
             <input 
               type="file" 
               name="image"
               onChange={handleImageChange}
               accept="image/*"
+              multiple
             />
             {imageError ? <span className="error-message">{imageError}</span> : null}
+            
+            {formData.images.length > 0 && (
+              <div className="image-preview-container">
+                <p>Current images ({formData.images.length}/20):</p>
+                <div className="image-grid">
+                  {formData.images.map((imageUrl, index) => (
+                    <div key={index} className="image-preview-item">
+                      <img 
+                        src={imageUrl} 
+                        alt={`Preview ${index + 1}`} 
+                        className="image-preview" 
+                      />
+                      <button 
+                        type="button" 
+                        className="remove-image-btn"
+                        onClick={() => removeImage(index)}
+                        title="Remove image"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="form-actions">

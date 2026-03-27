@@ -99,7 +99,18 @@ const QAPostDetail = ({ post, onBack }) => {
 
   const authorName = mergedPost?.user?.name ?? mergedPost?.authorName ?? mergedPost?.author ?? 'Unknown';
   const authorAvatar = mergedPost?.user?.avatar ?? mergedPost?.authorAvatar ?? '';
-  const postedLabel = mergedPost?.minutesAgo != null ? `posted ${mergedPost.minutesAgo} mins ago` : '';
+  const formatPostedTime = (minutesAgo) => {
+    if (minutesAgo == null || Number.isNaN(minutesAgo)) return '';
+    const mins = Number(minutesAgo);
+    if (mins < 60) return `posted ${mins} mins ago`;
+    if (mins < 1440) {
+      const hours = Math.floor(mins / 60);
+      return `posted ${hours} ${hours === 1 ? 'hr' : 'hrs'} ago`;
+    }
+    const days = Math.floor(mins / 1440);
+    return `posted ${days} ${days === 1 ? 'day' : 'days'} ago`;
+  };
+  const postedLabel = mergedPost?.minutesAgo != null ? formatPostedTime(mergedPost.minutesAgo) : '';
   const subjectText = mergedPost?.subject || '';
   const questionText = mergedPost?.question || '';
   const descriptionText = mergedPost?.description || '';
@@ -274,7 +285,21 @@ const QAPostDetail = ({ post, onBack }) => {
             {questionText ? <div className="qa-question-text">{questionText}</div> : null}
             {descriptionText ? <div className="qa-body-text">{descriptionText}</div> : null}
 
-            {mergedPost?.imageUrl ? (
+            {Array.isArray(mergedPost?.images) && mergedPost.images.length > 0 ? (
+              <div className="qa-post-images">
+                {mergedPost.images.map((imageUrl, index) => (
+                  <button
+                    key={index}
+                    className="qa-post-image-link"
+                    type="button"
+                    aria-label={`Open image ${index + 1}`}
+                    onClick={() => setPreviewSrc(imageUrl)}
+                  >
+                    <img className="qa-post-image" src={imageUrl} alt="" />
+                  </button>
+                ))}
+              </div>
+            ) : mergedPost?.imageUrl ? (
               <button
                 className="qa-post-image-link"
                 type="button"

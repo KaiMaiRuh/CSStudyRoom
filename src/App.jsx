@@ -72,7 +72,7 @@ function App() {
           hours: data.hours,
           capacity: data.capacity,
           current: 1,
-          imageUrl: data.imageUrl ?? null,
+          images: data.images || [],
         });
       } else {
         await addQaPost({
@@ -80,7 +80,7 @@ function App() {
           subject: data.subject,
           question: data.question || data.title,
           description: data.description,
-          imageUrl: data.imageUrl ?? null,
+          images: data.images || [],
         });
       }
     })();
@@ -331,6 +331,7 @@ function App() {
                 time: base.time || '',
                 hours: base.hours ?? '',
                 capacity: base.capacity ?? '',
+                images: Array.isArray(base.images) ? base.images : (base.imageUrl ? [base.imageUrl] : []),
               });
             } else {
               setEditingPost({
@@ -339,6 +340,7 @@ function App() {
                 subject: base.subject || '',
                 question: base.question || '',
                 description: base.description || '',
+                images: Array.isArray(base.images) ? base.images : (base.imageUrl ? [base.imageUrl] : []),
               });
             }
             setShowCreatePost(true);
