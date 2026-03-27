@@ -169,6 +169,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
                       name="date"
                       value={formData.date}
                       onChange={handleInputChange}
+                      min={new Date().toISOString().split('T')[0]}
                       required
                     />
                     <span className="input-icon" aria-hidden>
