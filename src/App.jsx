@@ -87,7 +87,6 @@ function App() {
       /* add to feed */
       if (type === 'tutor') {
         await addTutorPost({
-          author: data.author || user?.displayName || 'You',
           subject: data.subject,
           location: data.location,
           title: data.title,
@@ -101,7 +100,6 @@ function App() {
         });
       } else {
         await addQaPost({
-          author: data.author || user?.displayName || 'You',
           subject: data.subject,
           question: data.question || data.title,
           description: data.description,

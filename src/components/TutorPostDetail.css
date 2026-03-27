@@ -273,18 +273,43 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 20%;
+  width: 100px;
+  flex-wrap: wrap;
   margin-bottom: 15px;
 }
 
-.tutor-post-detail .profile-icon {
-  margin-bottom: 5px;
+.tutor-post-detail .joiner-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #1a2b48;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.tutor-post-detail .joiner-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .tutor-post-detail .joiner-name {
   margin: 0 0 3px 0;
   font-size: 12px;
   color: #1a2b48;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.tutor-post-detail .joined-label {
+  margin: 0;
+  font-size: 11px;
+  color: #666;
 }
 
 /* Floating Action Button */

@@ -57,7 +57,12 @@ const FeedData = () => {
 
             return {
               id: d.id,
-              user: { name: data.authorName || 'Unknown', avatar: data.authorAvatar || '' },
+              user: { 
+                name: data.authorName || 'Unknown', 
+                displayName: data.authorName || 'Unknown',
+                avatar: data.authorAvatar || '',
+                uid: data.authorId || null,
+              },
               subject: data.subject || '',
               location: data.location || '',
               title: data.title || '',
@@ -72,6 +77,7 @@ const FeedData = () => {
               hours: data.hours ?? 0,
               images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
               authorId: data.authorId || null,
+              joiners: Array.isArray(data.joiners) ? data.joiners : [],
             };
           });
           setTutorPosts(next);
@@ -151,18 +157,24 @@ const FeedData = () => {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Sign In Before Creating A Post.');
 
-    let authorAvatar = '';
-    try {
-      const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-      authorAvatar = userSnap.data()?.avatarUrl || '';
-    } catch (err) {
-      console.warn('Failed to read user avatarUrl for authorAvatar', err);
+    // Get author info from auth and users collection
+    const authorName = currentUser.displayName || currentUser.email || 'You';
+    let authorAvatar = currentUser.photoURL || '';
+    
+    // If photoURL not set in auth, try to get avatar from users collection
+    if (!authorAvatar) {
+      try {
+        const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+        authorAvatar = userSnap.data()?.avatarUrl || userSnap.data()?.photoURL || '';
+      } catch (err) {
+        console.warn('Failed to read user avatar', err);
+      }
     }
 
     const baseDoc = {
       type: 'tutor',
       authorId: currentUser.uid,
-      authorName: post.author || currentUser.displayName || currentUser.email || 'You',
+      authorName,
       authorAvatar,
       subject: post.subject || post.title || 'Untitled',
       location: post.location || '',
@@ -206,18 +218,24 @@ const FeedData = () => {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Sign In Before Creating A Post.');
 
-    let authorAvatar = '';
-    try {
-      const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-      authorAvatar = userSnap.data()?.avatarUrl || '';
-    } catch (err) {
-      console.warn('Failed to read user avatarUrl for authorAvatar', err);
+    // Get author info from auth and users collection
+    const authorName = currentUser.displayName || currentUser.email || 'You';
+    let authorAvatar = currentUser.photoURL || '';
+    
+    // If photoURL not set in auth, try to get avatar from users collection
+    if (!authorAvatar) {
+      try {
+        const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+        authorAvatar = userSnap.data()?.avatarUrl || userSnap.data()?.photoURL || '';
+      } catch (err) {
+        console.warn('Failed to read user avatar', err);
+      }
     }
 
     const baseDoc = {
       type: 'qa',
       authorId: currentUser.uid,
-      authorName: post.author || currentUser.displayName || currentUser.email || 'You',
+      authorName,
       authorAvatar,
       subject: post.subject || '',
       question: post.question || post.title || 'Untitled question',

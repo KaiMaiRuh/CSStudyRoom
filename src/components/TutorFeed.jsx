@@ -32,9 +32,10 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
   };
 
   if (selectedPost) {
+    const actualJoinedCount = 1 + (Array.isArray(selectedPost.joiners) ? selectedPost.joiners.length : 0);
     const detailPost = {
       ...selectedPost,
-      joinedCount: selectedPost.joinedCount ?? selectedPost.current,
+      joinedCount: actualJoinedCount,
     };
     return <TutorPostDetail post={detailPost} onBack={handleCloseDetail} />;
   }
@@ -43,7 +44,8 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
     <div className="tutor-feed">
       {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
       {posts.map(post => {
-        const joinedCount = post.joinedCount ?? post.current ?? 0;
+        // Calculate actual joined count from joiners array + creator (1)
+        const actualJoinedCount = 1 + (Array.isArray(post.joiners) ? post.joiners.length : 0);
         return (
         <div key={post.id} className="tutor-card">
           <div className="card-header">
@@ -124,7 +126,7 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
           
           <div className="card-footer">
             <div className="capacity">
-              เข้าร่วมแล้ว: {joinedCount}/{post.capacity} คน
+              เข้าร่วมแล้ว: {actualJoinedCount}/{post.capacity} คน
             </div>
             <button className="read-more-button" type="button" onClick={() => handleOpenDetail(post)}>
               Read more
