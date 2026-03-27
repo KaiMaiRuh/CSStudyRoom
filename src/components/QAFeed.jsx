@@ -148,7 +148,25 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
           <div className="card-content">
             <div className="subject-tag">{post.subject}</div>
             <h3 className="question-text">{post.question}</h3>
-            {post.imageUrl ? (
+            {Array.isArray(post.images) && post.images.length > 0 ? (
+              <button
+                type="button"
+                aria-label="Open image"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewSrc(post.images[0]);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  width: '100%',
+                  cursor: 'pointer',
+                }}
+              >
+                <img className="qa-feed-image" src={post.images[0]} alt="" />
+              </button>
+            ) : post.imageUrl ? (
               <button
                 type="button"
                 aria-label="Open image"
