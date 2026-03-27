@@ -6,6 +6,16 @@ import { imageFileToBase64DataUrl } from './imageBase64';
 
 const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, onUpdate }) => {
   const initialType = initialPost?.type || 'tutor';
+    // เพิ่ม state สำหรับ minTime
+  const [minTime, setMinTime] = useState('');
+
+  // helper function
+  const getTodayString = () => new Date().toISOString().split('T')[0];
+
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  };
   const isEdit = mode === 'edit' && Boolean(initialPost);
   const [postType, setPostType] = useState(() => (isEdit ? initialType : 'tutor')); /* post type */
   const initialForm = useMemo(
@@ -49,10 +59,22 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    if (name === 'date') {
+      const isToday = value === getTodayString();
+      const currentTime = getCurrentTimeString();
+      setMinTime(isToday ? currentTime : '');
+
+      
+      setFormData(prev => ({
+        ...prev,
+        date: value,
+        time: isToday && prev.time && prev.time < currentTime ? '' : prev.time,
+      }));
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -195,6 +217,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
                       name="time"
                       value={formData.time}
                       onChange={handleInputChange}
+                      min={minTime}
                       required
                     />
                     <span className="input-icon" aria-hidden>
