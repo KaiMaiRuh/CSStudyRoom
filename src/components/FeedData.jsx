@@ -15,8 +15,25 @@ import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 const FeedData = () => {
   const [tutorPosts, setTutorPosts] = useState([]);
   const [qaPosts, setQaPosts] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
 
   const [activeFeed, setActiveFeed] = useState('tutor');
+
+  // Update subjects whenever posts change
+  useEffect(() => {
+    const subjectsSet = new Set();
+    
+    tutorPosts.forEach(post => {
+      if (post.subject) subjectsSet.add(post.subject);
+    });
+    
+    qaPosts.forEach(post => {
+      if (post.subject) subjectsSet.add(post.subject);
+    });
+    
+    const sortedSubjects = Array.from(subjectsSet).sort();
+    setAllSubjects(sortedSubjects);
+  }, [tutorPosts, qaPosts]);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -365,6 +382,7 @@ const FeedData = () => {
   return {
     tutorPosts,
     qaPosts,
+    allSubjects: Array.from(allSubjects).sort(),
     activeFeed,
     setActiveFeed,
     addTutorPost,

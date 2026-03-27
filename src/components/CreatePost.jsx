@@ -4,7 +4,7 @@ import { FaCalendarAlt, FaClock } from 'react-icons/fa';
 import './CreatePost.css';
 import { imageFileToBase64DataUrl } from './imageBase64';
 
-const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, onUpdate }) => {
+const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, onUpdate, allSubjects = [] }) => {
   const initialType = initialPost?.type || 'tutor';
     // เพิ่ม state สำหรับ minTime
   const [minTime, setMinTime] = useState('');
@@ -177,14 +177,17 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
         <form className="create-post-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Subject</label>
-            <input 
-              type="text" 
+            <select 
               name="subject"
               value={formData.subject}
               onChange={handleInputChange}
-              placeholder="Enter subject"
               required
-            />
+            >
+              <option value="">Select a subject</option>
+              {allSubjects.map(subject => (
+                <option key={subject} value={subject}>{subject}</option>
+              ))}
+            </select>
           </div>
           
           {postType === 'tutor' ? (

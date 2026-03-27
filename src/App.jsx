@@ -22,6 +22,7 @@ function App() {
   const {
     tutorPosts,
     qaPosts,
+    allSubjects,
     activeFeed,
     setActiveFeed,
     addTutorPost,
@@ -45,6 +46,30 @@ function App() {
   const isHome = activePage === 'home';
   const isCreateAccountPage = activePage === 'createAccount';
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
+
+  // Filter posts based on search and category
+  const filteredTutorPosts = tutorPosts.filter(post => {
+    const matchesCategory = !category || post.subject === category;
+    const searchLower = searchQuery.toLowerCase().normalize('NFC');
+    const matchesSearch = 
+      !searchQuery || 
+      post.title.toLowerCase().normalize('NFC').includes(searchLower) || 
+      post.description.toLowerCase().normalize('NFC').includes(searchLower) ||
+      post.subject.toLowerCase().normalize('NFC').includes(searchLower);
+    return matchesCategory && matchesSearch;
+  });
+
+  const filteredQaPosts = qaPosts.filter(post => {
+    const matchesCategory = !category || post.subject === category;
+    const searchLower = searchQuery.toLowerCase().normalize('NFC');
+    const matchesSearch = 
+      !searchQuery || 
+      post.question.toLowerCase().normalize('NFC').includes(searchLower) ||
+      post.subject.toLowerCase().normalize('NFC').includes(searchLower);
+    return matchesCategory && matchesSearch;
+  });
+
+
 
   const handleShowCreatePost = () => {
     if (isAuthPage) return;
@@ -242,10 +267,9 @@ function App() {
                 onChange={(e) => setCategory(e.target.value)}
               >
                 <option value="">หมวดหมู่วิชา</option>
-                <option value="computer-science">Computer Science</option>
-                <option value="mathematics">Mathematics</option>
-                <option value="physics">Physics</option>
-                <option value="chemistry">Chemistry</option>
+                {allSubjects.map(subject => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
               </select>
             </div>
           </>
@@ -256,13 +280,13 @@ function App() {
           <div>
             {activeFeed === 'tutor' ? (
               <TutorFeed
-                posts={tutorPosts}
+                posts={filteredTutorPosts}
                 onDetailOpen={() => setIsFeedDetailOpen(true)}
                 onDetailClose={() => setIsFeedDetailOpen(false)}
               />
             ) : (
               <QAFeed
-                posts={qaPosts}
+                posts={filteredQaPosts}
                 onDetailOpen={() => setIsFeedDetailOpen(true)}
                 onDetailClose={() => setIsFeedDetailOpen(false)}
               />
@@ -275,11 +299,12 @@ function App() {
               key={`edit-${editingPost.type}-${editingPost.id}`}
               mode="edit"
               initialPost={editingPost}
+              allSubjects={allSubjects}
               onCancel={handleCloseCreatePost}
               onUpdate={handleUpdatePost}
             />
           ) : (
-            <CreatePost key="create" onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />
+            <CreatePost key="create" allSubjects={allSubjects} onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />
           )
         )}
         {showCreateAccount && <CreateAccount onNavigate={(p)=> {

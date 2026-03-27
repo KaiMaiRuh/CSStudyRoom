@@ -1,19 +1,53 @@
 /* Home component */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { FaSearch } from 'react-icons/fa';
 import './Home.css';
 import TutorFeed from './TutorFeed';
 import QAFeed from './QAFeed';
+import FeedData from './FeedData';
 
 const Home = () => {
+  const feedDataResult = FeedData();
+  const { tutorPosts = [], qaPosts = [], allSubjects = [] } = feedDataResult || {};
+  
   const [activeTab, setActiveTab] = useState('tutor');
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
 
+
+
   const handleSearch = (e) => {
     e.preventDefault();
-    /* search */
+    /* search is applied automatically through useMemo */
   };
+
+  /* Filter posts based on search query and category */
+  const filteredTutorPosts = useMemo(() => {
+    const result = tutorPosts.filter(post => {
+      const matchesCategory = !category || post.subject === category;
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = 
+        !searchQuery || 
+        post.title.toLowerCase().includes(searchLower) || 
+        post.description.toLowerCase().includes(searchLower) ||
+        post.subject.toLowerCase().includes(searchLower);
+      
+      return matchesCategory && matchesSearch;
+    });
+    return result;
+  }, [tutorPosts, searchQuery, category]);
+
+  const filteredQaPosts = useMemo(() => {
+    return qaPosts.filter(post => {
+      const matchesCategory = !category || post.subject === category;
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = 
+        !searchQuery || 
+        post.question.toLowerCase().includes(searchLower) ||
+        post.subject.toLowerCase().includes(searchLower);
+      return matchesCategory && matchesSearch;
+    });
+  }, [qaPosts, searchQuery, category]);
 
   return (
     <div className="home-container">
@@ -55,16 +89,19 @@ const Home = () => {
             onChange={(e) => setCategory(e.target.value)}
           >
             <option value="">หมวดหมู่วิชา</option>
-            <option value="computer-science">Computer Science</option>
-            <option value="mathematics">Mathematics</option>
-            <option value="physics">Physics</option>
-            <option value="chemistry">Chemistry</option>
+            {allSubjects.map(subject => (
+              <option key={subject} value={subject}>{subject}</option>
+            ))}
           </select>
         </div>
       </div>
       
       <div className="feed-container">
-        {activeTab === 'tutor' ? <TutorFeed /> : <QAFeed />}
+        {activeTab === 'tutor' ? (
+          <TutorFeed posts={filteredTutorPosts} />
+        ) : (
+          <QAFeed posts={filteredQaPosts} />
+        )}
       </div>
     </div>
   );
