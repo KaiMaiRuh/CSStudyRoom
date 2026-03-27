@@ -53,7 +53,7 @@ const FeedData = () => {
               current: data.current ?? data.joinedCount ?? 0,
               joinedCount: data.joinedCount ?? data.current ?? 0,
               hours: data.hours ?? 0,
-              imageUrl: data.imageUrl || null,
+              images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
               authorId: data.authorId || null,
             };
           });
@@ -87,7 +87,7 @@ const FeedData = () => {
               likes: data.likes ?? data.likeCount ?? 0,
               comments: data.comments ?? data.commentCount ?? 0,
               shares: data.shares ?? data.shareCount ?? 0,
-              imageUrl: data.imageUrl || null,
+              images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
               authorId: data.authorId || null,
               commentList: data.commentList || null,
             };
@@ -124,7 +124,7 @@ const FeedData = () => {
         capacity: post.capacity ? Number(post.capacity) : 1,
         current: post.current ? Number(post.current) : 1,
         hours: post.hours ? Number(post.hours) : 1,
-        imageUrl: post.imageUrl || null,
+        images: Array.isArray(post.images) ? post.images : (post.imageUrl ? [post.imageUrl] : []),
       };
       setTutorPosts((prev) => [newPost, ...prev]);
       return;
@@ -157,7 +157,7 @@ const FeedData = () => {
       capacity: post.capacity ? Number(post.capacity) : 1,
       joinedCount: post.current ? Number(post.current) : 1,
       hours: post.hours ? Number(post.hours) : 1,
-      imageUrl: post.imageUrl || null,
+      images: Array.isArray(post.images) ? post.images : (post.imageUrl ? [post.imageUrl] : []),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -179,7 +179,7 @@ const FeedData = () => {
         likes: 0,
         comments: 0,
         shares: 0,
-        imageUrl: post.imageUrl || null,
+        images: Array.isArray(post.images) ? post.images : (post.imageUrl ? [post.imageUrl] : []),
       };
       setQaPosts((prev) => [newPost, ...prev]);
       return;
@@ -208,7 +208,7 @@ const FeedData = () => {
       likeCount: 0,
       commentCount: 0,
       shareCount: 0,
-      imageUrl: post.imageUrl || null,
+      images: Array.isArray(post.images) ? post.images : (post.imageUrl ? [post.imageUrl] : []),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -237,10 +237,12 @@ const FeedData = () => {
       capacity: updates.capacity ? Number(updates.capacity) : 1,
     };
 
-    if (typeof updates.imageUrl === 'string') {
-      payload.imageUrl = updates.imageUrl;
+    if (Array.isArray(updates.images)) {
+      payload.images = updates.images;
+    } else if (typeof updates.imageUrl === 'string') {
+      payload.images = [updates.imageUrl];
     } else if (updates.imageUrl === null) {
-      payload.imageUrl = null;
+      payload.images = [];
     }
 
     await runTransaction(db, async (tx) => {
@@ -278,10 +280,12 @@ const FeedData = () => {
       description: updates.description || '',
     };
 
-    if (typeof updates.imageUrl === 'string') {
-      payload.imageUrl = updates.imageUrl;
+    if (Array.isArray(updates.images)) {
+      payload.images = updates.images;
+    } else if (typeof updates.imageUrl === 'string') {
+      payload.images = [updates.imageUrl];
     } else if (updates.imageUrl === null) {
-      payload.imageUrl = null;
+      payload.images = [];
     }
 
     await runTransaction(db, async (tx) => {

@@ -64,6 +64,18 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
     onDetailClose?.();
   };
 
+  const formatPostedTime = (minutesAgo) => {
+    if (minutesAgo == null || Number.isNaN(minutesAgo)) return '';
+    const mins = Number(minutesAgo);
+    if (mins < 60) return `posted ${mins} mins ago`;
+    if (mins < 1440) {
+      const hours = Math.floor(mins / 60);
+      return `posted ${hours} ${hours === 1 ? 'hr' : 'hrs'} ago`;
+    }
+    const days = Math.floor(mins / 1440);
+    return `posted ${days} ${days === 1 ? 'day' : 'days'} ago`;
+  };
+
   if (selectedPost) {
     return <QAPostDetail post={selectedPost} onBack={handleCloseDetail} />;
   }
@@ -128,7 +140,7 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
               <div className="date-time">
                 <span className="date">{post.date}</span>
                 <span className="time">เวลา {post.time}</span>
-                <span className="ago">posted {post.minutesAgo} mins ago</span>
+                <span className="ago">{formatPostedTime(post.minutesAgo)}</span>
               </div>
             </div>
           </div>

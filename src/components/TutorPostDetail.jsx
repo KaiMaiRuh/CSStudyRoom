@@ -102,7 +102,21 @@ const TutorPostDetail = ({ post, onBack }) => {
           <p className="subject">Subject : {subject}</p>
         </div>
 
-        {post.imageUrl ? (
+        {Array.isArray(post.images) && post.images.length > 0 ? (
+          <div className="tutor-post-images">
+            {post.images.map((imageUrl, index) => (
+              <button
+                key={index}
+                type="button"
+                aria-label={`Open image ${index + 1}`}
+                onClick={() => setPreviewSrc(imageUrl)}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                <img className="tutor-post-image" src={imageUrl} alt="" />
+              </button>
+            ))}
+          </div>
+        ) : post.imageUrl ? (
           <button
             type="button"
             aria-label="Open image"

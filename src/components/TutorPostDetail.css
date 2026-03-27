@@ -139,6 +139,19 @@
   background-color: #fdf8e4;
 }
 
+.tutor-post-detail .tutor-post-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tutor-post-detail .tutor-post-images .tutor-post-image {
+  width: 100%;
+  height: 150px;
+  margin-bottom: 0;
+}
+
 .tutor-post-detail .user-name {
   color: #ffffff;
   margin: 0 0 5px 0;

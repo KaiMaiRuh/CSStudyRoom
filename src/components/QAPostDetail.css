@@ -140,6 +140,21 @@
   background-color: #8b8b8b;
 }
 
+.qa-post-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.qa-post-images .qa-post-image-link {
+  width: 100%;
+}
+
+.qa-post-images .qa-post-image {
+  height: 150px;
+}
+
 .qa-media-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
