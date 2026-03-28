@@ -16,6 +16,7 @@ import CreatePost from './components/CreatePost';
 import Navbar from './components/Navbar';
 import FloatingMenu from './components/FloatingMenu';
 import AdminPanel from './components/admin/AdminPanel';
+import GroupMessagePage from './components/GroupMessagePage';
 import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
@@ -48,6 +49,7 @@ function App() {
   const isCreateAccountPage = activePage === 'createAccount';
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
   const isAdminPage = activePage === 'admin';
+  const isGroupMessagePage = activePage === 'groupmessage';
 
   // Filter posts based on search and category
   const filteredTutorPosts = tutorPosts.filter(post => {
@@ -253,11 +255,28 @@ function App() {
             setShowCreatePost(false);
             setActivePage('admin');
             setIsFeedDetailOpen(false);
+          } else if (page === 'groupmessage') {
+            if (!user) {
+              setShowSignIn(true);
+              setActivePage('signin');
+              return;
+            }
+            setShowCreateAccount(false);
+            setShowProfile(false);
+            setShowEditProfile(false);
+            setShowSignIn(false);
+            setShowCreatePost(false);
+            setActivePage('groupmessage');
+            setIsFeedDetailOpen(false);
           }
         }}
       />
       <div className="app-root">
-        {isAdminPage ? (
+        {isGroupMessagePage ? (
+          <GroupMessagePage onBack={() => {
+            setActivePage('home');
+          }} />
+        ) : isAdminPage ? (
           <AdminPanel />
         ) : (
           <>
@@ -412,7 +431,32 @@ function App() {
           </>
         )}
       </div>
-      {!isAuthPage && !showCreatePost && !isAdminPage && <FloatingMenu onCreatePost={handleShowCreatePost} />}
+      {!isAuthPage && !showCreatePost && !isAdminPage && <FloatingMenu onCreatePost={handleShowCreatePost} isGroupMessagePage={isGroupMessagePage} onNavigate={(page) => {
+        // Prevent unauthenticated navigation
+        if (!user && (page === 'groupmessage' || page === 'profile')) {
+          setShowSignIn(true);
+          setActivePage('signin');
+          return;
+        }
+        
+        if (page === 'groupmessage') {
+          setShowCreateAccount(false);
+          setShowProfile(false);
+          setShowEditProfile(false);
+          setShowSignIn(false);
+          setShowCreatePost(false);
+          setActivePage('groupmessage');
+          setIsFeedDetailOpen(false);
+        } else if (page === 'home') {
+          setShowCreateAccount(false);
+          setShowProfile(false);
+          setShowEditProfile(false);
+          setActivePage('home');
+          setIsFeedDetailOpen(false);
+          setShowSignIn(false);
+          setShowCreatePost(false);
+        }
+      }} />}
     </div>
   );
 }

@@ -2,10 +2,9 @@
 import React, { useState } from 'react';
 import { FaBell, FaEnvelope, FaPlus } from 'react-icons/fa';
 import NotificationPanel from './NotificationPanel';
-import GroupMessagePanel from './GroupMessagePanel';
 import './FloatingMenu.css';
 
-const FloatingMenu = ({ onCreatePost }) => {
+const FloatingMenu = ({ onCreatePost, onNavigate, isGroupMessagePage }) => {
   const [activePanel, setActivePanel] = useState(null);
 
   const openPanel = (panelType) => {
@@ -14,6 +13,17 @@ const FloatingMenu = ({ onCreatePost }) => {
 
   const closePanel = () => {
     setActivePanel(null);
+  };
+
+  const handleMessage = () => {
+    if (typeof onNavigate === 'function') {
+      // If already on group message page, go back to home
+      if (isGroupMessagePage) {
+        onNavigate('home');
+      } else {
+        onNavigate('groupmessage');
+      }
+    }
   };
 
   return (
@@ -28,7 +38,7 @@ const FloatingMenu = ({ onCreatePost }) => {
         </button>
         <button 
           className="fab-button message-btn"
-          onClick={() => openPanel('message')}
+          onClick={handleMessage}
         >
           <FaEnvelope />
         </button>
@@ -49,10 +59,6 @@ const FloatingMenu = ({ onCreatePost }) => {
       {/* Overlay Panels */}
       {activePanel === 'notification' && (
         <NotificationPanel onClose={closePanel} />
-      )}
-      
-      {activePanel === 'message' && (
-        <GroupMessagePanel onClose={closePanel} />
       )}
     </div>
   );

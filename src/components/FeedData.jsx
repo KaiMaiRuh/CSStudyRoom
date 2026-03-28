@@ -11,29 +11,44 @@ import {
   doc,
 } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
+import { createGroup, deleteGroupByPostId } from './groupMessageApi';
 
 const FeedData = () => {
   const [tutorPosts, setTutorPosts] = useState([]);
   const [qaPosts, setQaPosts] = useState([]);
-  const [allSubjects, setAllSubjects] = useState([]);
+  
+  // Subjects list - predefined for subject selection and filtering
+  const allSubjects = [
+    'Mathematics I',
+    'Discrete Math. For Computer Science',
+    'Computer Programming I',
+    'Fundamental Of CS AND Prof. Issues',
+    'Economics For Everyday Life',
+    'Physics In Daily Life',
+    'Mathematics For Computing',
+    'Database Systems',
+    'Structure Programming',
+    'Computer Organization And Operating System',
+    'Human Computer Interaction',
+    'Stat. For Engineerings And Scientists',
+    'Numerical Methods',
+    'Data Structure',
+    'Object-Oriented Programming',
+    'System Analysis And Design',
+    'Digital Circuit',
+    'English I',
+    'Computer Networks',
+    'Design And Analysis Of Algorithm',
+    'Intelligent Systems',
+    'Software Engineering',
+    'Computer System Security',
+    'English II',
+    'Design Thinking',
+    'Special Project I',
+    'Special Project II'
+  ];
 
   const [activeFeed, setActiveFeed] = useState('tutor');
-
-  // Update subjects whenever posts change
-  useEffect(() => {
-    const subjectsSet = new Set();
-    
-    tutorPosts.forEach(post => {
-      if (post.subject) subjectsSet.add(post.subject);
-    });
-    
-    qaPosts.forEach(post => {
-      if (post.subject) subjectsSet.add(post.subject);
-    });
-    
-    const sortedSubjects = Array.from(subjectsSet).sort();
-    setAllSubjects(sortedSubjects);
-  }, [tutorPosts, qaPosts]);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -191,7 +206,21 @@ const FeedData = () => {
       updatedAt: serverTimestamp(),
     };
 
-    await addDoc(collection(db, 'tutorPosts'), baseDoc);
+    const docRef = await addDoc(collection(db, 'tutorPosts'), baseDoc);
+    
+    // Automatically create a group for this tutor post
+    try {
+      await createGroup(
+        docRef.id,
+        baseDoc.title,
+        baseDoc.subject,
+        currentUser.uid,
+        authorName
+      );
+    } catch (err) {
+      console.warn('Failed to create group for post:', err);
+      // Don't throw - the post was created successfully
+    }
   };
 
   const addQaPost = async (post) => {
@@ -368,6 +397,14 @@ const FeedData = () => {
 
       tx.delete(postRef);
     });
+
+    // Delete associated group after post is deleted
+    try {
+      await deleteGroupByPostId(postId);
+    } catch (err) {
+      console.warn('Failed to delete group for post:', err);
+      // Don't throw - the post was deleted successfully
+    }
   };
 
   const deleteQaPost = async (postId) => {
@@ -400,7 +437,7 @@ const FeedData = () => {
   return {
     tutorPosts,
     qaPosts,
-    allSubjects: Array.from(allSubjects).sort(),
+    allSubjects,
     activeFeed,
     setActiveFeed,
     addTutorPost,

@@ -4,12 +4,23 @@ import { FaRegUserCircle } from 'react-icons/fa';
 import './TutorPostDetail.css';
 import ImagePreviewModal from './ImagePreviewModal';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { useAuth } from '../auth/AuthContext';
+import {
+  createGroup,
+  getGroupByPostId,
+  addMemberToGroup,
+  sendSystemMessage,
+} from './groupMessageApi';
 
 const TutorPostDetail = ({ post, onBack }) => {
+  const { user, profile } = useAuth();
   const [isJoinInfoOpen, setIsJoinInfoOpen] = useState(false);
   const [previewSrc, setPreviewSrc] = useState(null);
   const [authorBio, setAuthorBio] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState(null);
+  const [hasJoined, setHasJoined] = useState(false);
 
   useEffect(() => {
     const authorId = post?.authorId || post?.user?.uid || null;
@@ -39,10 +50,95 @@ const TutorPostDetail = ({ post, onBack }) => {
     );
   }, [post?.authorId, post?.user]);
 
+  // Check if current user has already joined
+  useEffect(() => {
+    if (!user?.uid || !post?.joiners) {
+      setHasJoined(false);
+      return;
+    }
+    const joiners = Array.isArray(post.joiners) ? post.joiners : [];
+    const userHasJoined = joiners.some(joiner => joiner?.uid === user.uid || joiner?.id === user.uid);
+    setHasJoined(userHasJoined);
+  }, [user?.uid, post?.joiners]);
+
+  // Handle join button click
+  const handleJoinPost = async () => {
+    if (!user?.uid || !profile?.displayName) {
+      setJoinError('Please sign in first');
+      return;
+    }
+
+    if (hasJoined) {
+      setJoinError('You have already joined this post');
+      return;
+    }
+
+    setIsJoining(true);
+    setJoinError(null);
+
+    try {
+      // 1. Check if group exists for this post
+      let groupId = null;
+      const existingGroup = await getGroupByPostId(post.id);
+      
+      if (existingGroup) {
+        groupId = existingGroup.id;
+      } else {
+        // Create group if it doesn't exist
+        const authorId = post?.authorId || post?.user?.uid;
+        const authorName = post?.user?.name || 'Unknown';
+        groupId = await createGroup(
+          post.id,
+          post.title || post.topic,
+          post.subject,
+          authorId,
+          authorName
+        );
+      }
+
+      // 2. Add current user to group
+      await addMemberToGroup(groupId, user.uid, profile.displayName);
+
+      // 3. Update post with new joiner
+      if (isFirebaseConfigured()) {
+        const { db } = getFirebaseServices();
+        const postRef = doc(db, 'tutorPosts', post.id);
+        
+        const newJoiner = {
+          uid: user.uid,
+          name: profile.displayName,
+          avatar: profile.photoURL || null,
+        };
+
+        await updateDoc(postRef, {
+          joiners: arrayUnion(newJoiner),
+        });
+      }
+
+      // 4. Send system message to group
+      try {
+        await sendSystemMessage(
+          groupId,
+          `${profile.displayName} joined the group`
+        );
+      } catch (err) {
+        console.warn('Failed to send system message:', err);
+        // Don't fail the whole join if system message fails
+      }
+
+      setHasJoined(true);
+    } catch (err) {
+      console.error('Error joining post:', err);
+      setJoinError(err.message || 'Failed to join post');
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
   if (!post) return null;
 
   const {
-    user,
+    user: postAuthor,
     subject,
     hours,
     capacity,
@@ -98,8 +194,25 @@ const TutorPostDetail = ({ post, onBack }) => {
           </div>
         </div>
 
-        <button className="join-button" type="button">
-          join
+        {joinError && (
+          <div style={{
+            backgroundColor: '#ffe6e6',
+            color: '#cc0000',
+            padding: '10px',
+            borderRadius: '6px',
+            margin: '10px 16px',
+            fontSize: '14px',
+          }}>
+            {joinError}
+          </div>
+        )}
+        <button
+          className="join-button"
+          type="button"
+          onClick={handleJoinPost}
+          disabled={isJoining || hasJoined}
+        >
+          {isJoining ? 'Joining...' : (hasJoined ? 'Joined' : 'join')}
         </button>
       </div>
     );
@@ -118,18 +231,18 @@ const TutorPostDetail = ({ post, onBack }) => {
           className="profile-circle tutor-avatar-button"
           aria-label="Open profile image"
           onClick={() => {
-            if (user?.avatar) setPreviewSrc(user.avatar);
+            if (postAuthor?.avatar) setPreviewSrc(postAuthor.avatar);
           }}
-          disabled={!user?.avatar}
+          disabled={!postAuthor?.avatar}
         >
-          {user?.avatar ? <img className="tutor-avatar-img" src={user.avatar} alt="" /> : <FaRegUserCircle size={100} />}
+          {postAuthor?.avatar ? <img className="tutor-avatar-img" src={postAuthor.avatar} alt="" /> : <FaRegUserCircle size={100} />}
         </button>
       </div>
 
       {/* Middle Section */}
       <div className="middle-section">
         <div className="header">
-          <h1 className="user-name">{user?.name}</h1>
+          <h1 className="user-name">{postAuthor?.name}</h1>
           <p className="subject">Subject : {subject}</p>
         </div>
 
@@ -195,9 +308,31 @@ const TutorPostDetail = ({ post, onBack }) => {
       </div>
 
       {/* Floating Action Button */}
-      <button className="join-button" type="button">
-        join
-      </button>
+      <div style={{ width: '100%' }}>
+        {joinError && (
+          <div style={{
+            backgroundColor: '#ffe6e6',
+            color: '#cc0000',
+            padding: '10px',
+            borderRadius: '6px',
+            marginBottom: '10px',
+            fontSize: '14px',
+            marginLeft: '16px',
+            marginRight: '16px',
+            marginTop: '10px',
+          }}>
+            {joinError}
+          </div>
+        )}
+        <button
+          className="join-button"
+          type="button"
+          onClick={handleJoinPost}
+          disabled={isJoining || hasJoined}
+        >
+          {isJoining ? 'Joining...' : (hasJoined ? 'Joined' : 'join')}
+        </button>
+      </div>
     </div>
   );
 };
