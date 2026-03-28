@@ -6,8 +6,6 @@ import { imageFileToBase64DataUrl } from './imageBase64';
 
 const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, onUpdate, allSubjects = [] }) => {
   const initialType = initialPost?.type || 'tutor';
-    // เพิ่ม state สำหรับ minTime
-  const [minTime, setMinTime] = useState('');
 
   // helper function
   const getTodayString = () => new Date().toISOString().split('T')[0];
@@ -63,9 +61,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
     if (name === 'date') {
       const isToday = value === getTodayString();
       const currentTime = getCurrentTimeString();
-      setMinTime(isToday ? currentTime : '');
 
-      
       setFormData(prev => ({
         ...prev,
         date: value,

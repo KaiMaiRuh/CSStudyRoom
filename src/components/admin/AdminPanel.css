@@ -1,0 +1,80 @@
+.admin-shell {
+  display: flex;
+  min-height: calc(100vh - 72px);
+  background: #ffffff;
+}
+
+.admin-sidebar {
+  width: 240px;
+  background-color: #e6f2f9;
+}
+
+.admin-sidebar-inner {
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #1a2b48;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-nav-item:hover {
+  background: rgba(26, 43, 72, 0.06);
+}
+
+.admin-nav-item.active {
+  background-color: #fcc419;
+  color: #1a2b48;
+}
+
+.admin-nav-icon {
+  display: inline-flex;
+}
+
+.admin-main {
+  flex: 1;
+  padding: 28px 28px 40px;
+  background: #ffffff;
+}
+
+.admin-title {
+  margin: 0 0 16px 0;
+  color: #1a2b48;
+}
+
+.admin-muted {
+  margin: 0;
+  color: #1a2b48;
+  opacity: 0.8;
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    flex-direction: column;
+  }
+
+  .admin-sidebar {
+    width: 100%;
+  }
+
+  .admin-sidebar-inner {
+    flex-direction: row;
+  }
+
+  .admin-main {
+    padding: 18px 14px 28px;
+  }
+}

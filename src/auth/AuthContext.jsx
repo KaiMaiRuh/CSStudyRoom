@@ -8,7 +8,7 @@ import {
   signOut as firebaseSignOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc, addDoc, collection, increment } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, addDoc, collection, increment, onSnapshot } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 
 const AuthContext = createContext(null);
@@ -16,6 +16,8 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
@@ -32,6 +34,37 @@ export function AuthProvider({ children }) {
 
     return () => unsub();
   }, []);
+
+  // Subscribe to the signed-in user's profile doc
+  useEffect(() => {
+    if (!isFirebaseConfigured()) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+    if (!user?.uid) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+
+    setProfileLoading(true);
+    const { db } = getFirebaseServices();
+    const ref = doc(db, 'users', user.uid);
+
+    return onSnapshot(
+      ref,
+      (snap) => {
+        setProfile(snap.exists() ? snap.data() : null);
+        setProfileLoading(false);
+      },
+      (err) => {
+        console.error('Failed to subscribe user profile', err);
+        setProfile(null);
+        setProfileLoading(false);
+      }
+    );
+  }, [user?.uid]);
 
   const api = useMemo(() => {
     const notConfiguredError = () =>
@@ -197,8 +230,23 @@ export function AuthProvider({ children }) {
       }
     }
 
-    return { user, loading, signIn, signUp, signOut, resetPassword, logActivity };
-  }, [user, loading]);
+    const role = profile?.role || null;
+    const isAdmin = String(role || '').toLowerCase() === 'admin';
+
+    return {
+      user,
+      loading,
+      profile,
+      profileLoading,
+      role,
+      isAdmin,
+      signIn,
+      signUp,
+      signOut,
+      resetPassword,
+      logActivity,
+    };
+  }, [user, loading, profile, profileLoading]);
 
   return <AuthContext.Provider value={api}>{children}</AuthContext.Provider>;
 }

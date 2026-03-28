@@ -1,56 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MdArrowBack, MdLocationOn } from 'react-icons/md';
 import { FaRegUserCircle } from 'react-icons/fa';
 import './TutorPostDetail.css';
 import ImagePreviewModal from './ImagePreviewModal';
-import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
-import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const TutorPostDetail = ({ post, onBack }) => {
-  const { user: currentUser } = useAuth();
   const [isJoinInfoOpen, setIsJoinInfoOpen] = useState(false);
   const [previewSrc, setPreviewSrc] = useState(null);
-  const [isJoining, setIsJoining] = useState(false);
-  const [livePost, setLivePost] = useState(post);
+  const [authorBio, setAuthorBio] = useState('');
 
-  // Set up real-time listener for post updates
   useEffect(() => {
-    if (!post?.id || !isFirebaseConfigured()) return;
+    const authorId = post?.authorId || post?.user?.uid || null;
+    if (!authorId) {
+      setAuthorBio('');
+      return undefined;
+    }
+
+    if (!isFirebaseConfigured()) {
+      setAuthorBio('');
+      return undefined;
+    }
 
     const { db } = getFirebaseServices();
-    const postRef = doc(db, 'tutorPosts', post.id);
+    const userRef = doc(db, 'users', authorId);
 
-    // Subscribe to real-time updates
-    const unsubscribe = onSnapshot(postRef, (docSnapshot) => {
-      if (docSnapshot.exists()) {
-        const postData = docSnapshot.data();
-        
-        // Construct user object from author fields if not already present
-        const enrichedPost = {
-          id: docSnapshot.id,
-          ...postData,
-          user: postData.user || {
-            name: postData.authorName || 'Unknown',
-            displayName: postData.authorName || 'Unknown',
-            avatar: postData.authorAvatar || '',
-            uid: postData.authorId || null,
-          },
-        };
-
-        setLivePost(enrichedPost);
+    return onSnapshot(
+      userRef,
+      (snap) => {
+        const data = snap.exists() ? snap.data() : null;
+        setAuthorBio(data?.bio || '');
+      },
+      (err) => {
+        console.error('Failed to load author profile bio', err);
+        setAuthorBio('');
       }
-    });
+    );
+  }, [post?.authorId, post?.user]);
 
-    // Cleanup subscription
-    return () => unsubscribe();
-  }, [post?.id]);
-
-  const displayPost = livePost || post;
-  if (!displayPost) return null;
+  if (!post) return null;
 
   const {
-    id: postId,
     user,
     subject,
     hours,
@@ -59,90 +50,12 @@ const TutorPostDetail = ({ post, onBack }) => {
     experience,
     location,
     joinedCount,
-    authorId,
-  } = displayPost;
+  } = post;
 
-  const joiners = displayPost.joiners ?? [];
-  
-  // Include the author as the first joiner
-  const allJoiners = [
-    {
-      name: user?.displayName || user?.name || 'Unknown',
-      avatar: user?.avatar || '',
-      uid: user?.uid || authorId,
-    },
-    ...joiners.filter(j => j.uid !== (user?.uid || authorId))
-  ];
+  const joiners = post.joiners ?? [];
+  const safeJoinedCount = joinedCount ?? joiners.length;
 
-  const safeJoinedCount = joinedCount ?? allJoiners.length;
   const capacityNumber = capacity ?? 0;
-  
-  // Check if current user already joined
-  const hasUserJoined = joiners.some(j => j.uid === currentUser?.uid) || 
-                        (user?.uid === currentUser?.uid);
-  
-  // Check if room is full
-  const isFull = safeJoinedCount >= capacityNumber && capacityNumber > 0;
-
-  const handleJoin = async () => {
-    if (!isFirebaseConfigured()) {
-      console.log('Firebase not configured');
-      return;
-    }
-
-    if (!currentUser?.uid) {
-      alert('Please sign in to join');
-      return;
-    }
-
-    if (hasUserJoined) {
-      alert('You have already joined this session');
-      return;
-    }
-
-    if (isFull) {
-      alert('This tutoring session is full');
-      return;
-    }
-
-    try {
-      setIsJoining(true);
-      const { db } = getFirebaseServices();
-      const postRef = doc(db, 'tutorPosts', postId);
-      
-      // Get joiner avatar from auth first, fallback to users collection
-      let joinerAvatar = currentUser.photoURL || '';
-      if (!joinerAvatar) {
-        try {
-          const userRef = doc(db, 'users', currentUser.uid);
-          const userSnap = await getDoc(userRef);
-          if (userSnap.exists()) {
-            joinerAvatar = userSnap.data()?.avatarUrl || userSnap.data()?.photoURL || '';
-          }
-        } catch (err) {
-          console.warn('Failed to fetch joiner avatar:', err);
-        }
-      }
-      
-      const newJoiner = {
-        uid: currentUser.uid,
-        name: currentUser.displayName || currentUser.email || 'User',
-        avatar: joinerAvatar,
-      };
-
-      await updateDoc(postRef, {
-        joiners: arrayUnion(newJoiner),
-        joinedCount: (safeJoinedCount) + 1,
-      });
-
-      console.log('Successfully joined the tutoring session');
-    } catch (err) {
-      console.error('Failed to join:', err);
-      alert(err?.message || 'Failed to join');
-    } finally {
-      setIsJoining(false);
-    }
-  };
   if (isJoinInfoOpen) {
     return (
       <div className="tutor-post-detail tutor-joininfo">
@@ -173,38 +86,20 @@ const TutorPostDetail = ({ post, onBack }) => {
           </div>
 
           <div className="joiners-list">
-            {allJoiners.map((joiner, index) => (
+            {joiners.map((joiner, index) => (
               <div key={index} className="joiner-item">
-                <button
-                  type="button"
-                  className="joiner-avatar"
-                  aria-label="Profile"
-                  onClick={() => {
-                    if (joiner?.avatar) setPreviewSrc(joiner.avatar);
-                  }}
-                  disabled={!joiner?.avatar}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: joiner?.avatar ? 'pointer' : 'default',
-                  }}
-                >
-                  {joiner?.avatar ? (
-                    <img src={joiner.avatar} alt={joiner?.name} className="joiner-avatar-img" />
-                  ) : (
-                    <FaRegUserCircle size={40} />
-                  )}
-                </button>
-                <p className="joiner-name">{joiner?.name || 'Unknown'}</p>
-                <p className="joined-label">{index === 0 ? 'created' : 'joined'}</p>
+                <div className="profile-icon" aria-hidden="true">
+                  <FaRegUserCircle size={30} />
+                </div>
+                <p className="joiner-name">{joiner?.name}</p>
+                <p className="joined-text">joined</p>
               </div>
             ))}
           </div>
         </div>
 
-        <button className="join-button" type="button" onClick={handleJoin} disabled={isFull || isJoining || hasUserJoined}>
-          {isFull ? 'Full' : isJoining ? 'Joining...' : hasUserJoined ? 'Joined' : 'join'}
+        <button className="join-button" type="button">
+          join
         </button>
       </div>
     );
@@ -234,13 +129,13 @@ const TutorPostDetail = ({ post, onBack }) => {
       {/* Middle Section */}
       <div className="middle-section">
         <div className="header">
-          <h1 className="user-name">{user?.displayName || user?.name || 'Unknown'}</h1>
+          <h1 className="user-name">{user?.name}</h1>
           <p className="subject">Subject : {subject}</p>
         </div>
 
-        {Array.isArray(displayPost.images) && displayPost.images.length > 0 ? (
+        {Array.isArray(post.images) && post.images.length > 0 ? (
           <div className="tutor-post-images">
-            {displayPost.images.map((imageUrl, index) => (
+            {post.images.map((imageUrl, index) => (
               <button
                 key={index}
                 type="button"
@@ -252,14 +147,14 @@ const TutorPostDetail = ({ post, onBack }) => {
               </button>
             ))}
           </div>
-        ) : displayPost.imageUrl ? (
+        ) : post.imageUrl ? (
           <button
             type="button"
             aria-label="Open image"
-            onClick={() => setPreviewSrc(displayPost.imageUrl)}
+            onClick={() => setPreviewSrc(post.imageUrl)}
             style={{ background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'pointer' }}
           >
-            <img className="tutor-post-image" src={displayPost.imageUrl} alt="" />
+            <img className="tutor-post-image" src={post.imageUrl} alt="" />
           </button>
         ) : null}
 
@@ -294,14 +189,14 @@ const TutorPostDetail = ({ post, onBack }) => {
         <div className="experience-section">
           <h2 className="section-title">แนะนำตัว/ประสบการณ์</h2>
           <div className="experience-box">
-            <p>{experience}</p>
+            <p>{authorBio || experience || '-'}</p>
           </div>
         </div>
       </div>
 
       {/* Floating Action Button */}
-      <button className="join-button" type="button" onClick={handleJoin} disabled={isFull || isJoining || hasUserJoined}>
-        {isFull ? 'Full' : isJoining ? 'Joining...' : hasUserJoined ? 'Joined' : 'join'}
+      <button className="join-button" type="button">
+        join
       </button>
     </div>
   );

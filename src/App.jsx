@@ -15,10 +15,11 @@ import EditProfile from './components/EditProfile';
 import CreatePost from './components/CreatePost';
 import Navbar from './components/Navbar';
 import FloatingMenu from './components/FloatingMenu';
+import AdminPanel from './components/admin/AdminPanel';
 import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
-  const { user, loading: authLoading, signOut, logActivity } = useAuth();
+  const { user, loading: authLoading, signOut, logActivity, isAdmin } = useAuth();
   const {
     tutorPosts,
     qaPosts,
@@ -46,6 +47,7 @@ function App() {
   const isHome = activePage === 'home';
   const isCreateAccountPage = activePage === 'createAccount';
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
+  const isAdminPage = activePage === 'admin';
 
   // Filter posts based on search and category
   const filteredTutorPosts = tutorPosts.filter(post => {
@@ -191,10 +193,11 @@ function App() {
         }}
         isLoggedIn={Boolean(user)}
         activePage={activePage}
-        disableCreatePost={isAuthPage}
+        disableCreatePost={isAuthPage || isAdminPage}
+        showCreatePost={!isAdminPage}
           onNavigate={(page) => {
             // Prevent unauthenticated navigation to Home/Profile
-            if (!user && (page === 'home' || page === 'profile')) {
+            if (!user && (page === 'home' || page === 'profile' || page === 'admin')) {
               setShowSignIn(true);
               setShowCreateAccount(false);
               setShowProfile(false);
@@ -211,6 +214,7 @@ function App() {
             setActivePage('home');
             setIsFeedDetailOpen(false);
               setShowSignIn(false);
+              setShowCreatePost(false);
           } else if (page === 'profile') {
             setShowProfile(true);
             setShowEditProfile(false);
@@ -218,6 +222,7 @@ function App() {
             setActivePage('profile');
             setIsFeedDetailOpen(false);
               setShowSignIn(false);
+              setShowCreatePost(false);
           } else if (page === 'createAccount') {
             setShowCreateAccount(true);
             setShowProfile(false);
@@ -225,6 +230,7 @@ function App() {
             setActivePage('createAccount');
             setIsFeedDetailOpen(false);
               setShowSignIn(false);
+              setShowCreatePost(false);
             } else if (page === 'signin') {
               setShowSignIn(true);
               setShowCreateAccount(false);
@@ -232,13 +238,30 @@ function App() {
               setShowEditProfile(false);
               setActivePage('signin');
               setIsFeedDetailOpen(false);
+              setShowCreatePost(false);
           } else if (page === 'createPost') {
             if (!isCreateAccountPage) setShowCreatePost(true);
+          } else if (page === 'admin') {
+            if (!isAdmin) {
+              alert('You are not authorized to access Admin');
+              return;
+            }
+            setShowCreateAccount(false);
+            setShowProfile(false);
+            setShowEditProfile(false);
+            setShowSignIn(false);
+            setShowCreatePost(false);
+            setActivePage('admin');
+            setIsFeedDetailOpen(false);
           }
         }}
       />
       <div className="app-root">
-        {isHome && !isFeedDetailOpen && <h1>CS StudyRoom</h1>}
+        {isAdminPage ? (
+          <AdminPanel />
+        ) : (
+          <>
+            {isHome && !isFeedDetailOpen && <h1>CS StudyRoom</h1>}
 
         {/* Feed header/controls (Home only; hide when viewing a detail) */}
         {isHome && !isFeedDetailOpen && (
@@ -386,8 +409,10 @@ function App() {
           }}
         />
       )}
+          </>
+        )}
       </div>
-      {!isAuthPage && !showCreatePost && <FloatingMenu onCreatePost={handleShowCreatePost} />}
+      {!isAuthPage && !showCreatePost && !isAdminPage && <FloatingMenu onCreatePost={handleShowCreatePost} />}
     </div>
   );
 }
