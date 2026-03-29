@@ -5,7 +5,7 @@ import './TutorFeed.css';
 import TutorPostDetail from './TutorPostDetail';
 import ImagePreviewModal from './ImagePreviewModal';
 
-const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
+const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
 
@@ -37,7 +37,20 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
       ...selectedPost,
       joinedCount: actualJoinedCount,
     };
-    return <TutorPostDetail post={detailPost} onBack={handleCloseDetail} />;
+    return (
+      <TutorPostDetail
+        post={detailPost}
+        onBack={handleCloseDetail}
+        onDelete={
+          canDelete
+            ? () => {
+                onDeletePost?.(selectedPost);
+                handleCloseDetail();
+              }
+            : undefined
+        }
+      />
+    );
   }
 
   return (
@@ -128,9 +141,23 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
             <div className="capacity">
               เข้าร่วมแล้ว: {actualJoinedCount}/{post.capacity} คน
             </div>
-            <button className="read-more-button" type="button" onClick={() => handleOpenDetail(post)}>
-              Read more
-            </button>
+            <div className="tutor-card-actions">
+              <button className="read-more-button" type="button" onClick={() => handleOpenDetail(post)}>
+                Read more
+              </button>
+              {canDelete ? (
+                <button
+                  className="delete-post-button"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeletePost?.(post);
+                  }}
+                >
+                  Delete
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
         );

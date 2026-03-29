@@ -77,6 +77,7 @@ function App() {
 
   const handleShowCreatePost = () => {
     if (isAuthPage) return;
+    if (isAdmin) return;
     setShowCreatePost(true);
     setEditingPost(null);
   };
@@ -195,8 +196,8 @@ function App() {
         }}
         isLoggedIn={Boolean(user)}
         activePage={activePage}
-        disableCreatePost={isAuthPage || isAdminPage}
-        showCreatePost={!isAdminPage}
+        disableCreatePost={isAuthPage || isAdminPage || isAdmin}
+        showCreatePost={!isAdminPage && !isAdmin}
           onNavigate={(page) => {
             // Prevent unauthenticated navigation to Home/Profile
             if (!user && (page === 'home' || page === 'profile' || page === 'admin')) {
@@ -206,6 +207,12 @@ function App() {
               setShowEditProfile(false);
               setActivePage('signin');
               setIsFeedDetailOpen(false);
+              return;
+            }
+
+            // Admin should not access Profile/Create Post
+            if (isAdmin && (page === 'profile' || page === 'createPost')) {
+              alert('Admin does not have Profile/Create Post pages');
               return;
             }
           // central navigation handler from Navbar
@@ -323,12 +330,16 @@ function App() {
                 posts={filteredTutorPosts}
                 onDetailOpen={() => setIsFeedDetailOpen(true)}
                 onDetailClose={() => setIsFeedDetailOpen(false)}
+                canDelete={isAdmin}
+                onDeletePost={(post) => handleDeletePost({ type: 'tutor', id: post?.id })}
               />
             ) : (
               <QAFeed
                 posts={filteredQaPosts}
                 onDetailOpen={() => setIsFeedDetailOpen(true)}
                 onDetailClose={() => setIsFeedDetailOpen(false)}
+                canDelete={isAdmin}
+                onDeletePost={(post) => handleDeletePost({ type: 'qa', id: post?.id })}
               />
             )}
           </div>
@@ -431,7 +442,12 @@ function App() {
           <CreatePost key="create" allSubjects={allSubjects} onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />
         )
       )}
-      {!isAuthPage && !showCreatePost && !isAdminPage && <FloatingMenu onCreatePost={handleShowCreatePost} isGroupMessagePage={isGroupMessagePage} onNavigate={(page) => {
+      {!isAuthPage && !showCreatePost && !isAdminPage && (
+        <FloatingMenu
+          onCreatePost={handleShowCreatePost}
+          hideCreatePost={isAdmin}
+          isGroupMessagePage={isGroupMessagePage}
+          onNavigate={(page) => {
         // Prevent unauthenticated navigation
         if (!user && (page === 'groupmessage' || page === 'profile')) {
           setShowSignIn(true);
@@ -456,7 +472,9 @@ function App() {
           setShowSignIn(false);
           setShowCreatePost(false);
         }
-      }} />}
+      }}
+        />
+      )}
     </div>
   );
 }

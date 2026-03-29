@@ -22,7 +22,7 @@ import {
   toggleQaPostLike,
 } from './qaPostApi';
 
-const QAPostDetail = ({ post, onBack }) => {
+const QAPostDetail = ({ post, onBack, onDelete }) => {
   const [commentText, setCommentText] = useState('');
   const [livePost, setLivePost] = useState(null);
   const [liveComments, setLiveComments] = useState(null);
@@ -33,7 +33,7 @@ const QAPostDetail = ({ post, onBack }) => {
   const [commentImageUrl, setCommentImageUrl] = useState(null);
   const [composerError, setComposerError] = useState('');
   const [previewSrc, setPreviewSrc] = useState(null);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const imageInputRef = useRef(null);
 
@@ -259,6 +259,12 @@ const QAPostDetail = ({ post, onBack }) => {
       <button className="qa-back" type="button" onClick={onBack} aria-label="Back">
         <MdArrowBack size={24} />
       </button>
+
+      {isAdmin && typeof onDelete === 'function' ? (
+        <button className="qa-delete" type="button" onClick={() => onDelete()}>
+          Delete
+        </button>
+      ) : null}
 
       <div className="qa-detail-scroll">
         <div className="qa-detail-card">

@@ -8,35 +8,33 @@ import './GroupMessagePage.css';
 
 const GroupMessagePage = ({ onBack }) => {
   const { user } = useAuth();
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [groupsState, setGroupsState] = useState({ uid: null, data: null });
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [error, setError] = useState(null);
 
+  const groups = user?.uid && groupsState.uid === user.uid ? groupsState.data || [] : [];
+  const loading = Boolean(user?.uid) && groupsState.uid !== user.uid;
+
   // Subscribe to user's groups
   useEffect(() => {
-    if (!user?.uid) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
+    if (!user?.uid) return;
     try {
       const unsubscribe = subscribeToUserGroups(user.uid, (userGroups) => {
         console.log('Groups loaded:', userGroups);
-        setGroups(userGroups);
-        setLoading(false);
+        setGroupsState({ uid: user.uid, data: userGroups });
+        setError(null);
       });
 
       return () => {
-        setLoading(false);
         unsubscribe();
       };
     } catch (err) {
       console.error('Error subscribing to groups:', err);
-      setError(err.message);
-      setLoading(false);
+      // Avoid synchronous setState within effect body (eslint rule)
+      Promise.resolve().then(() => {
+        setGroupsState({ uid: user.uid, data: [] });
+        setError(err?.message || 'Failed to load groups');
+      });
     }
   }, [user?.uid]);
 
