@@ -4,8 +4,10 @@ import { FaUserCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import './TutorFeed.css';
 import TutorPostDetail from './TutorPostDetail';
 import ImagePreviewModal from './ImagePreviewModal';
+import { useAuth } from '../auth/AuthContext';
 
 const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
+  const { user, profile } = useAuth();
   const [selectedPost, setSelectedPost] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
 
@@ -102,21 +104,23 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false,
               )}
             </button>
             <div className="post-info">
+              <h3 className="post-title">{post.title}</h3>
+              <p className="post-description">{post.description}</p>
               <div className="date-time">
-                <span className="date">{post.date}</span>
-                <span className="time">เวลา {post.time}</span>
+                <span className="date">{post.date}{post.time ? ` เวลา ${post.time}` : ''}</span>
                 <span className="ago">{formatPostedTime(post.minutesAgo)}</span>
+              </div>
+              <div className="subject-by">
+                <span className="subject">{post.subject}</span>
+                <span className="by-name">By {post.user?.uid === user?.uid ? (profile?.displayName || post.user?.displayName || post.user?.name || 'Unknown') : (post.user?.displayName || post.user?.name || 'Unknown')}</span>
+              </div>
+              <div className="location">
+                <FaMapMarkerAlt style={{ marginRight: 6 }} /> {post.location}
               </div>
             </div>
           </div>
           
           <div className="card-content">
-            <div className="subject-tag">{post.subject}</div>
-            <div className="location">
-              <FaMapMarkerAlt style={{ marginRight: 6 }} /> {post.location}
-            </div>
-            <h3 className="post-title">{post.title}</h3>
-            <p className="post-description">{post.description}</p>
             {Array.isArray(post.images) && post.images.length > 0 ? (
               <div className="tutor-feed-images">
                 {post.images.slice(0, 3).map((imageUrl, index) => (

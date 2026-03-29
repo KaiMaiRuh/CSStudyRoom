@@ -327,42 +327,44 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
             </>
           )}
           
-          <div className="form-group">
-            <label>Images (Optional) - Max 20 images</label>
-            <input 
-              type="file" 
-              name="image"
-              onChange={handleImageChange}
-              accept="image/*"
-              multiple
-            />
-            {imageError ? <span className="error-message">{imageError}</span> : null}
-            
-            {formData.images.length > 0 && (
-              <div className="image-preview-container">
-                <p>Current images ({formData.images.length}/20):</p>
-                <div className="image-grid">
-                  {formData.images.map((imageUrl, index) => (
-                    <div key={index} className="image-preview-item">
-                      <img 
-                        src={imageUrl} 
-                        alt={`Preview ${index + 1}`} 
-                        className="image-preview" 
-                      />
-                      <button 
-                        type="button" 
-                        className="remove-image-btn"
-                        onClick={() => removeImage(index)}
-                        title="Remove image"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+          {postType === 'qa' && (
+            <div className="form-group">
+              <label>Images (Optional) - Max 20 images</label>
+              <input 
+                type="file" 
+                name="image"
+                onChange={handleImageChange}
+                accept="image/*"
+                multiple
+              />
+              {imageError ? <span className="error-message">{imageError}</span> : null}
+              
+              {formData.images.length > 0 && (
+                <div className="image-preview-container">
+                  <p>Current images ({formData.images.length}/20):</p>
+                  <div className="image-grid">
+                    {formData.images.map((imageUrl, index) => (
+                      <div key={index} className="image-preview-item">
+                        <img 
+                          src={imageUrl} 
+                          alt={`Preview ${index + 1}`} 
+                          className="image-preview" 
+                        />
+                        <button 
+                          type="button" 
+                          className="remove-image-btn"
+                          onClick={() => removeImage(index)}
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
           
           <div className="form-actions">
             <button type="button" className="cancel-button" onClick={onCancel}>Cancel</button>
