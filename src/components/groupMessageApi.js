@@ -10,6 +10,7 @@ import {
   serverTimestamp,
   updateDoc,
   arrayUnion,
+  arrayRemove,
   getDocs,
   deleteDoc,
 } from 'firebase/firestore';
@@ -76,6 +77,36 @@ export async function addMemberToGroup(groupId, userId, userName) {
     console.error('Error adding member to group:', error);
     throw error;
   }
+}
+
+/**
+ * Remove a member from an existing group
+ * @param {string} groupId - The group ID
+ * @param {string} userId - The user ID to remove
+ */
+export async function removeMemberFromGroup(groupId, userId) {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase is not configured');
+  }
+
+  const { db } = getFirebaseServices();
+  const groupRef = doc(db, 'groups', groupId);
+  const groupSnap = await getDoc(groupRef);
+
+  if (!groupSnap.exists()) {
+    return;
+  }
+
+  const members = groupSnap.data()?.members || [];
+  if (!members.includes(userId)) {
+    return;
+  }
+
+  const newCount = Math.max(0, members.length - 1);
+  await updateDoc(groupRef, {
+    members: arrayRemove(userId),
+    memberCount: newCount,
+  });
 }
 
 /**

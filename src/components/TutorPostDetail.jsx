@@ -10,6 +10,7 @@ import {
   createGroup,
   getGroupByPostId,
   addMemberToGroup,
+  removeMemberFromGroup,
   sendSystemMessage,
 } from './groupMessageApi';
 
@@ -19,6 +20,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const [previewSrc, setPreviewSrc] = useState(null);
   const [authorBio, setAuthorBio] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const [hasJoined, setHasJoined] = useState(false);
   const [livePost, setLivePost] = useState(post);
@@ -186,6 +188,65 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     }
   };
 
+  const handleLeavePost = async () => {
+    if (!user?.uid || !profile?.displayName) {
+      setJoinError('Please sign in first');
+      return;
+    }
+
+    if (isOwner) {
+      setJoinError('Owner cannot leave their own tutoring post');
+      return;
+    }
+
+    if (!hasJoined) {
+      setJoinError('You are not joined to this post');
+      return;
+    }
+
+    setIsLeaving(true);
+    setJoinError(null);
+
+    try {
+      const existingGroup = await getGroupByPostId(post.id);
+      if (existingGroup) {
+        await removeMemberFromGroup(existingGroup.id, user.uid);
+      }
+
+      if (isFirebaseConfigured()) {
+        const { db } = getFirebaseServices();
+        const postRef = doc(db, 'tutorPosts', post.id);
+
+        const rawJoiners = Array.isArray(displayPost.joiners) ? displayPost.joiners : [];
+        const updatedJoiners = rawJoiners.filter(
+          (joiner) => joiner?.uid !== user.uid && joiner?.id !== user.uid
+        );
+
+        await updateDoc(postRef, {
+          joiners: updatedJoiners,
+        });
+      }
+
+      if (existingGroup) {
+        try {
+          await sendSystemMessage(
+            existingGroup.id,
+            `${profile.displayName} left the group`
+          );
+        } catch (err) {
+          console.warn('Failed to send system message:', err);
+        }
+      }
+
+      setHasJoined(false);
+    } catch (err) {
+      console.error('Error leaving post:', err);
+      setJoinError(err.message || 'Failed to leave post');
+    } finally {
+      setIsLeaving(false);
+    }
+  };
+
   const {
     user: postAuthor,
     subject,
@@ -258,6 +319,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   }, [uniqueJoiners]);
 
   const joinButtonDisabled = isJoining || hasJoined || isFull || isOwner;
+  const leaveButtonDisabled = isLeaving || !hasJoined || isOwner;
   const joinButtonText = isOwner
     ? 'Owner'
     : isFull
@@ -267,6 +329,9 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     : hasJoined
     ? 'Joined'
     : 'join';
+  const leaveButtonText = isLeaving ? 'Leaving...' : 'Leave';
+  const showLeaveButton = hasJoined && !isOwner;
+
   if (!displayPost) return null;
 
   if (isJoinInfoOpen) {
@@ -345,14 +410,26 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
             {joinError}
           </div>
         )}
-        <button
-          className="join-button"
-          type="button"
-          onClick={handleJoinPost}
-          disabled={joinButtonDisabled}
-        >
-          {joinButtonText}
-        </button>
+        <div className="action-button-row">
+          <button
+            className="join-button"
+            type="button"
+            onClick={handleJoinPost}
+            disabled={joinButtonDisabled}
+          >
+            {joinButtonText}
+          </button>
+          {showLeaveButton && (
+            <button
+              className="leave-button"
+              type="button"
+              onClick={handleLeavePost}
+              disabled={leaveButtonDisabled}
+            >
+              {leaveButtonText}
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -472,14 +549,26 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
             {joinError}
           </div>
         )}
-        <button
-          className="join-button"
-          type="button"
-          onClick={handleJoinPost}
-          disabled={joinButtonDisabled}
-        >
-          {joinButtonText}
-        </button>
+        <div className="action-button-row">
+          <button
+            className="join-button"
+            type="button"
+            onClick={handleJoinPost}
+            disabled={joinButtonDisabled}
+          >
+            {joinButtonText}
+          </button>
+          {showLeaveButton && (
+            <button
+              className="leave-button"
+              type="button"
+              onClick={handleLeavePost}
+              disabled={leaveButtonDisabled}
+            >
+              {leaveButtonText}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

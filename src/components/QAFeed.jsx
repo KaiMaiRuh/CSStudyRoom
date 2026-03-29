@@ -52,7 +52,16 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
   const [selectedPost, setSelectedPost] = useState(null);
   const [busyPostId, setBusyPostId] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+
+  const getPostAuthorName = (post) => {
+    const fallback = post.user?.displayName || post.user?.name || post.authorName || 'Unknown';
+    if (!post.authorId || !user?.uid) return fallback;
+    if (post.authorId === user.uid) {
+      return profile?.displayName || user.displayName || fallback;
+    }
+    return fallback;
+  };
 
   const handleOpenDetail = (post) => {
     setSelectedPost(post);
@@ -150,16 +159,19 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
               )}
             </button>
             <div className="post-info">
-              <div className="date-time">
-                <span className="date">{post.date}</span>
-                <span className="time">เวลา {post.time}</span>
-                <span className="ago">{formatPostedTime(post.minutesAgo)}</span>
+              <div className="post-meta-name">
+                {getPostAuthorName(post)}
+              </div>
+              <div className="post-meta-ago">
+                {formatPostedTime(post.minutesAgo)}
+              </div>
+              <div className="post-meta-subject">
+                {post.subject || 'No subject'}
               </div>
             </div>
           </div>
           
           <div className="card-content">
-            <div className="subject-tag">{post.subject}</div>
             <h3 className="question-text">{post.question}</h3>
             {Array.isArray(post.images) && post.images.length > 0 ? (
               <button
