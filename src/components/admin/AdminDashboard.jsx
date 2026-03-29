@@ -33,8 +33,15 @@ function toISODateInputValue(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function toDayKey(d) {
+  return toISODateInputValue(startOfDay(d));
+}
+
+function formatDayLabel(d) {
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 function safeParseDateInput(value) {
-  // value is YYYY-MM-DD
   if (!value) return null;
   const d = new Date(`${value}T00:00:00`);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -48,6 +55,23 @@ function formatRangeLabel(start, end) {
 function clampNumber(n) {
   const x = Number(n);
   return Number.isFinite(x) ? x : 0;
+}
+
+function parseTimestampLike(raw) {
+  if (raw?.toDate && typeof raw.toDate === 'function') {
+    const d = raw.toDate();
+    return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
+  }
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
 }
 
 function parseCreatedAtFromData(data) {
@@ -66,7 +90,6 @@ function parseCreatedAtFromData(data) {
     if (!Number.isNaN(d.getTime())) return d;
   }
 
-  // Fallback: derive from legacy date/time fields if present
   const dateStr = typeof data?.date === 'string' ? data.date.trim() : '';
   const timeStr = typeof data?.time === 'string' ? data.time.trim() : '';
   if (dateStr) {
@@ -95,19 +118,20 @@ function extractFirstUrl(text) {
 
 function MultiLineChart({ labels, series }) {
   const width = 640;
-  const height = 210;
-  const padding = { x: 44, y: 18 };
+  const height = 260; // add bottom margin for axis labels
+  const margin = { left: 44, right: 44, top: 18, bottom: 42 };
 
   const allValues = series.flatMap((s) => (Array.isArray(s.values) ? s.values : []));
   const rawMax = Math.max(1, ...allValues.map(clampNumber));
   const max = niceCeilMax(rawMax);
-  const innerW = width - padding.x * 2;
-  const innerH = height - padding.y * 2;
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+  const bottomAxisY = margin.top + innerH;
 
   const buildPoints = (values) =>
     values.map((v, i) => {
-      const x = padding.x + (labels.length <= 1 ? 0 : (i * innerW) / (labels.length - 1));
-      const y = padding.y + (1 - clampNumber(v) / max) * innerH;
+      const x = margin.left + (labels.length <= 1 ? 0 : (i * innerW) / (labels.length - 1));
+      const y = margin.top + (1 - clampNumber(v) / max) * innerH;
       return { x, y };
     });
 
@@ -120,19 +144,19 @@ function MultiLineChart({ labels, series }) {
 
       {/* Y grid + labels */}
       {ticks.map((t, idx) => {
-        const y = padding.y + (1 - t / max) * innerH;
+        const y = margin.top + (1 - t / max) * innerH;
         return (
           <g key={idx}>
             <line
-              x1={padding.x}
+              x1={margin.left}
               y1={y}
-              x2={width - padding.x}
+              x2={width - margin.right}
               y2={y}
               stroke="#1a2b48"
               strokeOpacity="0.10"
             />
             <text
-              x={padding.x - 10}
+              x={margin.left - 10}
               y={y + 3}
               textAnchor="end"
               fontSize="10"
@@ -146,8 +170,8 @@ function MultiLineChart({ labels, series }) {
       })}
 
       {/* Axes */}
-      <line x1={padding.x} y1={height - padding.y} x2={width - padding.x} y2={height - padding.y} stroke="#1a2b48" strokeOpacity="0.35" />
-      <line x1={padding.x} y1={padding.y} x2={padding.x} y2={height - padding.y} stroke="#1a2b48" strokeOpacity="0.35" />
+      <line x1={margin.left} y1={bottomAxisY} x2={width - margin.right} y2={bottomAxisY} stroke="#1a2b48" strokeOpacity="0.35" />
+      <line x1={margin.left} y1={margin.top} x2={margin.left} y2={bottomAxisY} stroke="#1a2b48" strokeOpacity="0.35" />
 
       {series.map((s) => {
         const pts = buildPoints(s.values);
@@ -167,28 +191,38 @@ function MultiLineChart({ labels, series }) {
       })}
 
       {labels.map((label, idx) => {
-        const x = padding.x + (labels.length <= 1 ? 0 : (idx * innerW) / (labels.length - 1));
+        const x = margin.left + (labels.length <= 1 ? 0 : (idx * innerW) / (labels.length - 1));
         const step = Math.max(1, Math.ceil(labels.length / 7));
         const shouldShow = labels.length <= 7 || idx % step === 0 || idx === labels.length - 1;
         return (
-          <text key={`${label}-${idx}`} x={x} y={height - 6} textAnchor="middle" fontSize="10" fill="#1a2b48" opacity="0.75">
+          <text key={`${label}-${idx}`} x={x} y={bottomAxisY + 12} textAnchor="middle" fontSize="10" fill="#1a2b48" opacity="0.75">
             {shouldShow ? label : ''}
           </text>
         );
       })}
+
+      {/* Units: place outside the plotted area (bottom margin / top-left) */}
+      <text x={margin.left + 4} y={margin.top - 6} textAnchor="start" fontSize="10" fill="#1a2b48" opacity="0.75">
+        Posts
+      </text>
+      <text x={width - margin.right} y={bottomAxisY + 32} textAnchor="end" fontSize="10" fill="#1a2b48" opacity="0.75">
+        Date
+      </text>
     </svg>
   );
 }
 
+
 function HourBarChart({ labels, values }) {
   const width = 640;
-  const height = 210;
-  const padding = { x: 44, y: 18 };
+  const height = 260;
+  const margin = { left: 44, right: 44, top: 18, bottom: 42 };
 
   const rawMax = Math.max(1, ...values.map(clampNumber));
   const max = niceCeilMax(rawMax);
-  const innerW = width - padding.x * 2;
-  const innerH = height - padding.y * 2;
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+  const bottomAxisY = margin.top + innerH;
 
   const barCount = Math.max(1, labels.length);
   const gap = 10;
@@ -203,27 +237,27 @@ function HourBarChart({ labels, values }) {
 
       {/* Y grid + labels */}
       {ticks.map((t, idx) => {
-        const y = padding.y + (1 - t / max) * innerH;
+        const y = margin.top + (1 - t / max) * innerH;
         return (
           <g key={idx}>
             <line
-              x1={padding.x}
+              x1={margin.left}
               y1={y}
-              x2={width - padding.x}
+              x2={width - margin.right}
               y2={y}
               stroke="#1a2b48"
               strokeOpacity="0.10"
             />
             <line
-              x1={padding.x - 6}
+              x1={margin.left - 6}
               y1={y}
-              x2={padding.x}
+              x2={margin.left}
               y2={y}
               stroke="#1a2b48"
               strokeOpacity="0.35"
             />
             <text
-              x={padding.x - 10}
+              x={margin.left - 10}
               y={y + 3}
               textAnchor="end"
               fontSize="10"
@@ -236,25 +270,33 @@ function HourBarChart({ labels, values }) {
         );
       })}
 
-      <line x1={padding.x} y1={height - padding.y} x2={width - padding.x} y2={height - padding.y} stroke="#1a2b48" strokeOpacity="0.35" />
-      <line x1={padding.x} y1={padding.y} x2={padding.x} y2={height - padding.y} stroke="#1a2b48" strokeOpacity="0.35" />
+      <line x1={margin.left} y1={bottomAxisY} x2={width - margin.right} y2={bottomAxisY} stroke="#1a2b48" strokeOpacity="0.35" />
+      <line x1={margin.left} y1={margin.top} x2={margin.left} y2={bottomAxisY} stroke="#1a2b48" strokeOpacity="0.35" />
 
       {values.map((v, i) => {
-        const x = padding.x + i * (barW + gap);
+        const x = margin.left + i * (barW + gap);
         const h = (v / max) * innerH;
-        const y = height - padding.y - h;
+        const y = bottomAxisY - h;
         return <rect key={i} x={x} y={y} width={barW} height={h} rx="4" fill="#646cff" />;
       })}
 
       {labels.map((label, idx) => {
-        const x = padding.x + idx * (barW + gap) + barW / 2;
+        const x = margin.left + idx * (barW + gap) + barW / 2;
         const shouldShow = labels.length <= 12 ? true : idx % 2 === 0;
         return (
-          <text key={label} x={x} y={height - 6} textAnchor="middle" fontSize="10" fill="#1a2b48" opacity="0.75">
+          <text key={label} x={x} y={bottomAxisY + 12} textAnchor="middle" fontSize="10" fill="#1a2b48" opacity="0.75">
             {shouldShow ? label : ''}
           </text>
         );
       })}
+
+      {/* Units: place outside the plotted area */}
+      <text x={margin.left + 4} y={margin.top - 6} textAnchor="start" fontSize="10" fill="#1a2b48" opacity="0.75">
+        Events
+      </text>
+      <text x={width - margin.right} y={bottomAxisY + 32} textAnchor="end" fontSize="10" fill="#1a2b48" opacity="0.75">
+        Hours
+      </text>
     </svg>
   );
 }
@@ -276,9 +318,9 @@ const AdminDashboard = () => {
     values: [],
     loading: isFirebaseConfigured(),
     capped: false,
-    total: 0,
-    filteredTotal: 0,
-    mode: 'page_view',
+    visitDocs: 0,
+    pageViews: 0,
+    missingHourlyDocs: 0,
     error: '',
   }));
 
@@ -287,16 +329,17 @@ const AdminDashboard = () => {
     // All of these already exist in project CSS.
     return [
       '#1a2b48',
+      '#fcc419',
       '#e74c3c',
-      '#646cff',
       '#535bf2',
+      '#6b8793',
+      '#646cff',
       '#747bff',
       '#0d1a30',
       '#e6b800',
       '#e5b816',
       '#cc0000',
       '#213547',
-      '#6b8793',
       '#8b8b8b',
     ];
   }, []);
@@ -337,8 +380,6 @@ const AdminDashboard = () => {
     if (start.getTime() <= end.getTime()) return { start, end };
     return { start: end, end: start };
   }, [rangeStartStr, rangeEndStr]);
-
-  const weekdayLabels = useMemo(() => ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'], []);
 
   // Subscribe posts for analytics (filter client-side by range).
   // This is more robust than Firestore range queries when legacy data has mixed createdAt types.
@@ -396,34 +437,51 @@ const AdminDashboard = () => {
     const start = range.start;
     const end = endOfDay(range.end);
     const posts = analyticsPosts.filter((p) => p.createdAt && p.subject && p.createdAt >= start && p.createdAt <= end);
-    const totals = new Map();
-    const bySubjectByWeekday = new Map();
 
+    // Build date axis (inclusive)
+    const days = [];
+    for (let d = startOfDay(start); d <= startOfDay(end); ) {
+      days.push(new Date(d));
+      d = new Date(d);
+      d.setDate(d.getDate() + 1);
+    }
+
+    const dayKeys = days.map(toDayKey);
+    const labels = days.map(formatDayLabel);
+    const indexByDayKey = new Map(dayKeys.map((k, i) => [k, i]));
+
+    // Totals per subject in range
+    const totals = new Map();
     posts.forEach((p) => {
       const s = String(p.subject || '').trim();
       if (!s) return;
       totals.set(s, (totals.get(s) || 0) + 1);
-
-      // JS: Sunday=0..Saturday=6; convert to MON..SUN index
-      const js = new Date(p.createdAt).getDay();
-      const weekdayIndex = (js + 6) % 7;
-
-      if (!bySubjectByWeekday.has(s)) bySubjectByWeekday.set(s, new Array(7).fill(0));
-      const arr = bySubjectByWeekday.get(s);
-      arr[weekdayIndex] += 1;
     });
 
-    const subjectsSorted = Array.from(totals.entries())
+    const topSubjects = Array.from(totals.entries())
       .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
       .map(([subject]) => subject);
 
-    const series = subjectsSorted.map((subject, idx) => {
-      const color = subjectColors[idx % subjectColors.length];
-      const values = bySubjectByWeekday.get(subject) || new Array(7).fill(0);
-      return { name: subject, color, values };
+    const valuesBySubject = new Map();
+    topSubjects.forEach((s) => valuesBySubject.set(s, new Array(labels.length).fill(0)));
+
+    posts.forEach((p) => {
+      const s = String(p.subject || '').trim();
+      if (!valuesBySubject.has(s)) return;
+      const key = toDayKey(p.createdAt);
+      const idx = indexByDayKey.get(key);
+      if (idx == null) return;
+      valuesBySubject.get(s)[idx] += 1;
     });
 
-    return { series, totalSubjects: subjectsSorted.length };
+    const series = topSubjects.map((subject, idx) => ({
+      name: subject,
+      color: subjectColors[idx % subjectColors.length],
+      values: valuesBySubject.get(subject) || new Array(labels.length).fill(0),
+    }));
+
+    return { labels, series, totalSubjects: topSubjects.length };
   }, [analyticsPosts, subjectColors, range.start, range.end]);
 
   const mostActive = useMemo(() => {
@@ -468,7 +526,8 @@ const AdminDashboard = () => {
     return rows;
   }, [tutorPosts, qaPosts, usersById]);
 
-  // Peak hours from usage activity logs (page_view)
+  // Peak hours from compact per-day visit docs (users/{uid}/visits/{YYYY-MM-DD})
+  // Written by AuthContext.logActivity using hours.h00..hours.h23 counters.
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
 
@@ -482,67 +541,67 @@ const AdminDashboard = () => {
         let snap;
         try {
           const qy = query(
-            collectionGroup(db, 'activity'),
-            where('type', '==', 'page_view'),
-            where('createdAt', '>=', start),
-            where('createdAt', '<=', end),
-            orderBy('createdAt', 'asc'),
+            collectionGroup(db, 'visits'),
+            where('date', '>=', start),
+            where('date', '<=', end),
+            orderBy('date', 'asc'),
             limit(5000)
           );
           snap = await getDocs(qy);
-        } catch (err) {
-          const msg = String(err?.message || '');
-          const needsIndex = err?.code === 'failed-precondition' || msg.toLowerCase().includes('index');
-          if (!needsIndex) throw err;
-
-          // Fallback: query by createdAt only, then filter type client-side
+        } catch {
+          // Fallback: same query without orderBy (should still be supported by single-field indexes)
           const fallbackQ = query(
-            collectionGroup(db, 'activity'),
-            where('createdAt', '>=', start),
-            where('createdAt', '<=', end),
-            orderBy('createdAt', 'asc'),
+            collectionGroup(db, 'visits'),
+            where('date', '>=', start),
+            where('date', '<=', end),
             limit(5000)
           );
           snap = await getDocs(fallbackQ);
         }
 
-        // If we still got nothing, try a final fallback: recent activity only (mixed createdAt types won't match range queries)
-        if (snap.size === 0) {
-          try {
-            const recentQ = query(collectionGroup(db, 'activity'), orderBy('createdAt', 'desc'), limit(5000));
-            snap = await getDocs(recentQ);
-          } catch {
-            // ignore; keep empty snap
-          }
-        }
-
-        const bucketsPageView = new Array(24).fill(0);
-        const bucketsAll = new Array(24).fill(0);
-        let total = 0;
-        let filteredTotal = 0;
+        const buckets = new Array(24).fill(0);
+        let visitDocs = 0;
+        let pageViews = 0;
+        let missingHourlyDocs = 0;
 
         snap.docs.forEach((d) => {
-          const dt = parseCreatedAtFromData(d.data());
-          if (!dt) return;
-          if (dt < start || dt > end) return;
-          total += 1;
-          bucketsAll[dt.getHours()] += 1;
-          if (d.data()?.type !== 'page_view') return;
-          filteredTotal += 1;
-          bucketsPageView[dt.getHours()] += 1;
+          visitDocs += 1;
+          const data = d.data() || {};
+          const hours = data?.hours;
+          if (!hours || typeof hours !== 'object') {
+            missingHourlyDocs += 1;
+
+            // Legacy fallback: if we don't have per-hour breakdown, approximate by
+            // assigning the day's total to the hour of lastSeen/lastSignIn/date.
+            const fallbackCount = clampNumber(data.pageViewCount ?? data.count);
+            const dt =
+              parseTimestampLike(data.lastSeen)
+              || parseTimestampLike(data.lastSignIn)
+              || parseTimestampLike(data.date);
+            if (fallbackCount && dt) {
+              buckets[dt.getHours()] += fallbackCount;
+              pageViews += fallbackCount;
+            }
+            return;
+          }
+
+          for (let h = 0; h < 24; h += 1) {
+            const key = `h${String(h).padStart(2, '0')}`;
+            const v = clampNumber(hours[key]);
+            if (!v) continue;
+            buckets[h] += v;
+            pageViews += v;
+          }
         });
 
         const labels = new Array(24).fill(0).map((_, h) => String(h).padStart(2, '0'));
         const capped = snap.size >= 5000;
 
-        const mode = filteredTotal ? 'page_view' : total ? 'all_activity' : 'page_view';
-        const values = mode === 'page_view' ? bucketsPageView : bucketsAll;
-
-        if (!cancelled) setPeakHours({ labels, values, loading: false, capped, total, filteredTotal, mode, error: '' });
+        if (!cancelled) setPeakHours({ labels, values: buckets, loading: false, capped, visitDocs, pageViews, missingHourlyDocs, error: '' });
       } catch (err) {
         console.error('Failed to load peak hours', err);
-        const message = err?.message || 'Failed to load activity data';
-        if (!cancelled) setPeakHours({ labels: [], values: [], loading: false, capped: false, total: 0, filteredTotal: 0, mode: 'page_view', error: message });
+        const message = err?.message || 'Failed to load visits data';
+        if (!cancelled) setPeakHours({ labels: [], values: [], loading: false, capped: false, visitDocs: 0, pageViews: 0, missingHourlyDocs: 0, error: message });
       }
     };
 
@@ -582,7 +641,7 @@ const AdminDashboard = () => {
             />
           </div>
         </div>
-        <MultiLineChart labels={weekdayLabels} series={trending.series} />
+        <MultiLineChart labels={trending.labels || []} series={trending.series} />
         <div className="admin-legend" aria-label="Legend">
           {trending.series.length ? (
             trending.series.map((s) => (
@@ -640,11 +699,8 @@ const AdminDashboard = () => {
           <>
             <HourBarChart labels={peakHours.labels} values={peakHours.values.map(clampNumber)} />
             <div className="admin-range-hint">
-              {peakHours.filteredTotal
-                ? `page_view events: ${peakHours.filteredTotal}`
-                : peakHours.total
-                  ? `No page_view events found; showing all activity docs: ${peakHours.total}`
-                  : 'No activity docs found in selected range'}
+              {`Events: ${peakHours.pageViews} • visit docs: ${peakHours.visitDocs}`}
+              {peakHours.missingHourlyDocs ? ` • legacy docs (no hourly breakdown): ${peakHours.missingHourlyDocs}` : ''}
               {peakHours.capped ? ' • Showing first 5000 docs' : ''}
             </div>
           </>
@@ -654,14 +710,17 @@ const AdminDashboard = () => {
               (() => {
                 const raw = String(peakHours.error || '');
                 const url = extractFirstUrl(raw);
-                const needsSingleField = raw.includes('COLLECTION_GROUP_ASC') && raw.toLowerCase().includes('collection') && raw.toLowerCase().includes('createdat');
+                const needsSingleField =
+                  raw.includes('COLLECTION_GROUP_ASC')
+                  && raw.toLowerCase().includes('collection')
+                  && raw.toLowerCase().includes('date');
 
                 return (
                   <div className="admin-error">
                     <div className="admin-error-title">Peak Hours can’t load yet</div>
                     <div className="admin-error-body">
                       {needsSingleField
-                        ? 'Firestore is missing the collection group single-field index for activity.createdAt (ASC). Create/enable that index, wait until it finishes building, then reload the dashboard.'
+                        ? 'Firestore is missing the collection group single-field index for visits.date (ASC). Create/enable that index, wait until it finishes building, then reload the dashboard.'
                         : `Peak Hours error: ${raw}`}
                     </div>
                     {url ? (
@@ -675,7 +734,7 @@ const AdminDashboard = () => {
                 );
               })()
             ) : (
-              'No activity data'
+              'No visit data'
             )}
           </div>
         )}

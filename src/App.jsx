@@ -446,6 +446,8 @@ function App() {
         <FloatingMenu
           onCreatePost={handleShowCreatePost}
           hideCreatePost={isAdmin}
+          hideNotification={isAdmin}
+          hideGroupMessage={isAdmin}
           isGroupMessagePage={isGroupMessagePage}
           onNavigate={(page) => {
         // Prevent unauthenticated navigation

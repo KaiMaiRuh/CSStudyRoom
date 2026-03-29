@@ -103,6 +103,10 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
 
   // Handle join button click
   const handleJoinPost = async () => {
+    if (isAdmin) {
+      setJoinError('Admin cannot join posts');
+      return;
+    }
     if (!user?.uid || !profile?.displayName) {
       setJoinError('Please sign in first');
       return;
@@ -318,10 +322,12 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     fetchMissing();
   }, [uniqueJoiners]);
 
-  const joinButtonDisabled = isJoining || hasJoined || isFull || isOwner;
+  const joinButtonDisabled = isJoining || hasJoined || isFull || isOwner || isAdmin;
   const leaveButtonDisabled = isLeaving || !hasJoined || isOwner;
   const joinButtonText = isOwner
     ? 'Owner'
+    : isAdmin
+    ? 'Admin'
     : isFull
     ? 'Full'
     : isJoining

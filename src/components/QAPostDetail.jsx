@@ -16,6 +16,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { imageFileToBase64DataUrl, isDataUrlImage } from './imageBase64';
 import {
   addQaPostComment,
+  deleteQaPostComment,
   subscribeQaPost,
   subscribeQaPostComments,
   subscribeQaPostLikeStatus,
@@ -155,6 +156,8 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
     ];
   }, [liveComments, mergedPost?.commentList]);
 
+  const canAdminDeleteLiveComments = isAdmin && isFirebaseConfigured() && Boolean(postId) && Array.isArray(liveComments);
+
   if (!post) return null;
 
   const handleToggleLike = async () => {
@@ -225,6 +228,23 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
       setComposerError(err?.message || 'Failed to add comment');
     } finally {
       setIsSendBusy(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!isFirebaseConfigured()) return;
+    if (!isAdmin) return;
+    if (!postId) return;
+
+    const ok = window.confirm('Delete this comment?');
+    if (!ok) return;
+
+    try {
+      const { db } = getFirebaseServices();
+      await deleteQaPostComment({ db, postId, commentId });
+    } catch (err) {
+      console.error('Failed to delete comment', err);
+      alert(err?.message || 'Failed to delete comment');
     }
   };
 
@@ -356,7 +376,18 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
                 )}
               </div>
               <div className="qa-comment-content">
-                <div className="qa-comment-name">{c.user?.name}</div>
+                <div className="qa-comment-head">
+                  <div className="qa-comment-name">{c.user?.name}</div>
+                  {canAdminDeleteLiveComments ? (
+                    <button
+                      className="qa-comment-delete"
+                      type="button"
+                      onClick={() => handleDeleteComment(c.id)}
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                </div>
                 {c.text ? <div className="qa-comment-text">{c.text}</div> : null}
 
                 {c.imageUrl ? (

@@ -4,7 +4,14 @@ import { FaBell, FaEnvelope, FaPlus } from 'react-icons/fa';
 import NotificationPanel from './NotificationPanel';
 import './FloatingMenu.css';
 
-const FloatingMenu = ({ onCreatePost, onNavigate, isGroupMessagePage, hideCreatePost = false }) => {
+const FloatingMenu = ({
+  onCreatePost,
+  onNavigate,
+  isGroupMessagePage,
+  hideCreatePost = false,
+  hideNotification = false,
+  hideGroupMessage = false,
+}) => {
   const [activePanel, setActivePanel] = useState(null);
 
   const openPanel = (panelType) => {
@@ -30,18 +37,23 @@ const FloatingMenu = ({ onCreatePost, onNavigate, isGroupMessagePage, hideCreate
     <div>
       {/* Floating Action Button Menu */}
       <div className="floating-menu">
-        <button 
-          className="fab-button notification-btn"
-          onClick={() => openPanel('notification')}
-        >
-          <FaBell />
-        </button>
-        <button 
-          className="fab-button message-btn"
-          onClick={handleMessage}
-        >
-          <FaEnvelope />
-        </button>
+        {!hideNotification ? (
+          <button 
+            className="fab-button notification-btn"
+            onClick={() => openPanel('notification')}
+          >
+            <FaBell />
+          </button>
+        ) : null}
+
+        {!hideGroupMessage ? (
+          <button 
+            className="fab-button message-btn"
+            onClick={handleMessage}
+          >
+            <FaEnvelope />
+          </button>
+        ) : null}
         {!hideCreatePost ? (
           <button
             className="fab-button create-btn"

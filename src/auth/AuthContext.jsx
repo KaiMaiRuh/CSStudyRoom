@@ -8,7 +8,7 @@ import {
   signOut as firebaseSignOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc, addDoc, collection, increment, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, increment, onSnapshot } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 
 const AuthContext = createContext(null);
@@ -76,11 +76,6 @@ export function AuthProvider({ children }) {
       const cred = await signInWithEmailAndPassword(auth, email, password);
       try {
         const { db } = getFirebaseServices();
-        await addDoc(collection(db, `users/${cred.user.uid}/activity`), {
-          type: 'sign_in',
-          meta: { email: cred.user.email },
-          createdAt: serverTimestamp(),
-        });
         // update today's visit doc with lastSignIn and lastSeen
         try {
           const d = new Date();
@@ -96,6 +91,7 @@ export function AuthProvider({ children }) {
               date: serverTimestamp(),
               lastSignIn: serverTimestamp(),
               lastSeen: serverTimestamp(),
+              signInCount: increment(1),
             },
             { merge: true }
           );
@@ -163,17 +159,6 @@ export function AuthProvider({ children }) {
         { merge: true }
       );
 
-      // Log account creation activity
-      try {
-        await addDoc(collection(db, `users/${cred.user.uid}/activity`), {
-          type: 'account_created',
-          meta: { email: cred.user.email },
-          createdAt: serverTimestamp(),
-        });
-      } catch (err) {
-        console.error('Failed to Log Account Created Activity', err);
-      }
-
       return cred.user;
     }
 
@@ -195,35 +180,35 @@ export function AuthProvider({ children }) {
         const { db } = getFirebaseServices();
         const uid = user?.uid;
         if (!uid) return;
-        await addDoc(collection(db, `users/${uid}/activity`), {
-          type,
-          meta,
-          createdAt: serverTimestamp(),
-        });
+        // Compact storage: keep per-day counters in users/{uid}/visits/{YYYY-MM-DD}
+        // (no per-event activity documents).
+        if (type !== 'page_view') return;
 
-        // If this is a page view, increment per-day visit counter and set lastPage/lastSeen
-        if (type === 'page_view') {
-          try {
-              const d = new Date();
-              const yyyy = d.getFullYear();
-              const mm = String(d.getMonth() + 1).padStart(2, '0');
-              const dd = String(d.getDate()).padStart(2, '0');
-              const key = `${yyyy}-${mm}-${dd}`;
-              const visitRef = doc(db, `users/${uid}/visits`, key);
-              const lastPage = meta?.page ?? null;
-              await setDoc(
-                visitRef,
-                {
-                  count: increment(1),
-                  date: serverTimestamp(),
-                  lastPage,
-                  lastSeen: serverTimestamp(),
-                },
-                { merge: true }
-              );
-            } catch (err) {
-              console.error('Failed to Increment Daily Visit Counter', err);
-            }
+        try {
+          const d = new Date();
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          const hh = String(d.getHours()).padStart(2, '0');
+          const key = `${yyyy}-${mm}-${dd}`;
+          const hourField = `hours.h${hh}`;
+
+          const visitRef = doc(db, `users/${uid}/visits`, key);
+          const lastPage = meta?.page ?? null;
+          await setDoc(
+            visitRef,
+            {
+              count: increment(1),
+              date: serverTimestamp(),
+              lastPage,
+              lastSeen: serverTimestamp(),
+              pageViewCount: increment(1),
+              [hourField]: increment(1),
+            },
+            { merge: true }
+          );
+        } catch (err) {
+          console.error('Failed to Increment Daily Visit Counter', err);
         }
       } catch (err) {
           console.error('Failed to Log Activity', err);

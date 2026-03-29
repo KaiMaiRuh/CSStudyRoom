@@ -127,3 +127,29 @@ export async function addQaPostComment({ db, postId, uid, authorName, authorAvat
     return { commentId: commentRef.id, commentCount: current + 1 };
   });
 }
+
+export async function deleteQaPostComment({ db, postId, commentId }) {
+  if (!db) throw new Error('Firestore is not available');
+  if (!postId) throw new Error('postId is required');
+  if (!commentId) throw new Error('commentId is required');
+
+  const postRef = doc(db, 'qaPosts', postId);
+  const commentRef = doc(db, 'qaPosts', postId, 'comments', commentId);
+
+  return runTransaction(db, async (tx) => {
+    const [postSnap, commentSnap] = await Promise.all([tx.get(postRef), tx.get(commentRef)]);
+    if (!postSnap.exists()) throw new Error('Post not found');
+    if (!commentSnap.exists()) throw new Error('Comment not found');
+
+    const data = postSnap.data() || {};
+    const current = Number(data.commentCount ?? 0);
+
+    tx.delete(commentRef);
+    tx.update(postRef, {
+      commentCount: Math.max(0, current - 1),
+      updatedAt: serverTimestamp(),
+    });
+
+    return { deleted: true, commentCount: Math.max(0, current - 1) };
+  });
+}

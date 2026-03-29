@@ -251,10 +251,32 @@
   flex: 1;
 }
 
+.qa-comment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.qa-comment-delete {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #e74c3c;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.qa-comment-delete:hover {
+  text-decoration: underline;
+}
+
 .qa-comment-name {
   font-weight: 700;
   color: #1a2b48;
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .qa-comment-text {
