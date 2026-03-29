@@ -16,9 +16,7 @@ import { createGroup, deleteGroupByPostId } from './groupMessageApi';
 const FeedData = () => {
   const [tutorPosts, setTutorPosts] = useState([]);
   const [qaPosts, setQaPosts] = useState([]);
-  
-  // Subjects list - predefined for subject selection and filtering
-  const allSubjects = [
+  const [allSubjects, setAllSubjects] = useState([
     'Mathematics I',
     'Discrete Math. For Computer Science',
     'Computer Programming I',
@@ -46,7 +44,23 @@ const FeedData = () => {
     'Design Thinking',
     'Special Project I',
     'Special Project II'
-  ];
+  ]);
+
+  // Update subjects whenever posts change
+  useEffect(() => {
+    const subjectsSet = new Set(allSubjects);
+
+    tutorPosts.forEach(post => {
+      if (post.subject) subjectsSet.add(post.subject);
+    });
+
+    qaPosts.forEach(post => {
+      if (post.subject) subjectsSet.add(post.subject);
+    });
+
+    const sortedSubjects = Array.from(subjectsSet).sort();
+    setAllSubjects(sortedSubjects);
+  }, [allSubjects, tutorPosts, qaPosts]);
 
   const [activeFeed, setActiveFeed] = useState('tutor');
 
@@ -87,12 +101,12 @@ const FeedData = () => {
               time: data.time || '',
               minutesAgo,
               capacity: data.capacity ?? 0,
-              current: data.current ?? data.joinedCount ?? 0,
-              joinedCount: data.joinedCount ?? data.current ?? 0,
+              joiners: Array.isArray(data.joiners) ? data.joiners : [],
+              current: Array.isArray(data.joiners) ? data.joiners.length : 0,
+              joinedCount: Array.isArray(data.joiners) ? data.joiners.length : 0,
               hours: data.hours ?? 0,
               images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
               authorId: data.authorId || null,
-              joiners: Array.isArray(data.joiners) ? data.joiners : [],
             };
           });
           setTutorPosts(next);

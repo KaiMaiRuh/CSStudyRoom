@@ -4,7 +4,7 @@ import { FaRegUserCircle } from 'react-icons/fa';
 import './TutorPostDetail.css';
 import ImagePreviewModal from './ImagePreviewModal';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
-import { doc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { useAuth } from '../auth/AuthContext';
 import {
   createGroup,
@@ -21,6 +21,8 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const [hasJoined, setHasJoined] = useState(false);
+  const [livePost, setLivePost] = useState(post);
+  const [resolvedJoiners, setResolvedJoiners] = useState({});
 
   useEffect(() => {
     const authorId = post?.authorId || post?.user?.uid || null;
@@ -50,16 +52,52 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     );
   }, [post?.authorId, post?.user]);
 
+  useEffect(() => {
+    if (!post?.id || !isFirebaseConfigured()) return undefined;
+
+    const { db } = getFirebaseServices();
+    const postRef = doc(db, 'tutorPosts', post.id);
+
+    const unsubscribe = onSnapshot(
+      postRef,
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const postData = docSnapshot.data();
+          const enrichedPost = {
+            id: docSnapshot.id,
+            ...postData,
+            user: postData.user || {
+              name: postData.authorName || 'Unknown',
+              displayName: postData.authorName || 'Unknown',
+              avatar: postData.authorAvatar || '',
+              uid: postData.authorId || null,
+            },
+          };
+
+          setLivePost(enrichedPost);
+        }
+      },
+      (err) => {
+        console.error('Failed to listen to post changes', err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [post?.id]);
+
+  const displayPost = livePost || post;
+
   // Check if current user has already joined
   useEffect(() => {
-    if (!user?.uid || !post?.joiners) {
+    if (!user?.uid || !displayPost?.joiners) {
       setHasJoined(false);
       return;
     }
-    const joiners = Array.isArray(post.joiners) ? post.joiners : [];
+    const joiners = Array.isArray(displayPost.joiners) ? displayPost.joiners : [];
     const userHasJoined = joiners.some(joiner => joiner?.uid === user.uid || joiner?.id === user.uid);
+    // do NOT automatically set owner as joined for the button state
     setHasJoined(userHasJoined);
-  }, [user?.uid, post?.joiners]);
+  }, [user?.uid, displayPost?.joiners]);
 
   // Handle join button click
   const handleJoinPost = async () => {
@@ -68,8 +106,21 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       return;
     }
 
+    const postOwnerUid = postAuthor?.uid || authorId;
+    const isOwner = user?.uid && postOwnerUid && user.uid === postOwnerUid;
+
+    if (isOwner) {
+      setJoinError('Owner cannot join their own tutoring post');
+      return;
+    }
+
     if (hasJoined) {
       setJoinError('You have already joined this post');
+      return;
+    }
+
+    if (isFull) {
+      setJoinError('This tutoring session is full');
       return;
     }
 
@@ -135,8 +186,6 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     }
   };
 
-  if (!post) return null;
-
   const {
     user: postAuthor,
     subject,
@@ -145,13 +194,81 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     description,
     experience,
     location,
-    joinedCount,
-  } = post;
+    authorId,
+  } = displayPost || {};
 
-  const joiners = post.joiners ?? [];
-  const safeJoinedCount = joinedCount ?? joiners.length;
+  const postOwnerUid = postAuthor?.uid || authorId || null;
 
+  const rawJoiners = Array.isArray(displayPost.joiners) ? displayPost.joiners : [];
+  const normalizedJoiners = rawJoiners
+    .map((j) => ({
+      uid: j?.uid || j?.id || '',
+      name: j?.name || j?.displayName || 'Unknown',
+      avatar: j?.avatar || j?.photoURL || '',
+    }))
+    .filter((j) => j.uid && j.uid !== postOwnerUid);
+
+  const uniqueJoiners = Array.from(
+    new Map(normalizedJoiners.map((j) => [j.uid, j])).values()
+  );
+
+  const plainAuthor = {
+    uid: postOwnerUid,
+    name: postAuthor?.displayName || postAuthor?.name || 'Unknown',
+    avatar: postAuthor?.avatar || '',
+  };
+
+  const allJoiners = [plainAuthor, ...uniqueJoiners];
+  const joinedTotalCount = allJoiners.length; // creator + unique joiners
   const capacityNumber = capacity ?? 0;
+  const displayJoinedCount = capacityNumber > 0 ? Math.min(joinedTotalCount, capacityNumber) : joinedTotalCount;
+  const isFull = capacityNumber > 0 && joinedTotalCount >= capacityNumber;
+  const isOwner = user?.uid && postOwnerUid && user.uid === postOwnerUid;
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    if (!uniqueJoiners.length) return;
+
+    const missing = uniqueJoiners.filter((j) => !j.avatar && j.uid);
+    if (!missing.length) return;
+
+    const fetchMissing = async () => {
+      try {
+        const { db } = getFirebaseServices();
+        const updates = {};
+        await Promise.all(
+          missing.map(async (j) => {
+            const userDoc = await getDoc(doc(db, 'users', j.uid));
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              const foundAvatar = data?.avatarUrl || data?.photoURL || '';
+              if (foundAvatar) updates[j.uid] = foundAvatar;
+            }
+          })
+        );
+        if (Object.keys(updates).length > 0) {
+          setResolvedJoiners((prev) => ({ ...prev, ...updates }));
+        }
+      } catch (err) {
+        console.warn('Failed to load missing joiners avatar', err);
+      }
+    };
+
+    fetchMissing();
+  }, [uniqueJoiners]);
+
+  const joinButtonDisabled = isJoining || hasJoined || isFull || isOwner;
+  const joinButtonText = isOwner
+    ? 'Owner'
+    : isFull
+    ? 'Full'
+    : isJoining
+    ? 'Joining...'
+    : hasJoined
+    ? 'Joined'
+    : 'join';
+  if (!displayPost) return null;
+
   if (isJoinInfoOpen) {
     return (
       <div className="tutor-post-detail tutor-joininfo">
@@ -177,18 +294,40 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
 
           <div className="joined-status">
             <span className="joined-text">
-              <span className="bold-text">{safeJoinedCount}</span>/<span className="bold-text">{capacityNumber}</span> joined
+              <span className="bold-text">{displayJoinedCount}</span>/<span className="bold-text">{capacityNumber}</span> joined
             </span>
           </div>
 
           <div className="joiners-list">
-            {joiners.map((joiner, index) => (
+            {allJoiners.map((joiner, index) => (
               <div key={index} className="joiner-item">
                 <div className="profile-icon" aria-hidden="true">
                   <FaRegUserCircle size={30} />
                 </div>
-                <p className="joiner-name">{joiner?.name}</p>
-                <p className="joined-text">joined</p>
+                <button
+                  type="button"
+                  className="joiner-avatar"
+                  aria-label="Profile"
+                  onClick={() => {
+                    const avatarUrl = joiner?.avatar || resolvedJoiners[joiner.uid];
+                    if (avatarUrl) setPreviewSrc(avatarUrl);
+                  }}
+                  disabled={!(joiner?.avatar || resolvedJoiners[joiner.uid])}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: joiner?.avatar || resolvedJoiners[joiner.uid] ? 'pointer' : 'default',
+                  }}
+                >
+                  {joiner?.avatar || resolvedJoiners[joiner.uid] ? (
+                    <img src={joiner?.avatar || resolvedJoiners[joiner.uid]} alt={joiner?.name} className="joiner-avatar-img" />
+                  ) : (
+                    <FaRegUserCircle size={40} />
+                  )}
+                </button>
+                <p className="joiner-name">{joiner?.name || 'Unknown'}</p>
+                <p className="joined-text">{index === 0 ? 'created' : 'joined'}</p>
               </div>
             ))}
           </div>
@@ -210,9 +349,9 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
           className="join-button"
           type="button"
           onClick={handleJoinPost}
-          disabled={isJoining || hasJoined}
+          disabled={joinButtonDisabled}
         >
-          {isJoining ? 'Joining...' : (hasJoined ? 'Joined' : 'join')}
+          {joinButtonText}
         </button>
       </div>
     );
@@ -337,9 +476,9 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
           className="join-button"
           type="button"
           onClick={handleJoinPost}
-          disabled={isJoining || hasJoined}
+          disabled={joinButtonDisabled}
         >
-          {isJoining ? 'Joining...' : (hasJoined ? 'Joined' : 'join')}
+          {joinButtonText}
         </button>
       </div>
     </div>

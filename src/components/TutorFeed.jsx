@@ -9,6 +9,27 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false,
   const [selectedPost, setSelectedPost] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
 
+  const getUniqueJoiners = (post) => {
+    const joiners = Array.isArray(post?.joiners) ? post.joiners : [];
+    const ownerUid = post?.user?.uid || post?.authorId || null;
+    const unique = new Map();
+
+    joiners.forEach((joiner) => {
+      const uid = joiner?.uid || joiner?.id;
+      if (!uid) return;
+      if (uid === ownerUid) return; // don't treat owner as joiner
+      if (!unique.has(uid)) {
+        unique.set(uid, {
+          uid,
+          name: joiner?.name || joiner?.displayName || joiner?.displayName || 'Unknown',
+          avatar: joiner?.avatar || joiner?.photoURL || joiner?.avatarUrl || '',
+        });
+      }
+    });
+
+    return Array.from(unique.values());
+  };
+
   const handleOpenDetail = (post) => {
     setSelectedPost(post);
     onDetailOpen?.();
@@ -32,10 +53,11 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false,
   };
 
   if (selectedPost) {
-    const actualJoinedCount = 1 + (Array.isArray(selectedPost.joiners) ? selectedPost.joiners.length : 0);
+    const joined = getUniqueJoiners(selectedPost);
     const detailPost = {
       ...selectedPost,
-      joinedCount: actualJoinedCount,
+      joinedCount: joined.length + 1, // include creator as joined
+      joiners: joined,
     };
     return (
       <TutorPostDetail
@@ -57,8 +79,8 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false,
     <div className="tutor-feed">
       {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
       {posts.map(post => {
-        // Calculate actual joined count from joiners array + creator (1)
-        const actualJoinedCount = 1 + (Array.isArray(post.joiners) ? post.joiners.length : 0);
+        const joiners = getUniqueJoiners(post);
+        const actualJoinedCount = joiners.length + 1; // include creator as joined
         return (
         <div key={post.id} className="tutor-card">
           <div className="card-header">
