@@ -333,20 +333,6 @@ function App() {
             )}
           </div>
         )}
-        {showCreatePost && (
-          editingPost ? (
-            <CreatePost
-              key={`edit-${editingPost.type}-${editingPost.id}`}
-              mode="edit"
-              initialPost={editingPost}
-              allSubjects={allSubjects}
-              onCancel={handleCloseCreatePost}
-              onUpdate={handleUpdatePost}
-            />
-          ) : (
-            <CreatePost key="create" allSubjects={allSubjects} onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />
-          )
-        )}
         {showCreateAccount && <CreateAccount onNavigate={(p)=> {
         if (p === 'signin') {
           setShowCreateAccount(false);
@@ -431,6 +417,20 @@ function App() {
           </>
         )}
       </div>
+      {showCreatePost && (
+        editingPost ? (
+          <CreatePost
+            key={`edit-${editingPost.type}-${editingPost.id}`}
+            mode="edit"
+            initialPost={editingPost}
+            allSubjects={allSubjects}
+            onCancel={handleCloseCreatePost}
+            onUpdate={handleUpdatePost}
+          />
+        ) : (
+          <CreatePost key="create" allSubjects={allSubjects} onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />
+        )
+      )}
       {!isAuthPage && !showCreatePost && !isAdminPage && <FloatingMenu onCreatePost={handleShowCreatePost} isGroupMessagePage={isGroupMessagePage} onNavigate={(page) => {
         // Prevent unauthenticated navigation
         if (!user && (page === 'groupmessage' || page === 'profile')) {
