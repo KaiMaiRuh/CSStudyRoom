@@ -237,19 +237,23 @@ export default function EditProfile({ onCancel, onDone }) {
           <label className="edit-profile-field">
             <span>Year</span>
             <select value={year} onChange={(e) => setYear(e.target.value)}>
-              <option value="">Select</option>
+              <option value="">Select an option</option>
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
               <option value="4">4</option>
               <option value="5">5</option>
-              <option value="6+">6+</option>
+              <option value="6+">6 or more</option>
             </select>
           </label>
 
           <label className="edit-profile-field">
             <span>Major</span>
-            <input value={major} onChange={(e) => setMajor(e.target.value)} type="text" />
+            <select value={major} onChange={(e) => setMajor(e.target.value)}>
+              <option value="">Select an option</option>
+              <option value="CS">CS</option>
+              <option value="CSB">CSB</option>
+            </select>
           </label>
 
           <label className="edit-profile-field">
@@ -260,7 +264,7 @@ export default function EditProfile({ onCancel, onDone }) {
           <label className="edit-profile-field">
             <span>Role</span>
             <select value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="">Select</option>
+              <option value="">Select an option</option>
               <option value="Tutor">Tutor</option>
               <option value="Student">Student</option>
               <option value="Both">Both</option>
