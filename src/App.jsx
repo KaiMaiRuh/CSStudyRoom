@@ -73,6 +73,133 @@ function App() {
     return matchesCategory && matchesSearch;
   });
 
+  // --- URL <-> page helper: keep existing state-based navigation but sync browser URL
+  const pageToPath = (page) => {
+    switch (page) {
+      case 'home': return '/';
+      case 'profile': return '/profile';
+      case 'editProfile': return '/profile/edit';
+      case 'createAccount': return '/create-account';
+      case 'signin': return '/signin';
+      case 'createPost': return '/create-post';
+      case 'admin': return '/admin';
+      case 'groupmessage': return '/groupmessage';
+      default: return '/';
+    }
+  };
+
+  const pathToPage = (pathname) => {
+    const p = (pathname || '').replace(/\/+$/, '') || '/';
+    if (p === '/' || p === '' || p === '/home') return 'home';
+    if (p.startsWith('/profile/edit')) return 'editProfile';
+    if (p.startsWith('/profile')) return 'profile';
+    if (p.startsWith('/create-account')) return 'createAccount';
+    if (p.startsWith('/signin')) return 'signin';
+    if (p.startsWith('/create-post')) return 'createPost';
+    if (p.startsWith('/admin')) return 'admin';
+    if (p.startsWith('/groupmessage')) return 'groupmessage';
+    return 'home';
+  };
+
+  const applyPageState = (page) => {
+    // reset modal/page-specific flags first
+    setShowCreateAccount(false);
+    setShowProfile(false);
+    setShowEditProfile(false);
+    setShowSignIn(false);
+    setShowCreatePost(false);
+    setIsFeedDetailOpen(false);
+
+    // Prevent unauthenticated access to certain pages
+    if (!user && (page === 'home' || page === 'profile' || page === 'admin')) {
+      setShowSignIn(true);
+      setActivePage('signin');
+      return;
+    }
+
+    // Admin access restrictions
+    if (isAdmin && (page === 'profile' || page === 'createPost')) {
+      // keep current page, show alert
+      alert('Admin does not have Profile/Create Post pages');
+      return;
+    }
+
+    switch (page) {
+      case 'home':
+        setActivePage('home');
+        break;
+      case 'profile':
+        setShowProfile(true);
+        setActivePage('profile');
+        break;
+      case 'editProfile':
+        setShowEditProfile(true);
+        setActivePage('profile');
+        break;
+      case 'createAccount':
+        setShowCreateAccount(true);
+        setActivePage('createAccount');
+        break;
+      case 'signin':
+        setShowSignIn(true);
+        setActivePage('signin');
+        break;
+      case 'createPost':
+        setShowCreatePost(true);
+        setActivePage('createPost');
+        break;
+      case 'admin':
+        if (!isAdmin) {
+          alert('You are not authorized to access Admin');
+          setActivePage('home');
+        } else {
+          setActivePage('admin');
+        }
+        break;
+      case 'groupmessage':
+        if (!user) {
+          setShowSignIn(true);
+          setActivePage('signin');
+        } else {
+          setActivePage('groupmessage');
+        }
+        break;
+      default:
+        setActivePage('home');
+    }
+  };
+
+  const navigateTo = (page, { push = true, replace = false } = {}) => {
+    applyPageState(page);
+    if (push) {
+      try {
+        const url = pageToPath(page);
+        if (replace) {
+          window.history.replaceState({ page }, '', url);
+        } else {
+          window.history.pushState({ page }, '', url);
+        }
+      } catch (err) {
+        console.warn('History API not available', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePop = () => {
+      const p = pathToPage(window.location.pathname);
+      applyPageState(p);
+    };
+    window.addEventListener('popstate', handlePop);
+
+    // initial sync from URL
+    const initial = pathToPage(window.location.pathname);
+    applyPageState(initial);
+    window.history.replaceState({ page: initial }, '', window.location.pathname);
+
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [user, isAdmin]);
+
 
 
   const handleShowCreatePost = () => {
@@ -186,102 +313,19 @@ function App() {
         onLogout={() => {
           const p = Promise.resolve(signOut());
           p.finally(() => {
-            setShowCreateAccount(false);
-            setShowProfile(false);
-            setShowEditProfile(false);
-            setShowSignIn(false);
-            setActivePage('home');
-            setIsFeedDetailOpen(false);
+            navigateTo('home');
           });
         }}
         isLoggedIn={Boolean(user)}
         activePage={activePage}
         disableCreatePost={isAuthPage || isAdminPage || isAdmin}
         showCreatePost={!isAdminPage && !isAdmin}
-          onNavigate={(page) => {
-            // Prevent unauthenticated navigation to Home/Profile
-            if (!user && (page === 'home' || page === 'profile' || page === 'admin')) {
-              setShowSignIn(true);
-              setShowCreateAccount(false);
-              setShowProfile(false);
-              setShowEditProfile(false);
-              setActivePage('signin');
-              setIsFeedDetailOpen(false);
-              return;
-            }
-
-            // Admin should not access Profile/Create Post
-            if (isAdmin && (page === 'profile' || page === 'createPost')) {
-              alert('Admin does not have Profile/Create Post pages');
-              return;
-            }
-          // central navigation handler from Navbar
-          if (page === 'home') {
-            setShowCreateAccount(false);
-            setShowProfile(false);
-            setShowEditProfile(false);
-            setActivePage('home');
-            setIsFeedDetailOpen(false);
-              setShowSignIn(false);
-              setShowCreatePost(false);
-          } else if (page === 'profile') {
-            setShowProfile(true);
-            setShowEditProfile(false);
-            setShowCreateAccount(false);
-            setActivePage('profile');
-            setIsFeedDetailOpen(false);
-              setShowSignIn(false);
-              setShowCreatePost(false);
-          } else if (page === 'createAccount') {
-            setShowCreateAccount(true);
-            setShowProfile(false);
-            setShowEditProfile(false);
-            setActivePage('createAccount');
-            setIsFeedDetailOpen(false);
-              setShowSignIn(false);
-              setShowCreatePost(false);
-            } else if (page === 'signin') {
-              setShowSignIn(true);
-              setShowCreateAccount(false);
-              setShowProfile(false);
-              setShowEditProfile(false);
-              setActivePage('signin');
-              setIsFeedDetailOpen(false);
-              setShowCreatePost(false);
-          } else if (page === 'createPost') {
-            if (!isCreateAccountPage) setShowCreatePost(true);
-          } else if (page === 'admin') {
-            if (!isAdmin) {
-              alert('You are not authorized to access Admin');
-              return;
-            }
-            setShowCreateAccount(false);
-            setShowProfile(false);
-            setShowEditProfile(false);
-            setShowSignIn(false);
-            setShowCreatePost(false);
-            setActivePage('admin');
-            setIsFeedDetailOpen(false);
-          } else if (page === 'groupmessage') {
-            if (!user) {
-              setShowSignIn(true);
-              setActivePage('signin');
-              return;
-            }
-            setShowCreateAccount(false);
-            setShowProfile(false);
-            setShowEditProfile(false);
-            setShowSignIn(false);
-            setShowCreatePost(false);
-            setActivePage('groupmessage');
-            setIsFeedDetailOpen(false);
-          }
-        }}
+        onNavigate={navigateTo}
       />
       <div className="app-root">
         {isGroupMessagePage ? (
           <GroupMessagePage onBack={() => {
-            setActivePage('home');
+            navigateTo('home');
           }} />
         ) : isAdminPage ? (
           <AdminPanel />
@@ -344,32 +388,8 @@ function App() {
             )}
           </div>
         )}
-        {showCreateAccount && <CreateAccount onNavigate={(p)=> {
-        if (p === 'signin') {
-          setShowCreateAccount(false);
-          setShowSignIn(true);
-          setActivePage('signin');
-          } else if (p === 'editProfile') {
-            setShowCreateAccount(false);
-            setShowSignIn(false);
-            setShowProfile(false);
-            setShowEditProfile(true);
-            setActivePage('profile');
-        }
-      }} />}
-      {showSignIn && <SignIn onNavigate={(p)=>{
-        if (p === 'createAccount') {
-          setShowSignIn(false);
-          setShowCreateAccount(true);
-          setActivePage('createAccount');
-        } else if (p === 'home') {
-          setShowSignIn(false);
-          setShowCreateAccount(false);
-          setShowProfile(false);
-          setActivePage('home');
-          setIsFeedDetailOpen(false);
-        }
-      }} />}
+        {showCreateAccount && <CreateAccount onNavigate={navigateTo} />}
+      {showSignIn && <SignIn onNavigate={navigateTo} />}
       {showProfile && (
         <Profile
           tutorPosts={tutorPosts}
@@ -449,32 +469,7 @@ function App() {
           hideNotification={isAdmin}
           hideGroupMessage={isAdmin}
           isGroupMessagePage={isGroupMessagePage}
-          onNavigate={(page) => {
-        // Prevent unauthenticated navigation
-        if (!user && (page === 'groupmessage' || page === 'profile')) {
-          setShowSignIn(true);
-          setActivePage('signin');
-          return;
-        }
-        
-        if (page === 'groupmessage') {
-          setShowCreateAccount(false);
-          setShowProfile(false);
-          setShowEditProfile(false);
-          setShowSignIn(false);
-          setShowCreatePost(false);
-          setActivePage('groupmessage');
-          setIsFeedDetailOpen(false);
-        } else if (page === 'home') {
-          setShowCreateAccount(false);
-          setShowProfile(false);
-          setShowEditProfile(false);
-          setActivePage('home');
-          setIsFeedDetailOpen(false);
-          setShowSignIn(false);
-          setShowCreatePost(false);
-        }
-      }}
+          onNavigate={navigateTo}
         />
       )}
     </div>
