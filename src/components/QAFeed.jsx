@@ -48,7 +48,7 @@ const QALikeAction = ({ postId, busy, onToggle }) => {
   );
 };
 
-const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
+const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [busyPostId, setBusyPostId] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
@@ -77,7 +77,20 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
   };
 
   if (selectedPost) {
-    return <QAPostDetail post={selectedPost} onBack={handleCloseDetail} />;
+    return (
+      <QAPostDetail
+        post={selectedPost}
+        onBack={handleCloseDetail}
+        onDelete={
+          canDelete
+            ? () => {
+                onDeletePost?.(selectedPost);
+                handleCloseDetail();
+              }
+            : undefined
+        }
+      />
+    );
   }
 
   const handleToggleLike = async (postId) => {
@@ -213,6 +226,19 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose }) => {
                 <span className="action-count">{post.shares ?? 0}</span>
               </div>
             </div>
+
+            {canDelete ? (
+              <button
+                className="delete-post-button"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeletePost?.(post);
+                }}
+              >
+                Delete
+              </button>
+            ) : null}
           </div>
         </div>
       ))}

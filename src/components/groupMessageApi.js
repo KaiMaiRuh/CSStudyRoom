@@ -3,7 +3,6 @@ import {
   collection,
   doc,
   getDoc,
-  setDoc,
   addDoc,
   query,
   where,
@@ -13,7 +12,6 @@ import {
   arrayUnion,
   getDocs,
   deleteDoc,
-  deleteField,
 } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 
@@ -55,6 +53,7 @@ export async function createGroup(postId, postTitle, subject, ownerId, ownerName
  * @param {string} userName - The user's name
  */
 export async function addMemberToGroup(groupId, userId, userName) {
+  void userName;
   if (!isFirebaseConfigured()) {
     throw new Error('Firebase is not configured');
   }

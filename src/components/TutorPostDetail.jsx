@@ -13,8 +13,8 @@ import {
   sendSystemMessage,
 } from './groupMessageApi';
 
-const TutorPostDetail = ({ post, onBack }) => {
-  const { user, profile } = useAuth();
+const TutorPostDetail = ({ post, onBack, onDelete }) => {
+  const { user, profile, isAdmin } = useAuth();
   const [isJoinInfoOpen, setIsJoinInfoOpen] = useState(false);
   const [previewSrc, setPreviewSrc] = useState(null);
   const [authorBio, setAuthorBio] = useState('');
@@ -226,6 +226,15 @@ const TutorPostDetail = ({ post, onBack }) => {
         <button className="back-button" onClick={onBack} type="button" aria-label="Back">
           <MdArrowBack size={24} />
         </button>
+        {isAdmin && typeof onDelete === 'function' ? (
+          <button
+            className="tutor-delete-button"
+            type="button"
+            onClick={() => onDelete()}
+          >
+            Delete
+          </button>
+        ) : null}
         <button
           type="button"
           className="profile-circle tutor-avatar-button"

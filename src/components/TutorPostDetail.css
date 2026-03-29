@@ -37,6 +37,24 @@
   z-index: 10;
 }
 
+.tutor-delete-button {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background-color: #e74c3c;
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.tutor-delete-button:hover {
+  opacity: 0.92;
+}
+
 .tutor-post-detail .profile-circle {
   position: absolute;
   left: 50%;

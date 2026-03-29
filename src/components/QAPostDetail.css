@@ -28,6 +28,24 @@
   color: #000000;
 }
 
+.qa-delete {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background-color: #e74c3c;
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.qa-delete:hover {
+  opacity: 0.92;
+}
+
 .qa-detail-scroll {
   height: 100vh;
   overflow-y: auto;

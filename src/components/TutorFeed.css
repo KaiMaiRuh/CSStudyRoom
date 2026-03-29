@@ -176,6 +176,27 @@
   background-color: #e5b816;
 }
 
+.tutor-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.delete-post-button {
+  background-color: #e74c3c;
+  color: #ffffff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 30px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.delete-post-button:hover {
+  opacity: 0.92;
+}
+
 @media (max-width: 768px) {
   .tutor-card {
     padding: 1rem;

@@ -258,18 +258,19 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
               
               <div className="form-row">
                 <div className="form-group">
-                  <label>Hours</label>
-                  <input 
-                    type="number" 
-                    name="hours"
-                    value={formData.hours}
-                    onChange={handleInputChange}
-                    placeholder="Number of hours"
-                    min="0.5"
-                    step="0.5"
-                    required
-                  />
-                </div>
+                <label>Hours (0.5 to 24 hours)</label>
+                <input 
+                  type="number" 
+                  name="hours"
+                  value={formData.hours}
+                  onChange={handleInputChange}
+                  placeholder="Number of hours (0.5 - 24)"
+                  min="0.5"
+                  max="24"
+                  step="0.5"
+                  required
+                />
+              </div>
                 
                 <div className="form-group">
                   <label>Capacity</label>

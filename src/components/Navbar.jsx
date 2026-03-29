@@ -35,7 +35,7 @@ const Navbar = ({
           </button>
         ) : null}
 
-        {showCreatePost ? (
+        {showCreatePost && !isAdmin ? (
           <button
             className={`nav-button ${activePage === 'createPost' ? 'active' : ''}`}
             onClick={() => {
@@ -47,9 +47,11 @@ const Navbar = ({
             Create Post
           </button>
         ) : null}
-        <div className={`profile-icon ${activePage === 'profile' ? 'active' : ''}`} role="button" tabIndex={0} onClick={() => onNavigate?.('profile')} onKeyPress={(e)=>{ if(e.key==='Enter') onNavigate?.('profile'); }}>
-          {visibleAvatarUrl ? <img className="navbar-avatar-img" src={visibleAvatarUrl} alt="" /> : <FaUserCircle />}
-        </div>
+        {!isAdmin ? (
+          <div className={`profile-icon ${activePage === 'profile' ? 'active' : ''}`} role="button" tabIndex={0} onClick={() => onNavigate?.('profile')} onKeyPress={(e)=>{ if(e.key==='Enter') onNavigate?.('profile'); }}>
+            {visibleAvatarUrl ? <img className="navbar-avatar-img" src={visibleAvatarUrl} alt="" /> : <FaUserCircle />}
+          </div>
+        ) : null}
         {isLoggedIn ? (
           <button className="nav-button logout-button" onClick={onLogout}>Log out</button>
         ) : (

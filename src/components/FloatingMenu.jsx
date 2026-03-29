@@ -4,7 +4,7 @@ import { FaBell, FaEnvelope, FaPlus } from 'react-icons/fa';
 import NotificationPanel from './NotificationPanel';
 import './FloatingMenu.css';
 
-const FloatingMenu = ({ onCreatePost, onNavigate, isGroupMessagePage }) => {
+const FloatingMenu = ({ onCreatePost, onNavigate, isGroupMessagePage, hideCreatePost = false }) => {
   const [activePanel, setActivePanel] = useState(null);
 
   const openPanel = (panelType) => {
@@ -42,18 +42,20 @@ const FloatingMenu = ({ onCreatePost, onNavigate, isGroupMessagePage }) => {
         >
           <FaEnvelope />
         </button>
-        <button
-          className="fab-button create-btn"
-          onClick={() => {
-            if (typeof onCreatePost === 'function') {
-              onCreatePost();
-            } else {
-              window.location.hash = '#create-post';
-            }
-          }}
-        >
-          <FaPlus />
-        </button>
+        {!hideCreatePost ? (
+          <button
+            className="fab-button create-btn"
+            onClick={() => {
+              if (typeof onCreatePost === 'function') {
+                onCreatePost();
+              } else {
+                window.location.hash = '#create-post';
+              }
+            }}
+          >
+            <FaPlus />
+          </button>
+        ) : null}
       </div>
 
       {/* Overlay Panels */}
