@@ -1,7 +1,6 @@
 .tutor-post-detail {
   position: relative;
-  height: 100vh;
-  overflow-y: auto;
+  min-height: 100vh;
   padding-bottom: 80px;
   animation: tutorDetailEnter 220ms ease-out both;
 }
@@ -105,9 +104,7 @@
 
 /* Full-screen Join Info page (opened from See All) */
 .tutor-post-detail.tutor-joininfo {
-  height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  min-height: 100vh;
   animation: tutorDetailEnter 220ms ease-out both;
   background-color: #ecf1f6;
   display: flex;
@@ -297,6 +294,9 @@
   border-radius: 10px;
   padding: 15px;
   min-height: 100px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 /* Bottom Section */
