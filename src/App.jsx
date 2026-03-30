@@ -45,6 +45,8 @@ function App() {
   const [category, setCategory] = useState('');
   const [isFeedDetailOpen, setIsFeedDetailOpen] = useState(false);
   const [initialRouteApplied, setInitialRouteApplied] = useState(false);
+  const [openPostRef, setOpenPostRef] = useState(null);
+  const [viewProfileUid, setViewProfileUid] = useState(null);
 
   const isHome = activePage === 'home';
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
@@ -111,12 +113,41 @@ function App() {
   const extractFeedFromRaw = (raw) => {
     const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
     const p = (src || '').replace(/\/+$/, '') || '/';
-    if (p === '/tutor') return 'tutor';
-    if (p === '/qa') return 'qa';
+    if (p === '/tutor' || p.startsWith('/tutor/')) return 'tutor';
+    if (p === '/qa' || p.startsWith('/qa/')) return 'qa';
+    return null;
+  };
+
+  const extractPostRefFromRaw = (raw) => {
+    const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
+    const p = (src || '').replace(/\/+$/, '') || '/';
+
+    const tutorMatch = p.match(/^\/tutor\/([^/]+)$/);
+    if (tutorMatch) return { type: 'tutor', id: tutorMatch[1] };
+
+    const qaMatch = p.match(/^\/qa\/([^/]+)$/);
+    if (qaMatch) return { type: 'qa', id: qaMatch[1] };
+
+    return null;
+  };
+
+  const extractProfileUidFromRaw = (raw) => {
+    const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
+    const p = (src || '').replace(/\/+$/, '') || '/';
+
+    // /profile/{uid}
+    const m = p.match(/^\/profile\/([^/]+)$/);
+    if (m && m[1] && m[1] !== 'edit') return m[1];
     return null;
   };
 
   const applyPageState = (page) => {
+    // Treat CreatePost as an overlay: do not wipe the underlying page state.
+    if (page === 'createPost') {
+      setShowCreatePost(true);
+      return;
+    }
+
     // reset modal/page-specific flags first
     setShowCreateAccount(false);
     setShowProfile(false);
@@ -199,6 +230,12 @@ function App() {
   // Apply route immediately without performing auth redirects.
   // Used on initial load or when hash changes while auth is still initializing.
   const applyInitialRoute = (page) => {
+    // Treat CreatePost as an overlay: do not wipe the underlying page state.
+    if (page === 'createPost') {
+      setShowCreatePost(true);
+      return;
+    }
+
     // reset modal/page-specific flags first
     setShowCreateAccount(false);
     setShowProfile(false);
@@ -289,6 +326,22 @@ function App() {
       const p = pathToPage(raw);
       const feed = extractFeedFromRaw(raw);
       if (feed) setActiveFeed(feed);
+
+      if (p === 'profile') {
+        setViewProfileUid(extractProfileUidFromRaw(raw));
+      } else {
+        setViewProfileUid(null);
+      }
+
+      // Support deep links to post detail via hash routes:
+      // - #/qa/{postId}
+      // - #/tutor/{postId}
+      if (p === 'home') {
+        setOpenPostRef(extractPostRefFromRaw(raw));
+      } else {
+        setOpenPostRef(null);
+      }
+
       if (authLoading) {
         applyInitialRoute(p);
       } else {
@@ -302,6 +355,18 @@ function App() {
     const initial = pathToPage(raw);
     const initialFeed = extractFeedFromRaw(raw);
     if (initialFeed) setActiveFeed(initialFeed);
+
+    if (initial === 'profile') {
+      setViewProfileUid(extractProfileUidFromRaw(raw));
+    } else {
+      setViewProfileUid(null);
+    }
+
+    if (initial === 'home') {
+      setOpenPostRef(extractPostRefFromRaw(raw));
+    } else {
+      setOpenPostRef(null);
+    }
 
     if (!initialRouteApplied) {
       applyInitialRoute(initial);
@@ -322,6 +387,10 @@ function App() {
 
     return () => window.removeEventListener('hashchange', handleHash);
   }, [user, isAdmin, authLoading, profileLoading, initialRouteApplied]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setIsFeedDetailOpen(Boolean(openPostRef?.id));
+  }, [openPostRef?.id]);
 
 
 
@@ -495,6 +564,7 @@ function App() {
             {activeFeed === 'tutor' ? (
               <TutorFeed
                 posts={filteredTutorPosts}
+                openPostId={openPostRef?.type === 'tutor' ? openPostRef.id : null}
                 onDetailOpen={() => setIsFeedDetailOpen(true)}
                 onDetailClose={() => setIsFeedDetailOpen(false)}
                 canDelete={isAdmin}
@@ -503,6 +573,7 @@ function App() {
             ) : (
               <QAFeed
                 posts={filteredQaPosts}
+                openPostId={openPostRef?.type === 'qa' ? openPostRef.id : null}
                 onDetailOpen={() => setIsFeedDetailOpen(true)}
                 onDetailClose={() => setIsFeedDetailOpen(false)}
                 canDelete={isAdmin}
@@ -515,6 +586,7 @@ function App() {
       {showSignIn && <SignIn onNavigate={navigateTo} />}
       {showProfile && (
         <Profile
+          viewUid={viewProfileUid}
           tutorPosts={tutorPosts}
           qaPosts={qaPosts}
           onEdit={() => {

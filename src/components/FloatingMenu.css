@@ -14,12 +14,32 @@
   height: 50px;
   border-radius: 50%;
   border: none;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s;
+}
+
+.fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background-color: #e74c3c;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .fab-button:hover {
@@ -79,4 +99,56 @@
   color: #cccccc;
   font-size: 1.2rem;
   line-height: 1.6;
+}
+
+.notification-title {
+  margin: 0;
+  color: #1a2b48;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.notification-hint {
+  margin-top: 1rem;
+}
+
+.notification-error {
+  margin-top: 1rem;
+  color: #cc0000;
+  font-size: 1rem;
+}
+
+.notification-list {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.notification-item {
+  width: 100%;
+  background: white;
+  border: 1px solid rgba(26, 43, 72, 0.15);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.notification-item:hover {
+  background: rgba(252, 196, 25, 0.08);
+}
+
+.notification-item-title {
+  color: #1a2b48;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.notification-item-body {
+  color: #1a2b48;
+  opacity: 0.8;
+  font-size: 0.95rem;
+  line-height: 1.4;
 }

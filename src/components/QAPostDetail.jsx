@@ -34,11 +34,34 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
   const [commentImageUrl, setCommentImageUrl] = useState(null);
   const [composerError, setComposerError] = useState('');
   const [previewSrc, setPreviewSrc] = useState(null);
-  const { user, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
 
   const imageInputRef = useRef(null);
+  const detailScrollRef = useRef(null);
+  const shouldAutoScrollRef = useRef(false);
+  const previousCommentCountRef = useRef(0);
 
   const postId = post?.id ?? null;
+
+  const openUserProfile = (uid) => {
+    if (!uid) return;
+    try {
+      window.location.hash = uid === user?.uid ? '/profile' : `/profile/${uid}`;
+    } catch {
+      // ignore
+    }
+  };
+
+  // Prevent body scroll when QAPostDetail is active
+  useEffect(() => {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -98,7 +121,9 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
     };
   }, [post, livePost]);
 
+  const authorUid = mergedPost?.authorId ?? mergedPost?.user?.uid ?? null;
   const authorName = mergedPost?.user?.name ?? mergedPost?.authorName ?? mergedPost?.author ?? 'Unknown';
+  const authorLabel = mergedPost?.user?.username ? `@${mergedPost.user.username}` : authorName;
   const authorAvatar = mergedPost?.user?.avatar ?? mergedPost?.authorAvatar ?? '';
   const formatPostedTime = (minutesAgo) => {
     if (minutesAgo == null || Number.isNaN(minutesAgo)) return '';
@@ -120,7 +145,11 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
     if (Array.isArray(liveComments)) {
       return liveComments.map((c) => ({
         id: c.id,
-        user: { name: c.authorName || 'Unknown', avatar: c.authorAvatar || '' },
+        user: {
+          uid: c.authorId || null,
+          name: c.authorName || 'Unknown',
+          avatar: c.authorAvatar || '',
+        },
         text: c.text || '',
         imageUrl: isDataUrlImage(c.imageUrl) ? c.imageUrl : null,
         parentId: c.parentId ?? null,
@@ -158,6 +187,38 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
 
   const canAdminDeleteLiveComments = isAdmin && isFirebaseConfigured() && Boolean(postId) && Array.isArray(liveComments);
 
+  useEffect(() => {
+    const scrollContainer = detailScrollRef.current;
+    if (!scrollContainer) {
+      previousCommentCountRef.current = comments.length;
+      return;
+    }
+
+    const previousCount = previousCommentCountRef.current;
+    const nextCount = comments.length;
+    const hasNewComments = nextCount > previousCount;
+    const distanceFromBottom =
+      scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight;
+    const isNearBottom = distanceFromBottom < 120;
+
+    if (hasNewComments && (shouldAutoScrollRef.current || isNearBottom)) {
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+
+    if (shouldAutoScrollRef.current && !hasNewComments) {
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+
+    shouldAutoScrollRef.current = false;
+    previousCommentCountRef.current = nextCount;
+  }, [comments]);
+
   if (!post) return null;
 
   const handleToggleLike = async () => {
@@ -174,13 +235,26 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         db,
         postId,
         uid: user.uid,
-        authorName: user.displayName || user.email || 'User',
+        authorName: profile?.username ? `@${profile.username}` : (user.displayName || user.email || 'User'),
       });
     } catch (err) {
       console.error('Failed to toggle like', err);
       alert(err?.message || 'Failed to like post');
     } finally {
       setIsLikeBusy(false);
+    }
+  };
+
+  const handleShare = () => {
+    if (!postId) return;
+    if (!user?.uid) {
+      alert('Please log in to share posts');
+      return;
+    }
+    try {
+      window.location.hash = `/groupmessage/share/qa/${postId}`;
+    } catch {
+      // ignore
     }
   };
 
@@ -202,6 +276,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
     try {
       setComposerError('');
       setIsSendBusy(true);
+      shouldAutoScrollRef.current = true;
       const { db } = getFirebaseServices();
 
       let authorAvatar = '';
@@ -216,7 +291,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         db,
         postId,
         uid: user.uid,
-        authorName: user.displayName || user.email || 'User',
+        authorName: profile?.username ? `@${profile.username}` : (user.displayName || user.email || 'User'),
         authorAvatar,
         text: cleanedText,
         imageUrl: commentImageUrl,
@@ -286,22 +361,27 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         </button>
       ) : null}
 
-      <div className="qa-detail-scroll">
+      <div className="qa-detail-scroll" ref={detailScrollRef}>
         <div className="qa-detail-card">
           <div className="qa-detail-header">
             <button
               type="button"
               className="qa-avatar qa-avatar-button"
-              aria-label="Open profile image"
+              aria-label="Open profile"
               onClick={() => {
-                if (authorAvatar) setPreviewSrc(authorAvatar);
+                if (!authorUid) return;
+                try {
+                  window.location.hash = authorUid === user?.uid ? '/profile' : `/profile/${authorUid}`;
+                } catch {
+                  // ignore
+                }
               }}
-              disabled={!authorAvatar}
+              disabled={!authorUid}
             >
               {authorAvatar ? <img className="qa-avatar-img" src={authorAvatar} alt="" /> : <FaUserCircle size={42} />}
             </button>
             <div className="qa-meta">
-              <div className="qa-author">{authorName}</div>
+              <div className="qa-author">{authorLabel}</div>
               <div className="qa-posted">{postedLabel}</div>
             </div>
           </div>
@@ -357,7 +437,16 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
               <FaComment />
               <span className="qa-action-count">{mergedPost?.comments ?? 0}</span>
             </span>
-            <span className="qa-action" role="button" tabIndex={0} aria-label="Share">
+            <span
+              className="qa-action"
+              role="button"
+              tabIndex={0}
+              aria-label="Share"
+              onClick={handleShare}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleShare();
+              }}
+            >
               <FaShare />
             </span>
           </div>
@@ -368,16 +457,29 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         <div className="qa-comments">
           {comments.map((c) => (
             <div key={c.id} className="qa-comment">
-              <div className="qa-comment-avatar" aria-hidden="true">
+              <button
+                type="button"
+                className="qa-comment-avatar qa-comment-avatar-btn"
+                aria-label="Open profile"
+                onClick={() => openUserProfile(c.user?.uid)}
+                disabled={!c.user?.uid}
+              >
                 {c.user?.avatar ? (
                   <img className="qa-comment-avatar-img" src={c.user.avatar} alt="" />
                 ) : (
                   <FaUserCircle size={34} />
                 )}
-              </div>
+              </button>
               <div className="qa-comment-content">
                 <div className="qa-comment-head">
-                  <div className="qa-comment-name">{c.user?.name}</div>
+                  <button
+                    type="button"
+                    className="qa-comment-name qa-comment-name-btn"
+                    onClick={() => openUserProfile(c.user?.uid)}
+                    disabled={!c.user?.uid}
+                  >
+                    {c.user?.name}
+                  </button>
                   {canAdminDeleteLiveComments ? (
                     <button
                       className="qa-comment-delete"
@@ -420,6 +522,9 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
             </div>
           ))}
         </div>
+
+        {/* Spacer so fixed composer doesn't cover the last comments */}
+        <div className="qa-comments-spacer" />
       </div>
 
       <div className="qa-composer" onClick={(e) => e.stopPropagation()}>

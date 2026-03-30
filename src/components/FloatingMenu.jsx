@@ -13,6 +13,7 @@ const FloatingMenu = ({
   hideGroupMessage = false,
 }) => {
   const [activePanel, setActivePanel] = useState(null);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const openPanel = (panelType) => {
     setActivePanel(panelType);
@@ -43,6 +44,11 @@ const FloatingMenu = ({
             onClick={() => openPanel('notification')}
           >
             <FaBell />
+            {notificationCount > 0 ? (
+              <span className="fab-badge" aria-label={`Notifications: ${notificationCount}`}>
+                {notificationCount > 99 ? '99+' : String(notificationCount)}
+              </span>
+            ) : null}
           </button>
         ) : null}
 
@@ -70,10 +76,14 @@ const FloatingMenu = ({
         ) : null}
       </div>
 
-      {/* Overlay Panels */}
-      {activePanel === 'notification' && (
-        <NotificationPanel onClose={closePanel} />
-      )}
+      {/* Notification overlay panel (kept mounted to maintain live count) */}
+      {!hideNotification ? (
+        <NotificationPanel
+          isOpen={activePanel === 'notification'}
+          onClose={closePanel}
+          onCountChange={setNotificationCount}
+        />
+      ) : null}
     </div>
   );
 };

@@ -69,8 +69,9 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
             id: docSnapshot.id,
             ...postData,
             user: postData.user || {
-              name: postData.authorName || 'Unknown',
+              name: postData.authorUsername || postData.authorName || 'Unknown',
               displayName: postData.authorName || 'Unknown',
+              username: postData.authorUsername || null,
               avatar: postData.authorAvatar || '',
               uid: postData.authorId || null,
             },
@@ -107,10 +108,15 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       setJoinError('Admin cannot join posts');
       return;
     }
-    if (!user?.uid || !profile?.displayName) {
+    if (!user?.uid) {
       setJoinError('Please log in first');
       return;
     }
+
+    const actorLabel = profile?.username
+      ? `@${profile.username}`
+      : (profile?.displayName || user.displayName || user.email || 'User');
+    const actorAvatar = profile?.avatarUrl || profile?.photoURL || user.photoURL || null;
 
     const postOwnerUid = postAuthor?.uid || authorId;
     const isOwner = user?.uid && postOwnerUid && user.uid === postOwnerUid;
@@ -154,7 +160,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       }
 
       // 2. Add current user to group
-      await addMemberToGroup(groupId, user.uid, profile.displayName);
+      await addMemberToGroup(groupId, user.uid, actorLabel);
 
       // 3. Update post with new joiner
       if (isFirebaseConfigured()) {
@@ -163,8 +169,8 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
         
         const newJoiner = {
           uid: user.uid,
-          name: profile.displayName,
-          avatar: profile.photoURL || null,
+          name: actorLabel,
+          avatar: actorAvatar,
         };
 
         await updateDoc(postRef, {
@@ -176,7 +182,8 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       try {
         await sendSystemMessage(
           groupId,
-          `${profile.displayName} joined the group`
+          `${actorLabel} joined the group`,
+          { senderId: user.uid, senderName: actorLabel, senderAvatar: actorAvatar }
         );
       } catch (err) {
         console.warn('Failed to send system message:', err);
@@ -193,10 +200,14 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   };
 
   const handleLeavePost = async () => {
-    if (!user?.uid || !profile?.displayName) {
+    if (!user?.uid) {
       setJoinError('Please log in first');
       return;
     }
+
+    const actorLabel = profile?.username
+      ? `@${profile.username}`
+      : (profile?.displayName || user.displayName || user.email || 'User');
 
     if (isOwner) {
       setJoinError('Owner cannot leave their own tutoring post');
@@ -235,7 +246,8 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
         try {
           await sendSystemMessage(
             existingGroup.id,
-            `${profile.displayName} left the group`
+            `${actorLabel} left the group`,
+            { senderId: user.uid, senderName: actorLabel }
           );
         } catch (err) {
           console.warn('Failed to send system message:', err);
@@ -260,6 +272,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     experience,
     location,
     authorId,
+    authorUsername,
   } = displayPost || {};
 
   const postOwnerUid = postAuthor?.uid || authorId || null;
@@ -279,7 +292,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
 
   const plainAuthor = {
     uid: postOwnerUid,
-    name: postAuthor?.displayName || postAuthor?.name || 'Unknown',
+    name: authorUsername ? `@${authorUsername}` : (postAuthor?.displayName || postAuthor?.name || 'Unknown'),
     avatar: postAuthor?.avatar || '',
   };
 
@@ -380,15 +393,19 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
                   className="joiner-avatar"
                   aria-label="Profile"
                   onClick={() => {
-                    const avatarUrl = joiner?.avatar || resolvedJoiners[joiner.uid];
-                    if (avatarUrl) setPreviewSrc(avatarUrl);
+                    const uid = joiner?.uid || null;
+                    if (!uid) return;
+                    try {
+                      window.location.hash = uid === user?.uid ? '/profile' : `/profile/${uid}`;
+                    } catch {
+                      // ignore
+                    }
                   }}
-                  disabled={!(joiner?.avatar || resolvedJoiners[joiner.uid])}
                   style={{
                     background: 'none',
                     border: 'none',
                     padding: 0,
-                    cursor: joiner?.avatar || resolvedJoiners[joiner.uid] ? 'pointer' : 'default',
+                    cursor: joiner?.uid ? 'pointer' : 'default',
                   }}
                 >
                   {joiner?.avatar || resolvedJoiners[joiner.uid] ? (
@@ -460,11 +477,16 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
         <button
           type="button"
           className="profile-circle tutor-avatar-button"
-          aria-label="Open profile image"
+          aria-label="Open profile"
           onClick={() => {
-            if (postAuthor?.avatar) setPreviewSrc(postAuthor.avatar);
+            const uid = postOwnerUid;
+            if (!uid) return;
+            try {
+              window.location.hash = uid === user?.uid ? '/profile' : `/profile/${uid}`;
+            } catch {
+              // ignore
+            }
           }}
-          disabled={!postAuthor?.avatar}
         >
           {postAuthor?.avatar ? <img className="tutor-avatar-img" src={postAuthor.avatar} alt="" /> : <FaRegUserCircle size={100} />}
         </button>
@@ -473,7 +495,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       {/* Middle Section */}
       <div className="middle-section">
         <div className="header">
-          <h1 className="user-name">{postAuthor?.name}</h1>
+          <h1 className="user-name">{plainAuthor.name}</h1>
           <p className="subject">Subject : {subject}</p>
         </div>
 

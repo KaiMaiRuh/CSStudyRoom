@@ -9,6 +9,7 @@ import {
   onSnapshot,
   serverTimestamp,
   updateDoc,
+  increment,
   arrayUnion,
   arrayRemove,
   getDocs,
@@ -41,6 +42,13 @@ export async function createGroup(postId, postTitle, subject, ownerId, ownerName
     members: [ownerId],
     createdAt: serverTimestamp(),
     memberCount: 1,
+    messageCount: 0,
+    lastMessageAt: null,
+    lastMessageId: null,
+    lastMessageText: null,
+    lastMessageSenderId: null,
+    lastMessageSenderName: null,
+    lastMessageType: null,
   };
 
   const docRef = await addDoc(collection(db, 'groups'), groupData);
@@ -184,32 +192,43 @@ export function subscribeToUserGroups(userId, callback) {
  * @param {string} senderName - The sender's name
  * @param {string} text - The message text
  */
-export async function sendGroupMessage(groupId, senderId, senderName, text) {
+export async function sendGroupMessage(groupId, senderId, senderName, text, senderAvatar = null) {
   if (!isFirebaseConfigured()) {
     throw new Error('Firebase is not configured');
   }
 
-  if (!text.trim()) {
+  const cleanedText = String(text || '').trim();
+  if (!cleanedText) {
     throw new Error('Message cannot be empty');
   }
 
   const { db } = getFirebaseServices();
 
   const messageData = {
-    text,
+    type: 'text',
+    text: cleanedText,
     senderId,
     senderName,
+    senderAvatar: senderAvatar || null,
     timestamp: serverTimestamp(),
   };
 
   // Add message
-  await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
+  const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
 
   // Update group's lastMessageAt for sorting
   const groupRef = doc(db, 'groups', groupId);
   await updateDoc(groupRef, {
     lastMessageAt: serverTimestamp(),
+    lastMessageId: msgRef.id,
+    lastMessageText: cleanedText,
+    lastMessageSenderId: senderId,
+    lastMessageSenderName: senderName,
+    lastMessageType: 'text',
+    messageCount: increment(1),
   });
+
+  return msgRef.id;
 }
 
 /**
@@ -217,24 +236,126 @@ export async function sendGroupMessage(groupId, senderId, senderName, text) {
  * @param {string} groupId - The group ID
  * @param {string} text - The message text
  */
-export async function sendSystemMessage(groupId, text) {
+export async function sendSystemMessage(groupId, text, sender = null) {
   if (!isFirebaseConfigured()) {
     throw new Error('Firebase is not configured');
   }
 
-  if (!text.trim()) {
+  const cleanedText = String(text || '').trim();
+  if (!cleanedText) {
     throw new Error('Message cannot be empty');
   }
 
   const { db } = getFirebaseServices();
 
+  const senderId = sender?.senderId || null;
+  const senderName = sender?.senderName || null;
+  const senderAvatar = sender?.senderAvatar || null;
+
   const messageData = {
     type: 'system',
-    text,
+    text: cleanedText,
+    senderId,
+    senderName,
+    senderAvatar,
     timestamp: serverTimestamp(),
   };
 
-  await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
+  const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
+
+  // Keep group sorting + unread counters consistent
+  const groupRef = doc(db, 'groups', groupId);
+  await updateDoc(groupRef, {
+    lastMessageAt: serverTimestamp(),
+    lastMessageId: msgRef.id,
+    lastMessageText: cleanedText,
+    lastMessageSenderId: senderId,
+    lastMessageSenderName: senderName,
+    lastMessageType: 'system',
+    messageCount: increment(1),
+  });
+
+  return msgRef.id;
+}
+
+/**
+ * Send a shared-post message into a group chat.
+ * The saved message includes { type: 'share', sharedPost: { type, id, title, subject } }
+ * so the UI can navigate to the post detail when clicked.
+ */
+export async function sendSharedPostMessage({ groupId, senderId, senderName, senderAvatar = null, postType, postId }) {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase is not configured');
+  }
+  if (!groupId) throw new Error('groupId is required');
+  if (!senderId) throw new Error('senderId is required');
+  if (!senderName) throw new Error('senderName is required');
+  if (postType !== 'qa' && postType !== 'tutor') throw new Error('Invalid postType');
+  if (!postId) throw new Error('postId is required');
+
+  const { db } = getFirebaseServices();
+
+  // Load the post for preview/title
+  const postRef = doc(db, postType === 'qa' ? 'qaPosts' : 'tutorPosts', postId);
+  const postSnap = await getDoc(postRef);
+  if (!postSnap.exists()) {
+    throw new Error('Post not found');
+  }
+  const postData = postSnap.data() || {};
+
+  const title =
+    (postType === 'qa' ? (postData.question || '') : (postData.title || '')) ||
+    postData.subject ||
+    'Post';
+  const subject = postData.subject || '';
+
+  const messageData = {
+    type: 'share',
+    text: String(title || 'Shared a post'),
+    senderId,
+    senderName,
+    senderAvatar: senderAvatar || null,
+    timestamp: serverTimestamp(),
+    sharedPost: {
+      type: postType,
+      id: postId,
+      title: String(title || ''),
+      subject: String(subject || ''),
+    },
+  };
+
+  const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
+
+  const groupRef = doc(db, 'groups', groupId);
+  await updateDoc(groupRef, {
+    lastMessageAt: serverTimestamp(),
+    lastMessageId: msgRef.id,
+    lastMessageText: String(title || 'Shared a post'),
+    lastMessageSenderId: senderId,
+    lastMessageSenderName: senderName,
+    lastMessageType: 'share',
+    messageCount: increment(1),
+  });
+
+  // For Q&A posts, treat "share to group" as a Share action.
+  if (postType === 'qa') {
+    try {
+      await updateDoc(postRef, {
+        shareCount: increment(1),
+        updatedAt: serverTimestamp(),
+        lastShareAt: serverTimestamp(),
+        lastShareById: senderId,
+        lastShareByName: senderName,
+        lastShareGroupId: groupId,
+        lastShareMessageId: msgRef.id,
+      });
+    } catch (err) {
+      console.warn('Failed to increment qa post shareCount', err);
+      // non-fatal
+    }
+  }
+
+  return msgRef.id;
 }
 
 /**

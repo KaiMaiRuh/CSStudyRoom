@@ -20,36 +20,42 @@ import {
 import { imageFileToBase64DataUrl } from './imageBase64';
 import ImagePreviewModal from './ImagePreviewModal';
 
-const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePost }) => {
+const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePost }) => {
   const { user } = useAuth();
   const [profileState, setProfileState] = useState({ uid: null, data: null });
   const [isAvatarSaving, setIsAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const [previewSrc, setPreviewSrc] = useState(null);
 
+  const targetUid = viewUid || user?.uid || null;
+  const isOwnProfile = Boolean(user?.uid && targetUid && user.uid === targetUid);
+
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!targetUid) return;
     if (!isFirebaseConfigured()) return;
 
     const { db } = getFirebaseServices();
-    const ref = doc(db, 'users', user.uid);
+    const ref = doc(db, 'users', targetUid);
 
     return onSnapshot(
       ref,
       (snap) => {
-        setProfileState({ uid: user.uid, data: snap.exists() ? snap.data() : null });
+        setProfileState({ uid: targetUid, data: snap.exists() ? snap.data() : null });
       },
       (err) => {
         console.error('Failed to load profile', err);
       }
     );
-  }, [user?.uid]);
+  }, [targetUid]);
 
-  const profileDoc = user?.uid && profileState.uid === user.uid ? profileState.data : null;
+  const profileDoc = targetUid && profileState.uid === targetUid ? profileState.data : null;
 
   const userProfile = useMemo(() => {
     const docData = profileDoc || {};
-    const displayName = docData.displayName || user?.displayName || user?.email || 'User';
+    const displayName =
+      docData.displayName ||
+      (isOwnProfile ? (user?.displayName || user?.email) : null) ||
+      'User';
     const education = docData.education || {};
     const contact = docData.contact || {};
     const contactFromLegacy = [contact.discord, contact.line].filter(Boolean).join(' / ');
@@ -71,11 +77,11 @@ const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePo
       contactText: docData.contactText || contactFromLegacy || '',
       bio: docData.bio || '',
     };
-  }, [profileDoc, user?.displayName, user?.email]);
+  }, [profileDoc, isOwnProfile, user?.displayName, user?.email]);
 
   const handleAvatarChange = async (file) => {
     if (!file) return;
-    if (!user?.uid) return;
+    if (!isOwnProfile || !user?.uid) return;
     if (!isFirebaseConfigured()) return;
 
     try {
@@ -141,7 +147,7 @@ const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePo
   };
 
   const pastPosts = useMemo(() => {
-    const uid = user?.uid;
+    const uid = targetUid;
     if (!uid) return [];
 
     const tutor = (Array.isArray(tutorPosts) ? tutorPosts : [])
@@ -200,20 +206,22 @@ const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePo
               )}
             </div>
 
-            <label
-              className="camera-icon"
-              title="Change profile image"
-              style={isAvatarSaving ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <FaCamera className="camera-icon-camera" />
-              <input
-                className="profile-avatar-input"
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleAvatarChange(e.target.files?.[0])}
-              />
-            </label>
+            {isOwnProfile ? (
+              <label
+                className="camera-icon"
+                title="Change profile image"
+                style={isAvatarSaving ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <FaCamera className="camera-icon-camera" />
+                <input
+                  className="profile-avatar-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleAvatarChange(e.target.files?.[0])}
+                />
+              </label>
+            ) : null}
           </div>
 
           {avatarError ? <div className="profile-avatar-error">{avatarError}</div> : null}
@@ -221,9 +229,11 @@ const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePo
         <div className="profile-info">
           <h1 className="profile-name">{userProfile.name}</h1>
           {userProfile.username && <div style={{ color: '#666', marginTop: 4 }}>@{userProfile.username}</div>}
-          <button className="edit-profile-btn" type="button" onClick={() => onEdit?.()}>
-            Edit profile
-          </button>
+          {isOwnProfile ? (
+            <button className="edit-profile-btn" type="button" onClick={() => onEdit?.()}>
+              Edit profile
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -293,22 +303,24 @@ const Profile = ({ tutorPosts = [], qaPosts = [], onEdit, onEditPost, onDeletePo
                   <p>{post.description}</p>
                   <p className="post-date">{post.date}</p>
                 </div>
-                <div className="post-actions">
-                  <button
-                    className="edit-btn"
-                    type="button"
-                    onClick={() => onEditPost?.({ type: post.type, id: post.rawId, post: post.raw })}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="delete-btn"
-                    type="button"
-                    onClick={() => onDeletePost?.({ type: post.type, id: post.rawId, post: post.raw })}
-                  >
-                    Delete
-                  </button>
-                </div>
+                {isOwnProfile ? (
+                  <div className="post-actions">
+                    <button
+                      className="edit-btn"
+                      type="button"
+                      onClick={() => onEditPost?.({ type: post.type, id: post.rawId, post: post.raw })}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="delete-btn"
+                      type="button"
+                      onClick={() => onDeletePost?.({ type: post.type, id: post.rawId, post: post.raw })}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

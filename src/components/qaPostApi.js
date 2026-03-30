@@ -81,7 +81,13 @@ export async function toggleQaPostLike({ db, postId, uid, authorName }) {
       userName: authorName || null,
       createdAt: serverTimestamp(),
     });
-    tx.update(postRef, { likeCount: current + 1, updatedAt: serverTimestamp() });
+    tx.update(postRef, {
+      likeCount: current + 1,
+      updatedAt: serverTimestamp(),
+      lastLikeAt: serverTimestamp(),
+      lastLikeById: uid,
+      lastLikeByName: authorName || null,
+    });
     return { liked: true, likeCount: current + 1 };
   });
 }
@@ -122,6 +128,10 @@ export async function addQaPostComment({ db, postId, uid, authorName, authorAvat
     tx.update(postRef, {
       commentCount: current + 1,
       updatedAt: serverTimestamp(),
+      lastCommentAt: serverTimestamp(),
+      lastCommentById: uid,
+      lastCommentByName: authorName || null,
+      lastCommentId: commentRef.id,
     });
 
     return { commentId: commentRef.id, commentCount: current + 1 };

@@ -87,8 +87,9 @@ const FeedData = () => {
             return {
               id: d.id,
               user: { 
-                name: data.authorName || 'Unknown', 
+                name: data.authorUsername || data.authorName || 'Unknown', 
                 displayName: data.authorName || 'Unknown',
+                username: data.authorUsername || null,
                 avatar: data.authorAvatar || '',
                 uid: data.authorId || null,
               },
@@ -129,7 +130,12 @@ const FeedData = () => {
 
             return {
               id: d.id,
-              user: { name: data.authorName || 'Unknown', avatar: data.authorAvatar || '' },
+              user: {
+                name: data.authorUsername || data.authorName || 'Unknown',
+                username: data.authorUsername || null,
+                avatar: data.authorAvatar || '',
+                uid: data.authorId || null,
+              },
               subject: data.subject || '',
               question: data.question || '',
               description: data.description || '',
@@ -186,24 +192,25 @@ const FeedData = () => {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Log In Before Creating A Post.');
 
-    // Get author info from auth and users collection
-    const authorName = currentUser.displayName || currentUser.email || 'You';
-    let authorAvatar = currentUser.photoURL || '';
-    
-    // If photoURL not set in auth, try to get avatar from users collection
-    if (!authorAvatar) {
-      try {
-        const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-        authorAvatar = userSnap.data()?.avatarUrl || userSnap.data()?.photoURL || '';
-      } catch (err) {
-        console.warn('Failed to read user avatar', err);
-      }
+    // Get author info from auth + users/{uid}
+    let authorProfile = null;
+    try {
+      const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+      authorProfile = userSnap.exists() ? userSnap.data() : null;
+    } catch (err) {
+      console.warn('Failed to read user profile for author fields', err);
     }
+
+    const authorName = authorProfile?.displayName || currentUser.displayName || currentUser.email || 'You';
+    const authorUsername = authorProfile?.username || null;
+    const authorAvatar =
+      authorProfile?.avatarUrl || authorProfile?.photoURL || currentUser.photoURL || '';
 
     const baseDoc = {
       type: 'tutor',
       authorId: currentUser.uid,
       authorName,
+      authorUsername,
       authorAvatar,
       subject: post.subject || post.title || 'Untitled',
       location: post.location || '',
@@ -261,24 +268,25 @@ const FeedData = () => {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('Please Log In Before Creating A Post.');
 
-    // Get author info from auth and users collection
-    const authorName = currentUser.displayName || currentUser.email || 'You';
-    let authorAvatar = currentUser.photoURL || '';
-    
-    // If photoURL not set in auth, try to get avatar from users collection
-    if (!authorAvatar) {
-      try {
-        const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-        authorAvatar = userSnap.data()?.avatarUrl || userSnap.data()?.photoURL || '';
-      } catch (err) {
-        console.warn('Failed to read user avatar', err);
-      }
+    // Get author info from auth + users/{uid}
+    let authorProfile = null;
+    try {
+      const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+      authorProfile = userSnap.exists() ? userSnap.data() : null;
+    } catch (err) {
+      console.warn('Failed to read user profile for author fields', err);
     }
+
+    const authorName = authorProfile?.displayName || currentUser.displayName || currentUser.email || 'You';
+    const authorUsername = authorProfile?.username || null;
+    const authorAvatar =
+      authorProfile?.avatarUrl || authorProfile?.photoURL || currentUser.photoURL || '';
 
     const baseDoc = {
       type: 'qa',
       authorId: currentUser.uid,
       authorName,
+      authorUsername,
       authorAvatar,
       subject: post.subject || '',
       question: post.question || post.title || 'Untitled question',

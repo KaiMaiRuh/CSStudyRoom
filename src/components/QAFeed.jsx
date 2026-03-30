@@ -48,7 +48,7 @@ const QALikeAction = ({ postId, busy, onToggle }) => {
   );
 };
 
-const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
+const QAFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [busyPostId, setBusyPostId] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
@@ -56,22 +56,51 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
 
   const getPostAuthorName = (post) => {
     const fallback = post.user?.displayName || post.user?.name || post.authorName || 'Unknown';
-    if (!post.authorId || !user?.uid) return fallback;
+    const otherLabel = post.user?.username ? `@${post.user.username}` : fallback;
+    if (!post.authorId || !user?.uid) return otherLabel;
     if (post.authorId === user.uid) {
-      return profile?.displayName || user.displayName || fallback;
+      return profile?.username ? `@${profile.username}` : (profile?.displayName || user.displayName || otherLabel);
     }
-    return fallback;
+    return otherLabel;
   };
 
   const handleOpenDetail = (post) => {
+    const id = post?.id || null;
+    if (id) {
+      try {
+        window.location.hash = `/qa/${id}`;
+      } catch {
+        // ignore
+      }
+    }
     setSelectedPost(post);
     onDetailOpen?.();
   };
 
   const handleCloseDetail = () => {
+    try {
+      window.location.hash = '/qa';
+    } catch {
+      // ignore
+    }
     setSelectedPost(null);
     onDetailClose?.();
   };
+
+  useEffect(() => {
+    if (!openPostId) {
+      if (selectedPost) {
+        setSelectedPost(null);
+        onDetailClose?.();
+      }
+      return;
+    }
+
+    if (selectedPost?.id === openPostId) return;
+    const found = (Array.isArray(posts) ? posts : []).find((p) => p?.id === openPostId) || { id: openPostId };
+    setSelectedPost(found);
+    onDetailOpen?.();
+  }, [openPostId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatPostedTime = (minutesAgo) => {
     if (minutesAgo == null || Number.isNaN(minutesAgo)) return '';
@@ -83,6 +112,17 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
     }
     const days = Math.floor(mins / 1440);
     return `posted ${days} ${days === 1 ? 'day' : 'days'} ago`;
+  };
+
+  const getPostImages = (post) => {
+    const imagesFromList = Array.isArray(post.images)
+      ? post.images.filter((src) => typeof src === 'string' && src.trim())
+      : [];
+    const fallbackImage = typeof post.imageUrl === 'string' && post.imageUrl.trim() ? [post.imageUrl] : [];
+    const merged = [...imagesFromList, ...fallbackImage];
+
+    // keep the order stable and avoid duplicated URLs
+    return Array.from(new Set(merged));
   };
 
   if (selectedPost) {
@@ -116,7 +156,7 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
         db,
         postId,
         uid: user.uid,
-        authorName: user.displayName || user.email || 'User',
+        authorName: profile?.username ? `@${profile.username}` : (user.displayName || user.email || 'User'),
       });
     } catch (err) {
       console.error('Failed to toggle like', err);
@@ -144,13 +184,18 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
             <button
               type="button"
               className="profile-circle"
-              aria-label="Open profile image"
+              aria-label="Open profile"
               onClick={(e) => {
                 e.stopPropagation();
-                if (post.user?.avatar) setPreviewSrc(post.user.avatar);
+                const uid = post.user?.uid || post.authorId || null;
+                if (!uid) return;
+                try {
+                  window.location.hash = uid === user?.uid ? '/profile' : `/profile/${uid}`;
+                } catch {
+                  // ignore
+                }
               }}
-              disabled={!post.user?.avatar}
-              style={{ background: 'white', border: '2px solid #1a2b48', padding: 0, cursor: post.user?.avatar ? 'pointer' : 'default' }}
+              style={{ background: 'white', border: '2px solid #1a2b48', padding: 0, cursor: post.user?.uid || post.authorId ? 'pointer' : 'default' }}
             >
               {post.user?.avatar ? (
                 <img className="feed-avatar-img" src={post.user.avatar} alt="" />
@@ -173,48 +218,49 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
           
           <div className="card-content">
             <h3 className="question-text">{post.question}</h3>
-            {Array.isArray(post.images) && post.images.length > 0 ? (
-              <button
-                type="button"
-                aria-label="Open image"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPreviewSrc(post.images[0]);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  width: '100%',
-                  cursor: 'pointer',
-                }}
-              >
-                <img className="qa-feed-image" src={post.images[0]} alt="" />
-              </button>
-            ) : post.imageUrl ? (
-              <button
-                type="button"
-                aria-label="Open image"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPreviewSrc(post.imageUrl);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  width: '100%',
-                  cursor: 'pointer',
-                }}
-              >
-                <img className="qa-feed-image" src={post.imageUrl} alt="" />
-              </button>
-            ) : (
-              <div className="image-placeholder">
-                <FaCamera style={{ marginRight: 8 }} />
-                <span>Image preview</span>
-              </div>
-            )}
+            {(() => {
+              const postImages = getPostImages(post);
+              if (postImages.length === 0) {
+                return (
+                  <div className="image-placeholder">
+                    <FaCamera style={{ marginRight: 8 }} />
+                    <span>Image preview</span>
+                  </div>
+                );
+              }
+
+              const previewImages = postImages.slice(0, 4);
+              const extraImageCount = postImages.length - previewImages.length;
+
+              return (
+                <div className="qa-feed-image-grid">
+                  {previewImages.map((imageSrc, index) => {
+                    const isOverflowTile = index === 3 && extraImageCount > 0;
+                    return (
+                      <button
+                        key={`${post.id}-img-${index}`}
+                        type="button"
+                        className="qa-feed-image-tile"
+                        aria-label={isOverflowTile ? 'Open post detail' : `Open image ${index + 1}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isOverflowTile) {
+                            handleOpenDetail(post);
+                            return;
+                          }
+                          setPreviewSrc(imageSrc);
+                        }}
+                      >
+                        <img className="qa-feed-image" src={imageSrc} alt="" />
+                        {isOverflowTile ? (
+                          <span className="qa-feed-image-more">+{extraImageCount}</span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
           
           <div className="card-footer">
@@ -234,7 +280,37 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
               </div>
 
               <div className="action-with-count">
-                <span className="action-icon" aria-label="Share"><FaShare /></span>
+                <span
+                  className="action-icon"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Share"
+                  onClick={() => {
+                    if (!user?.uid) {
+                      alert('Please log in to share posts');
+                      return;
+                    }
+                    try {
+                      window.location.hash = `/groupmessage/share/qa/${post.id}`;
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    if (!user?.uid) {
+                      alert('Please log in to share posts');
+                      return;
+                    }
+                    try {
+                      window.location.hash = `/groupmessage/share/qa/${post.id}`;
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  <FaShare />
+                </span>
                 <span className="action-count">{post.shares ?? 0}</span>
               </div>
             </div>

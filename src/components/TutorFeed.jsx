@@ -1,12 +1,12 @@
 /* TutorFeed component */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaUserCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import './TutorFeed.css';
 import TutorPostDetail from './TutorPostDetail';
 import ImagePreviewModal from './ImagePreviewModal';
 import { useAuth } from '../auth/AuthContext';
 
-const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
+const TutorFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
   const { user, profile } = useAuth();
   const [selectedPost, setSelectedPost] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
@@ -33,14 +33,44 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false,
   };
 
   const handleOpenDetail = (post) => {
+    const id = post?.id || null;
+    if (id) {
+      try {
+        window.location.hash = `/tutor/${id}`;
+      } catch {
+        // ignore
+      }
+    }
+
     setSelectedPost(post);
     onDetailOpen?.();
   };
 
   const handleCloseDetail = () => {
+    try {
+      window.location.hash = '/tutor';
+    } catch {
+      // ignore
+    }
     setSelectedPost(null);
     onDetailClose?.();
   };
+
+  useEffect(() => {
+    if (!openPostId) {
+      if (selectedPost) {
+        setSelectedPost(null);
+        onDetailClose?.();
+      }
+      return;
+    }
+
+    if (selectedPost?.id === openPostId) return;
+
+    const found = (Array.isArray(posts) ? posts : []).find((p) => p?.id === openPostId) || { id: openPostId };
+    setSelectedPost(found);
+    onDetailOpen?.();
+  }, [openPostId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatPostedTime = (minutesAgo) => {
     if (minutesAgo == null || Number.isNaN(minutesAgo)) return '';
@@ -89,13 +119,18 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false,
             <button
               type="button"
               className="profile-circle"
-              aria-label="Open profile image"
+              aria-label="Open profile"
               onClick={(e) => {
                 e.stopPropagation();
-                if (post.user?.avatar) setPreviewSrc(post.user.avatar);
+                const uid = post.user?.uid || post.authorId || null;
+                if (!uid) return;
+                try {
+                  window.location.hash = uid === user?.uid ? '/profile' : `/profile/${uid}`;
+                } catch {
+                  // ignore
+                }
               }}
-              disabled={!post.user?.avatar}
-              style={{ background: 'white', border: '2px solid #1a2b48', padding: 0, cursor: post.user?.avatar ? 'pointer' : 'default' }}
+              style={{ background: 'white', border: '2px solid #1a2b48', padding: 0, cursor: post.user?.uid || post.authorId ? 'pointer' : 'default' }}
             >
               {post.user?.avatar ? (
                 <img className="feed-avatar-img" src={post.user.avatar} alt="" />
@@ -112,7 +147,11 @@ const TutorFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false,
               </div>
               <div className="subject-by">
                 <span className="subject">{post.subject}</span>
-                <span className="by-name">By {post.user?.uid === user?.uid ? (profile?.displayName || post.user?.displayName || post.user?.name || 'Unknown') : (post.user?.displayName || post.user?.name || 'Unknown')}</span>
+                <span className="by-name">
+                  By {post.user?.uid === user?.uid
+                    ? (profile?.username ? `@${profile.username}` : (profile?.displayName || post.user?.displayName || post.user?.name || 'Unknown'))
+                    : (post.user?.username ? `@${post.user.username}` : (post.user?.displayName || post.user?.name || 'Unknown'))}
+                </span>
               </div>
               <div className="location">
                 <FaMapMarkerAlt style={{ marginRight: 6 }} /> {post.location}
