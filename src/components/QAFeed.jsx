@@ -1,6 +1,6 @@
 /* QAFeed component */
 import React, { useEffect, useState } from 'react';
-import { FaUserCircle, FaCamera, FaThumbsUp, FaComment, FaShare } from 'react-icons/fa';
+import { FaUserCircle, FaThumbsUp, FaComment, FaShare } from 'react-icons/fa';
 import './QAFeed.css';
 import QAPostDetail from './QAPostDetail';
 import ImagePreviewModal from './ImagePreviewModal';
@@ -220,14 +220,7 @@ const QAFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose, ca
             <h3 className="question-text">{post.question}</h3>
             {(() => {
               const postImages = getPostImages(post);
-              if (postImages.length === 0) {
-                return (
-                  <div className="image-placeholder">
-                    <FaCamera style={{ marginRight: 8 }} />
-                    <span>Image preview</span>
-                  </div>
-                );
-              }
+              if (postImages.length === 0) return null;
 
               const previewImages = postImages.slice(0, 4);
               const extraImageCount = postImages.length - previewImages.length;

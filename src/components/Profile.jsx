@@ -1,6 +1,6 @@
 /* Profile component */
 import React, { useEffect, useMemo, useState } from 'react';
-import { FaCamera, FaUserCircle } from 'react-icons/fa';
+import { FaCamera, FaPencilAlt, FaTrashAlt, FaUserCircle } from 'react-icons/fa';
 import './Profile.css';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
@@ -26,6 +26,7 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
   const [isAvatarSaving, setIsAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const [previewSrc, setPreviewSrc] = useState(null);
+  const [selectedPostType, setSelectedPostType] = useState('tutor');
 
   const targetUid = viewUid || user?.uid || null;
   const isOwnProfile = Boolean(user?.uid && targetUid && user.uid === targetUid);
@@ -149,6 +150,29 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
   const pastPosts = useMemo(() => {
     const uid = targetUid;
     if (!uid) return [];
+    const toIsoDate = (dateObj) => {
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const formatDateLabel = (value) => {
+      if (!value) return '';
+      if (typeof value === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? '' : toIsoDate(parsed);
+      }
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return toIsoDate(value);
+      }
+      const asDate = value?.toDate?.();
+      if (asDate instanceof Date && !Number.isNaN(asDate.getTime())) {
+        return toIsoDate(asDate);
+      }
+      return '';
+    };
 
     const tutor = (Array.isArray(tutorPosts) ? tutorPosts : [])
       .filter((p) => p?.authorId === uid)
@@ -157,7 +181,7 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
         rawId: p.id,
         type: 'tutor',
         title: p.title || p.subject || 'Tutor post',
-        date: p.date || '',
+        date: formatDateLabel(p.date) || formatDateLabel(p.createdAt),
         description: p.description || '',
         raw: p,
       }));
@@ -169,7 +193,7 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
         rawId: p.id,
         type: 'qa',
         title: p.question || p.subject || 'Q&A post',
-        date: p.date || '',
+        date: formatDateLabel(p.date) || formatDateLabel(p.createdAt),
         description: p.description || '',
         raw: p,
       }));
@@ -180,6 +204,10 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
   const normalizedRole = String(userProfile.role || '').toLowerCase();
   const showTutorSubjects = normalizedRole === 'tutor' || normalizedRole === 'both';
   const showStudentSubjects = normalizedRole === 'student' || normalizedRole === 'both';
+  const filteredPastPosts = useMemo(
+    () => pastPosts.filter((post) => post.type === selectedPostType),
+    [pastPosts, selectedPostType]
+  );
 
   return (
     <div className="profile-container">
@@ -228,7 +256,7 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
         </div>
         <div className="profile-info">
           <h1 className="profile-name">{userProfile.name}</h1>
-          {userProfile.username && <div style={{ color: '#666', marginTop: 4 }}>@{userProfile.username}</div>}
+          {userProfile.username && <div className="profile-handle">@{userProfile.username}</div>}
           {isOwnProfile ? (
             <button className="edit-profile-btn" type="button" onClick={() => onEdit?.()}>
               Edit profile
@@ -293,9 +321,30 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
           <div className="posts-header">
             <h2>Past Posts</h2>
           </div>
+
+          <div className="post-type-tabs" role="tablist" aria-label="Past post categories">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedPostType === 'tutor'}
+              className={`post-type-tab ${selectedPostType === 'tutor' ? 'active' : ''}`}
+              onClick={() => setSelectedPostType('tutor')}
+            >
+              Tutor post
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedPostType === 'qa'}
+              className={`post-type-tab ${selectedPostType === 'qa' ? 'active' : ''}`}
+              onClick={() => setSelectedPostType('qa')}
+            >
+              Q&amp;A post
+            </button>
+          </div>
           
           <div className="posts-list">
-            {pastPosts.map((post) => (
+            {filteredPastPosts.map((post) => (
               <div key={post.id} className="post-card">
                 <div className="post-icon"><FaUserCircle /></div>
                 <div className="post-details">
@@ -309,20 +358,25 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
                       className="edit-btn"
                       type="button"
                       onClick={() => onEditPost?.({ type: post.type, id: post.rawId, post: post.raw })}
+                      title="Edit"
                     >
-                      Edit
+                      <FaPencilAlt />
                     </button>
                     <button
                       className="delete-btn"
                       type="button"
                       onClick={() => onDeletePost?.({ type: post.type, id: post.rawId, post: post.raw })}
+                      title="Delete"
                     >
-                      Delete
+                      <FaTrashAlt />
                     </button>
                   </div>
                 ) : null}
               </div>
             ))}
+            {filteredPastPosts.length === 0 ? (
+              <div className="post-empty-state">No posts in this category</div>
+            ) : null}
           </div>
         </div>
       </div>

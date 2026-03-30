@@ -211,9 +211,9 @@
   border-radius: 15px;
   padding: 20px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  column-gap: 12px;
-  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
   margin-bottom: 20px;
 }
 
@@ -221,8 +221,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
   width: 100%;
+  min-width: 0;
 }
 
 .tutor-post-detail .summary-actions-row {
