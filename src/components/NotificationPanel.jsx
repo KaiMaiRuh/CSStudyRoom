@@ -17,7 +17,6 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
 
   useEffect(() => {
     if (!user?.uid) {
-      setGroupState({ uid: null, groups: [] });
       return;
     }
 
@@ -26,22 +25,23 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
         setGroupState({ uid: user.uid, groups: Array.isArray(groups) ? groups : [] });
       });
       return () => {
+        setGroupState({ uid: null, groups: [] });
         if (typeof unsub === 'function') unsub();
       };
     } catch (err) {
       console.error('Failed to subscribe groups for notifications', err);
-      setGroupState({ uid: user.uid, groups: [] });
-      setGroupError(err?.message || 'Failed to load group notifications');
+      Promise.resolve().then(() => {
+        setGroupState({ uid: user.uid, groups: [] });
+        setGroupError(err?.message || 'Failed to load group notifications');
+      });
     }
   }, [user?.uid]);
 
   useEffect(() => {
     if (!user?.uid) {
-      setQaState({ uid: null, posts: [] });
       return;
     }
     if (!isFirebaseConfigured()) {
-      setQaState({ uid: user.uid, posts: [] });
       return;
     }
 
@@ -88,12 +88,16 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
 
     unsub = subscribePrimary();
     return () => {
+      setQaState({ uid: null, posts: [] });
       if (typeof unsub === 'function') unsub();
     };
   }, [user?.uid]);
 
+  const groups = useMemo(() => {
+    return user?.uid && groupState.uid === user.uid ? (Array.isArray(groupState.groups) ? groupState.groups : []) : [];
+  }, [groupState, user]);
+
   const groupNotis = useMemo(() => {
-    const groups = user?.uid && groupState.uid === user.uid ? groupState.groups : [];
     return (Array.isArray(groups) ? groups : [])
       .filter((g) => g?.lastMessageAt)
       .filter((g) => {
@@ -122,12 +126,15 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
           targetHash: target,
         };
       });
-  }, [groupState, user?.uid]);
+  }, [groups, user]);
+
+  const posts = useMemo(() => {
+    return user?.uid && qaState.uid === user.uid ? (Array.isArray(qaState.posts) ? qaState.posts : []) : [];
+  }, [qaState, user]);
 
   const qaNotis = useMemo(() => {
-    const posts = user?.uid && qaState.uid === user.uid ? qaState.posts : [];
     const items = [];
-    (Array.isArray(posts) ? posts : []).forEach((p) => {
+    posts.forEach((p) => {
       const postId = p?.id;
       if (!postId) return;
       const title = p.question || p.subject || 'Q&A post';
@@ -166,7 +173,7 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
       }
     });
     return items;
-  }, [qaState, user?.uid]);
+  }, [posts, user]);
 
   const notis = useMemo(() => {
     const next = [...groupNotis, ...qaNotis]

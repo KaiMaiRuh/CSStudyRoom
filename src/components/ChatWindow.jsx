@@ -79,7 +79,7 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
     });
 
     return () => unsubscribe();
-  }, [groupId]);
+  }, [groupId, initialMessageId]);
 
   // Mark this group as read when the chat is open.
   // Uses group.messageCount when available (fallback to messages.length).

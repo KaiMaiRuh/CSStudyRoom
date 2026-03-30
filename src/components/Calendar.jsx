@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import './Calendar.css';
 
-const Calendar = ({ tutorPosts = [], onBack }) => {
+const Calendar = ({ tutorPosts = [] }) => {
   const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -27,7 +27,7 @@ const Calendar = ({ tutorPosts = [], onBack }) => {
     });
 
     return { ownPosts, joinedSessions };
-  }, [tutorPosts, user?.uid]);
+  }, [tutorPosts, user]);
 
   const allSessions = useMemo(() => {
     return [...sessionsByType.ownPosts, ...sessionsByType.joinedSessions];
@@ -85,12 +85,6 @@ const Calendar = ({ tutorPosts = [], onBack }) => {
 
   const handleNextMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const [year, month, day] = dateStr.split('-');
-    return new Date(year, parseInt(month) - 1, day);
   };
 
   const monthString = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });

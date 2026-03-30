@@ -39,7 +39,6 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [activePage, setActivePage] = useState('home');
@@ -159,7 +158,6 @@ function App() {
     setShowEditProfile(false);
     setShowSignIn(false);
     setShowCreatePost(false);
-    setShowCalendar(false);
     setIsFeedDetailOpen(false);
 
     // Prevent unauthenticated access to certain pages
@@ -234,7 +232,6 @@ function App() {
           setShowSignIn(true);
           setActivePage('signin');
         } else if (!isAdmin) {
-          setShowCalendar(true);
           setActivePage('calendar');
         } else {
           alert('Admin does not have Calendar page');
@@ -261,7 +258,6 @@ function App() {
     setShowEditProfile(false);
     setShowSignIn(false);
     setShowCreatePost(false);
-    setShowCalendar(false);
     setIsFeedDetailOpen(false);
 
     switch (page) {
@@ -292,7 +288,6 @@ function App() {
         setActivePage('admin');
         break;
       case 'calendar':
-        setShowCalendar(true);
         setActivePage('calendar');
         break;
       case 'groupmessage':

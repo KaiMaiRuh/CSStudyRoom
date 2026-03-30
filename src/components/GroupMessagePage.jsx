@@ -17,7 +17,10 @@ const GroupMessagePage = ({ onBack }) => {
   const [error, setError] = useState(null);
   const [shareContext, setShareContext] = useState(null);
 
-  const groups = user?.uid && groupsState.uid === user.uid ? groupsState.data || [] : [];
+  const groups = useMemo(() => {
+    return user?.uid && groupsState.uid === user.uid ? (Array.isArray(groupsState.data) ? groupsState.data : []) : [];
+  }, [groupsState, user]);
+
   const loading = Boolean(user?.uid) && groupsState.uid !== user.uid;
 
   // Subscribe to per-user read states for unread counters
@@ -43,7 +46,9 @@ const GroupMessagePage = ({ onBack }) => {
     );
   }, [user?.uid]);
 
-  const readsMap = user?.uid && readsState.uid === user.uid ? readsState.map || {} : {};
+  const readsMap = useMemo(() => {
+    return user?.uid && readsState.uid === user.uid ? (readsState.map && typeof readsState.map === 'object' ? readsState.map : {}) : {};
+  }, [readsState, user]);
 
   const unreadByGroupId = useMemo(() => {
     const next = {};

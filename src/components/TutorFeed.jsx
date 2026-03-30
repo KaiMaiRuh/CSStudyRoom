@@ -57,20 +57,29 @@ const TutorFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose,
   };
 
   useEffect(() => {
+    // Clear selected post when opening a different post or closing detail view
     if (!openPostId) {
-      if (selectedPost) {
-        setSelectedPost(null);
-        onDetailClose?.();
-      }
       return;
     }
 
     if (selectedPost?.id === openPostId) return;
 
     const found = (Array.isArray(posts) ? posts : []).find((p) => p?.id === openPostId) || { id: openPostId };
-    setSelectedPost(found);
-    onDetailOpen?.();
-  }, [openPostId]); // eslint-disable-line react-hooks/exhaustive-deps
+    Promise.resolve().then(() => {
+      setSelectedPost(found);
+      onDetailOpen?.();
+    });
+  }, [openPostId, posts]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Separate effect to handle cleanup when openPostId is cleared
+  useEffect(() => {
+    if (!openPostId && selectedPost) {
+      Promise.resolve().then(() => {
+        setSelectedPost(null);
+        onDetailClose?.();
+      });
+    }
+  }, [openPostId, selectedPost]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatPostedTime = (minutesAgo) => {
     if (minutesAgo == null || Number.isNaN(minutesAgo)) return '';

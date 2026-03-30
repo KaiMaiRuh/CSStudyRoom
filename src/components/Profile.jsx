@@ -175,7 +175,7 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
       }));
 
     return [...tutor, ...qa].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  }, [tutorPosts, qaPosts, user?.uid]);
+  }, [tutorPosts, qaPosts, targetUid]);
 
   const normalizedRole = String(userProfile.role || '').toLowerCase();
   const showTutorSubjects = normalizedRole === 'tutor' || normalizedRole === 'both';
