@@ -89,7 +89,7 @@ export default function SignIn({ onNavigate }) {
               </button>
             </form>
 
-            <div className="footer">
+            <div className="auth-switch-footer">
               <p>
                 Don't have an account?{' '}
                 <button type="button" className="link-button" onClick={() => onNavigate?.('createAccount')}>

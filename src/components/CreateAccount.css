@@ -2,6 +2,7 @@
   display: flex;
   min-height: 100vh;
   font-family: Arial, sans-serif;
+  animation: authPageEnter 240ms ease-out both;
 }
 
 .create-account-container {
@@ -12,6 +13,35 @@
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
   overflow: hidden;
+  animation: authCardEnter 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center top;
+}
+
+@keyframes authPageEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes authCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-account-wrapper,
+  .create-account-container {
+    animation: none;
+  }
 }
 
 .left-panel {
@@ -163,18 +193,18 @@
   box-shadow: none;
 }
 
-.footer {
+.auth-switch-footer {
   text-align: center;
   margin-top: 20px;
 }
 
-.footer a {
+.auth-switch-footer a {
   color: #1a2b48;
   text-decoration: none;
   font-weight: bold;
 }
 
-.footer .link-button {
+.create-account-form .link-button {
   background: none;
   border: none;
   padding: 0;
@@ -184,11 +214,11 @@
   cursor: pointer;
 }
 
-.footer a:hover {
+.auth-switch-footer a:hover {
   text-decoration: underline;
 }
 
-.footer .link-button:hover {
+.auth-switch-footer .link-button:hover {
   text-decoration: underline;
 }
 

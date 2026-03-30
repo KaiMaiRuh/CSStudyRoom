@@ -26,9 +26,9 @@ const Navbar = ({
       
       <div className="navbar-right">
         <button className={`nav-button ${activePage === 'home' ? 'active' : ''} home-button`} onClick={() => onNavigate?.('home')}>Home</button>
-        {!isAdmin && isLoggedIn ? (
+        {isLoggedIn ? (
           <button
-            className={`nav-button ${activePage === 'calendar' ? 'active' : ''}`}
+            className={`nav-button ${activePage === 'calendar' ? 'active' : ''} home-button`}
             onClick={() => onNavigate?.('calendar')}
           >
             Calendar
@@ -45,7 +45,7 @@ const Navbar = ({
 
         {showCreatePost && !isAdmin ? (
           <button
-            className={`nav-button ${activePage === 'createPost' ? 'active' : ''}`}
+            className={`nav-button create-post-button ${activePage === 'createPost' ? 'active' : ''}`}
             onClick={() => {
               if (!disableCreatePost) onNavigate?.('createPost');
             }}

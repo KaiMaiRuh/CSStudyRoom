@@ -1,6 +1,6 @@
 /* QAFeed component */
 import React, { useEffect, useRef, useState } from 'react';
-import { FaUserCircle, FaThumbsUp, FaComment, FaShare } from 'react-icons/fa';
+import { FaUserCircle, FaThumbsUp, FaComment, FaShare, FaTrashAlt } from 'react-icons/fa';
 import './QAFeed.css';
 import QAPostDetail from './QAPostDetail';
 import ImagePreviewModal from './ImagePreviewModal';
@@ -16,10 +16,7 @@ const QALikeAction = ({ postId, busy, onToggle }) => {
     if (!isFirebaseConfigured()) return;
     if (!postId) return;
 
-    if (!user?.uid) {
-      setLikeState({ uid: null, liked: false });
-      return;
-    }
+    if (!user?.uid) return;
 
     const { db } = getFirebaseServices();
     let disposed = false;
@@ -253,6 +250,20 @@ const QAFeed = ({
             if (e.key === 'Enter' || e.key === ' ') handleOpenDetail(post);
           }}
         >
+          {canDelete ? (
+            <button
+              className="admin-delete-icon-btn"
+              type="button"
+              aria-label="Delete post"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeletePost?.(post);
+              }}
+            >
+              <FaTrashAlt />
+            </button>
+          ) : null}
+
           <div className="card-header">
             <button
               type="button"
@@ -380,19 +391,6 @@ const QAFeed = ({
                 <span className="action-count">{post.shares ?? 0}</span>
               </div>
             </div>
-
-            {canDelete ? (
-              <button
-                className="delete-post-button"
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeletePost?.(post);
-                }}
-              >
-                Delete
-              </button>
-            ) : null}
           </div>
         </div>
       ))}

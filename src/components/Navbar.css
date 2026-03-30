@@ -47,6 +47,8 @@
   padding: 0.5rem 1rem;
   border-radius: 20px;
   border: none;
+  background-color: transparent;
+  color: white;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
@@ -77,6 +79,21 @@
 .signup-button {
   background-color: transparent;
   color: white;
+}
+
+.create-post-button,
+.nav-button.active.create-post-button {
+  background-color: #101010;
+  color: #ffffff;
+}
+
+.create-post-button:hover {
+  background-color: #242424;
+}
+
+.create-post-button:disabled {
+  background-color: #2f2f2f;
+  color: #d0d0d0;
 }
 
 .nav-link {

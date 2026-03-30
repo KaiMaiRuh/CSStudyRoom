@@ -456,3 +456,34 @@ export async function deleteGroupByPostId(postId) {
   // Delete the group document itself
   await deleteDoc(doc(db, 'groups', groupId));
 }
+
+/**
+ * Delete a message from a group chat.
+ * Sender can delete their own message. Admin can delete any message.
+ */
+export async function deleteGroupMessage({ groupId, messageId, requesterId, requesterIsAdmin = false }) {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase is not configured');
+  }
+
+  if (!groupId) throw new Error('groupId is required');
+  if (!messageId) throw new Error('messageId is required');
+  if (!requesterId) throw new Error('requesterId is required');
+
+  const { db } = getFirebaseServices();
+  const msgRef = doc(db, 'groups', groupId, 'messages', messageId);
+  const msgSnap = await getDoc(msgRef);
+
+  if (!msgSnap.exists()) {
+    throw new Error('Message not found');
+  }
+
+  const data = msgSnap.data() || {};
+  const isOwnMessage = data.senderId === requesterId;
+
+  if (!requesterIsAdmin && !isOwnMessage) {
+    throw new Error('You can only delete your own messages');
+  }
+
+  await deleteDoc(msgRef);
+}

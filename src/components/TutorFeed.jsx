@@ -1,6 +1,6 @@
 /* TutorFeed component */
 import React, { useEffect, useRef, useState } from 'react';
-import { FaUserCircle, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaUserCircle, FaMapMarkerAlt, FaTrashAlt } from 'react-icons/fa';
 import './TutorFeed.css';
 import TutorPostDetail from './TutorPostDetail';
 import ImagePreviewModal from './ImagePreviewModal';
@@ -168,6 +168,20 @@ const TutorFeed = ({
         const actualJoinedCount = joiners.length + 1; // include creator as joined
         return (
         <div key={post.id} className="tutor-card">
+          {canDelete ? (
+            <button
+              className="admin-delete-icon-btn"
+              type="button"
+              aria-label="Delete post"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeletePost?.(post);
+              }}
+            >
+              <FaTrashAlt />
+            </button>
+          ) : null}
+
           <div className="card-header">
             <button
               type="button"
@@ -263,18 +277,6 @@ const TutorFeed = ({
               <button className="read-more-button" type="button" onClick={() => handleOpenDetail(post)}>
                 Read more
               </button>
-              {canDelete ? (
-                <button
-                  className="delete-post-button"
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeletePost?.(post);
-                  }}
-                >
-                  Delete
-                </button>
-              ) : null}
             </div>
           </div>
         </div>

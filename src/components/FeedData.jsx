@@ -205,8 +205,6 @@ const FeedData = () => {
     return () => {
       disposed = true;
     };
-  // map helpers are intentionally excluded to keep one-time loading behavior.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadMoreTutorPosts = async () => {

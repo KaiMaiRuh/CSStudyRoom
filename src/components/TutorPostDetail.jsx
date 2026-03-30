@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { MdArrowBack, MdLocationOn } from 'react-icons/md';
-import { FaRegUserCircle } from 'react-icons/fa';
+import { FaRegUserCircle, FaTrashAlt } from 'react-icons/fa';
 import './TutorPostDetail.css';
 import ImagePreviewModal from './ImagePreviewModal';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
@@ -470,8 +470,9 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
             className="tutor-delete-button"
             type="button"
             onClick={() => onDelete()}
+            aria-label="Delete post"
           >
-            Delete
+            <FaTrashAlt />
           </button>
         ) : null}
         <button

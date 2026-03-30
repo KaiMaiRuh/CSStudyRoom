@@ -1,5 +1,5 @@
 // NotificationPanel.jsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FaArrowLeft } from 'react-icons/fa';
 import {
   collection,
@@ -27,8 +27,12 @@ const toTimestamp = (millis) => {
   }
 };
 
+const NOTIFICATION_EXIT_MS = 300;
+
 const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
   const { user } = useAuth();
+  const [isRendered, setIsRendered] = useState(Boolean(isOpen));
+  const [isClosing, setIsClosing] = useState(false);
   const [groupState, setGroupState] = useState({ uid: null, groups: [] });
   const [qaState, setQaState] = useState({ uid: null, posts: [] });
   const [groupReadsState, setGroupReadsState] = useState({ uid: null, map: {} });
@@ -38,7 +42,26 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
   const [qaError, setQaError] = useState(null);
   const markSignatureRef = useRef('');
 
-  const markGroupAsRead = async (groupId, tsMillis) => {
+  useEffect(() => {
+    if (isOpen) {
+      setIsRendered(true);
+      setIsClosing(false);
+      return undefined;
+    }
+    if (!isRendered) return undefined;
+
+    setIsClosing(true);
+    const timerId = window.setTimeout(() => {
+      setIsRendered(false);
+      setIsClosing(false);
+    }, NOTIFICATION_EXIT_MS);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [isOpen, isRendered]);
+
+  const markGroupAsRead = useCallback(async (groupId, tsMillis) => {
     if (!groupId) return;
     if (!user?.uid) return;
     if (!isFirebaseConfigured()) return;
@@ -55,9 +78,9 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
       },
       { merge: true }
     );
-  };
+  }, [user?.uid]);
 
-  const markQaNotificationsAsRead = async (tsMillis) => {
+  const markQaNotificationsAsRead = useCallback(async (tsMillis) => {
     if (!user?.uid) return;
     if (!isFirebaseConfigured()) return;
 
@@ -73,7 +96,7 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
       },
       { merge: true }
     );
-  };
+  }, [user?.uid]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -417,7 +440,7 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
       console.warn('Failed to mark notifications as read', err);
       markSignatureRef.current = '';
     });
-  }, [isOpen, notis, user?.uid]);
+  }, [isOpen, markGroupAsRead, markQaNotificationsAsRead, notis, user?.uid]);
 
   useEffect(() => {
     onCountChange?.(notisCount);
@@ -442,11 +465,11 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     onClose?.();
   };
 
-  if (!isOpen) return null;
+  if (!isRendered) return null;
 
   return (
-    <div className="notification-panel-overlay">
-      <div className="notification-panel">
+    <div className={`notification-panel-overlay ${isClosing ? 'is-closing' : 'is-open'}`}>
+      <div className={`notification-panel ${isClosing ? 'is-closing' : 'is-open'}`}>
         <button className="back-button" onClick={onClose}>
           <FaArrowLeft />
         </button>

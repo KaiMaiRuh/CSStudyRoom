@@ -104,45 +104,24 @@ export function useUserProfiles(userIds, { enabled = true, db } = {}) {
   }, [userIds]);
 
   const idsKey = useMemo(() => normalizedIds.join('|'), [normalizedIds]);
-
-  const [profileMap, setProfileMap] = useState(() => {
-    const next = {};
-    normalizedIds.forEach((id) => {
-      const cached = getCachedUserProfile(id);
-      if (cached) next[id] = cached;
-    });
-    return next;
-  });
+  const [cacheVersion, setCacheVersion] = useState(0);
 
   useEffect(() => {
-    if (!enabled || normalizedIds.length === 0) {
-      setProfileMap({});
-      return;
-    }
+    if (!enabled || normalizedIds.length === 0) return;
 
     let disposed = false;
 
-    const fromCache = {};
-    normalizedIds.forEach((id) => {
-      const cached = getCachedUserProfile(id);
-      if (cached) fromCache[id] = cached;
-    });
-    setProfileMap((prev) => ({ ...prev, ...fromCache }));
-
     const missingIds = normalizedIds.filter((id) => !getCachedUserProfile(id));
     if (missingIds.length === 0) {
-      return;
+      return () => {
+        disposed = true;
+      };
     }
 
     Promise.all(missingIds.map((id) => getUserProfileById(id, { db })))
       .then(() => {
         if (disposed) return;
-        const next = {};
-        normalizedIds.forEach((id) => {
-          const cached = getCachedUserProfile(id);
-          if (cached) next[id] = cached;
-        });
-        setProfileMap(next);
+        setCacheVersion((prev) => prev + 1);
       })
       .catch((err) => {
         console.warn('Failed to resolve user profiles', err);
@@ -152,6 +131,17 @@ export function useUserProfiles(userIds, { enabled = true, db } = {}) {
       disposed = true;
     };
   }, [db, enabled, idsKey, normalizedIds]);
+
+  const profileMap = useMemo(() => {
+    void cacheVersion;
+    if (!enabled || normalizedIds.length === 0) return {};
+    const next = {};
+    normalizedIds.forEach((id) => {
+      const cached = getCachedUserProfile(id);
+      if (cached) next[id] = cached;
+    });
+    return next;
+  }, [cacheVersion, enabled, normalizedIds]);
 
   return profileMap;
 }

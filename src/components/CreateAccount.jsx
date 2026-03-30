@@ -202,7 +202,7 @@ const CreateAccount = ({ onNavigate }) => {
               </button>
             </form>
             
-            <div className="footer">
+            <div className="auth-switch-footer">
               <p>
                 Already have an account?{' '}
                 <button

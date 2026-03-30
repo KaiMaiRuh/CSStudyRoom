@@ -1,10 +1,11 @@
 // ChatWindow.jsx - Group chat interface
 import React, { useState, useEffect, useRef } from 'react';
-import { FaArrowLeft, FaUserCircle } from 'react-icons/fa';
+import { FaArrowLeft, FaTrashAlt, FaUserCircle } from 'react-icons/fa';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 import {
+  deleteGroupMessage,
   subscribeToGroupMessages,
   sendGroupMessage,
   getGroupById,
@@ -13,13 +14,14 @@ import { useUserProfiles } from './userProfileCache';
 import './ChatWindow.css';
 
 const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [group, setGroup] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState(null);
   const messagesEndRef = useRef(null);
   const didScrollToInitialRef = useRef(false);
   const lastMarkedAtRef = useRef(0);
@@ -149,6 +151,33 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
     }
   };
 
+  const handleDeleteMessage = async (message) => {
+    if (!groupId) return;
+    if (!user?.uid) return;
+    if (!message?.id) return;
+
+    const isOwnMessage = message.senderId === user.uid;
+    if (!isOwnMessage && !isAdmin) return;
+
+    const ok = window.confirm('Delete this message?');
+    if (!ok) return;
+
+    try {
+      setDeletingMessageId(message.id);
+      await deleteGroupMessage({
+        groupId,
+        messageId: message.id,
+        requesterId: user.uid,
+        requesterIsAdmin: Boolean(isAdmin),
+      });
+    } catch (err) {
+      setError(err?.message || 'Failed to delete message');
+      console.error('Failed to delete message:', err);
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="chat-window-overlay">
@@ -235,6 +264,7 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
                 } else {
                   // Regular message
                   const isShare = msg.type === 'share' && msg.sharedPost?.type && msg.sharedPost?.id;
+                  const canDeleteMessage = Boolean(msg?.id) && (isOwnMessage || isAdmin);
                   const senderProfile = msg.senderId ? senderProfiles[msg.senderId] : null;
                   const avatarUrl = senderProfile?.avatarUrl || msg.senderAvatar || '';
                   const senderName = senderProfile?.username
@@ -297,14 +327,31 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
                             msg.text
                           )}
                         </div>
-                        {msg.timestamp && (
-                          <div className="chat-bubble-time">
-                            {msgDate?.toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </div>
-                        )}
+                        <div className="chat-message-actions">
+                          {msg.timestamp && (
+                            <div className="chat-bubble-time">
+                              {msgDate?.toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                          )}
+                          {canDeleteMessage ? (
+                            <button
+                              type="button"
+                              className="chat-message-delete"
+                              aria-label="Delete message"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteMessage(msg);
+                              }}
+                              disabled={deletingMessageId === msg.id}
+                              style={deletingMessageId === msg.id ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+                            >
+                              <FaTrashAlt />
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   );

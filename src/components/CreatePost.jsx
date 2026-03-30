@@ -1,8 +1,10 @@
 /* CreatePost component */
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaCalendarAlt, FaClock } from 'react-icons/fa';
 import './CreatePost.css';
 import { imageFileToBase64DataUrl } from './imageBase64';
+
+const OVERLAY_EXIT_MS = 300;
 
 const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, onUpdate, allSubjects = [] }) => {
   const initialType = initialPost?.type || 'tutor';
@@ -50,10 +52,28 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
   );
 
   const [imageError, setImageError] = useState('');
+  const [isClosing, setIsClosing] = useState(false);
 
   const dateRef = useRef(null);
   const timeRef = useRef(null);
   const pendingImagePromiseRef = useRef(null);
+  const closeTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const requestClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    closeTimerRef.current = window.setTimeout(() => {
+      onCancel?.();
+    }, OVERLAY_EXIT_MS);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -101,7 +121,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
       onCreate?.(postType, formData);
     }
     /* close modal */
-    if (onCancel) onCancel();
+    requestClose();
   };
 
   const handleImageChange = async (e) => {
@@ -144,11 +164,11 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
   };
 
   return (
-    <div className="create-post-modal">
-      <div className="create-post-container">
+    <div className={`create-post-modal ${isClosing ? 'is-closing' : ''}`}>
+      <div className={`create-post-container ${isClosing ? 'is-closing' : ''}`}>
         <div className="modal-header">
           <h2 className="modal-title">{mode === 'edit' ? 'Edit Post' : 'Create New Post'}</h2>
-          <button className="close-button" onClick={onCancel}>×</button>
+          <button className="close-button" type="button" onClick={requestClose} disabled={isClosing}>×</button>
         </div>
         
         <div className="post-type-selector">
@@ -367,8 +387,8 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
           )}
           
           <div className="form-actions">
-            <button type="button" className="cancel-button" onClick={onCancel}>Cancel</button>
-            <button type="submit" className="submit-button">{mode === 'edit' ? 'Save' : 'Create Post'}</button>
+            <button type="button" className="cancel-button" onClick={requestClose} disabled={isClosing}>Cancel</button>
+            <button type="submit" className="submit-button" disabled={isClosing}>{mode === 'edit' ? 'Save' : 'Create Post'}</button>
           </div>
         </form>
       </div>

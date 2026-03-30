@@ -7,6 +7,7 @@ import {
   FaShare,
   FaImage,
   FaPaperPlane,
+  FaTrashAlt,
 } from 'react-icons/fa';
 import './QAPostDetail.css';
 import ImagePreviewModal from './ImagePreviewModal';
@@ -54,14 +55,50 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
 
   // Prevent body scroll when QAPostDetail is active
   useEffect(() => {
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousScrollY = window.scrollY || window.pageYOffset || 0;
+
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
 
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      const scroller = detailScrollRef.current;
+      if (!scroller) return;
+      try {
+        scroller.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      } catch {
+        scroller.scrollTop = 0;
+      }
+    });
+
     return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
+      window.cancelAnimationFrame(rafId);
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      try {
+        window.scrollTo({ top: previousScrollY, left: 0, behavior: 'auto' });
+      } catch {
+        window.scrollTo(0, previousScrollY);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    const scroller = detailScrollRef.current;
+    if (!scroller) return;
+    try {
+      scroller.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      scroller.scrollTop = 0;
+    }
+  }, [postId]);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -194,7 +231,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
 
   const commentAuthorProfiles = useUserProfiles(commentAuthorIds);
 
-  const canAdminDeleteLiveComments = isAdmin && isFirebaseConfigured() && Boolean(postId) && Array.isArray(liveComments);
+  const canDeleteLiveComments = isFirebaseConfigured() && Boolean(postId) && Array.isArray(liveComments) && Boolean(user?.uid);
 
   useEffect(() => {
     const scrollContainer = detailScrollRef.current;
@@ -305,10 +342,15 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
+  const handleDeleteComment = async (comment) => {
     if (!isFirebaseConfigured()) return;
-    if (!isAdmin) return;
     if (!postId) return;
+
+    const commentId = comment?.id;
+    if (!commentId) return;
+
+    const isOwnComment = Boolean(user?.uid && comment?.user?.uid === user.uid);
+    if (!isAdmin && !isOwnComment) return;
 
     const ok = window.confirm('Delete this comment?');
     if (!ok) return;
@@ -355,8 +397,8 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
       </button>
 
       {isAdmin && typeof onDelete === 'function' ? (
-        <button className="qa-delete" type="button" onClick={() => onDelete()}>
-          Delete
+        <button className="qa-delete" type="button" onClick={() => onDelete()} aria-label="Delete post">
+          <FaTrashAlt />
         </button>
       ) : null}
 
@@ -460,6 +502,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
               ? `@${profileFromCache.username}`
               : (profileFromCache?.displayName || c.user?.name || 'Unknown');
             const resolvedCommentAvatar = profileFromCache?.avatarUrl || c.user?.avatar || '';
+            const canDeleteThisComment = canDeleteLiveComments && Boolean(c.id) && (isAdmin || (user?.uid && c.user?.uid === user.uid));
 
             return (
               <div key={c.id} className="qa-comment">
@@ -486,11 +529,11 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
                     >
                       {resolvedCommentName}
                     </button>
-                    {canAdminDeleteLiveComments ? (
+                    {canDeleteThisComment ? (
                       <button
                         className="qa-comment-delete"
                         type="button"
-                        onClick={() => handleDeleteComment(c.id)}
+                        onClick={() => handleDeleteComment(c)}
                       >
                         Delete
                       </button>

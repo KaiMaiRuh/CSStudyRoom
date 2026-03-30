@@ -55,6 +55,8 @@ function App() {
   const [initialRouteApplied, setInitialRouteApplied] = useState(false);
   const [openPostRef, setOpenPostRef] = useState(null);
   const [viewProfileUid, setViewProfileUid] = useState(null);
+  const [displayFeed, setDisplayFeed] = useState(() => (activeFeed === 'qa' ? 'qa' : 'tutor'));
+  const [feedTransitionPhase, setFeedTransitionPhase] = useState('idle');
 
   const isHome = activePage === 'home';
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
@@ -239,11 +241,8 @@ function App() {
           if (authLoading) return;
           setShowSignIn(true);
           setActivePage('signin');
-        } else if (!isAdmin) {
-          setActivePage('calendar');
         } else {
-          alert('Admin does not have Calendar page');
-          setActivePage('home');
+          setActivePage('calendar');
         }
         break;
       default:
@@ -419,6 +418,27 @@ function App() {
     setIsFeedDetailOpen(Boolean(openPostRef?.id));
   }, [openPostRef?.id]);
 
+  useEffect(() => {
+    const nextFeed = activeFeed === 'qa' ? 'qa' : 'tutor';
+    if (displayFeed === nextFeed) return;
+
+    setFeedTransitionPhase('out');
+
+    let inTimerId = null;
+    const outTimerId = window.setTimeout(() => {
+      setDisplayFeed(nextFeed);
+      setFeedTransitionPhase('in');
+      inTimerId = window.setTimeout(() => {
+        setFeedTransitionPhase('idle');
+      }, 280);
+    }, 170);
+
+    return () => {
+      window.clearTimeout(outTimerId);
+      if (inTimerId) window.clearTimeout(inTimerId);
+    };
+  }, [activeFeed, displayFeed]);
+
 
 
   const handleShowCreatePost = () => {
@@ -526,6 +546,8 @@ function App() {
     }
   }, [user, activePage, logActivity]);
 
+  const pageTransitionKey = activePage;
+
   return (
     <div className="app-shell">
       <Navbar
@@ -541,142 +563,156 @@ function App() {
         showCreatePost={!isAdminPage && !isAdmin}
         onNavigate={navigateTo}
       />
-      <div className="app-root">
-        {isGroupMessagePage ? (
-          <GroupMessagePage onBack={() => {
-            navigateTo('home');
-          }} />
-        ) : isCalendarPage ? (
-          <Calendar tutorPosts={tutorPosts} onBack={() => navigateTo('home')} />
-        ) : isAdminPage ? (
-          <AdminPanel />
-        ) : (
-          <>
-            {isHome && !isFeedDetailOpen && <h1>CS StudyRoom</h1>}
+      <div className={`app-root ${(isFeedDetailOpen || Boolean(openPostRef)) ? 'app-root-detail-open' : ''}`}>
+        <div key={pageTransitionKey} className="app-page-transition">
+          {isGroupMessagePage ? (
+            <GroupMessagePage onBack={() => {
+              navigateTo('home');
+            }} />
+          ) : isCalendarPage ? (
+            <Calendar
+              tutorPosts={tutorPosts}
+              qaPosts={qaPosts}
+              feedType={activeFeed}
+              isAdminView={Boolean(isAdmin)}
+              onBack={() => navigateTo('home')}
+              onDeletePost={(post) => {
+                const postType = post?.type === 'qa' ? 'qa' : 'tutor';
+                handleDeletePost({ type: postType, id: post?.id });
+              }}
+            />
+          ) : isAdminPage ? (
+            <AdminPanel />
+          ) : (
+            <>
+              {isHome && !isFeedDetailOpen && <h1>CS StudyRoom</h1>}
 
-        {/* Feed header/controls (Home only; hide when viewing a detail) */}
-        {isHome && !isFeedDetailOpen && (
-          <>
-            <div className="feed-top">
-              <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeedAndNavigate} />
-            </div>
+              {/* Feed header/controls (Home only; hide when viewing a detail) */}
+              {isHome && !isFeedDetailOpen && (
+                <>
+                  <div className="feed-top">
+                    <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeedAndNavigate} />
+                  </div>
 
-            <div className="toolbar">
-              <form className="search-form" onSubmit={(e) => e.preventDefault()}>
-                <input
-                  type="text"
-                  placeholder="Search posts..."
-                  className="search-input"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  <div className="toolbar">
+                    <form className="search-form" onSubmit={(e) => e.preventDefault()}>
+                      <input
+                        type="text"
+                        placeholder="Search posts..."
+                        className="search-input"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                      <span className="search-icon"><FaSearch /></span>
+                    </form>
+
+                    <select
+                      className="category-dropdown"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                    >
+                      <option value="">หมวดหมู่วิชา</option>
+                      {allSubjects.map(subject => (
+                        <option key={subject} value={subject}>{subject}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* Feed (still renders while viewing a detail) */}
+              {isHome && (
+                <div
+                  className={`feed-switch-transition ${feedTransitionPhase === 'out' ? 'is-out' : ''} ${feedTransitionPhase === 'in' ? 'is-in' : ''}`.trim()}
+                >
+                  {displayFeed === 'tutor' ? (
+                    <TutorFeed
+                      posts={filteredTutorPosts}
+                      openPostId={displayFeed === 'tutor' && openPostRef?.type === 'tutor' ? openPostRef.id : null}
+                      onDetailOpen={() => setIsFeedDetailOpen(true)}
+                      onDetailClose={() => setIsFeedDetailOpen(false)}
+                      hasMore={hasMoreTutorPosts}
+                      isLoadingMore={isLoadingMoreTutorPosts}
+                      onLoadMore={loadMoreTutorPosts}
+                      canDelete={isAdmin}
+                      onDeletePost={(post) => handleDeletePost({ type: 'tutor', id: post?.id })}
+                    />
+                  ) : (
+                    <QAFeed
+                      posts={filteredQaPosts}
+                      openPostId={displayFeed === 'qa' && openPostRef?.type === 'qa' ? openPostRef.id : null}
+                      onDetailOpen={() => setIsFeedDetailOpen(true)}
+                      onDetailClose={() => setIsFeedDetailOpen(false)}
+                      hasMore={hasMoreQaPosts}
+                      isLoadingMore={isLoadingMoreQaPosts}
+                      onLoadMore={loadMoreQaPosts}
+                      canDelete={isAdmin}
+                      onDeletePost={(post) => handleDeletePost({ type: 'qa', id: post?.id })}
+                    />
+                  )}
+                </div>
+              )}
+              {showCreateAccount && <CreateAccount onNavigate={navigateTo} />}
+              {showSignIn && <SignIn onNavigate={navigateTo} />}
+              {showProfile && (
+                <Profile
+                  viewUid={viewProfileUid}
+                  tutorPosts={tutorPosts}
+                  qaPosts={qaPosts}
+                  onEdit={() => {
+                    setShowEditProfile(true);
+                    setShowProfile(false);
+                    setActivePage('profile');
+                  }}
+                  onEditPost={({ type, id, post }) => {
+                    const base = post || {};
+                    if (type === 'tutor') {
+                      setEditingPost({
+                        type: 'tutor',
+                        id,
+                        subject: base.subject || '',
+                        location: base.location || '',
+                        title: base.title || '',
+                        description: base.description || '',
+                        date: base.date || '',
+                        time: base.time || '',
+                        hours: base.hours ?? '',
+                        capacity: base.capacity ?? '',
+                        images: Array.isArray(base.images) ? base.images : (base.imageUrl ? [base.imageUrl] : []),
+                      });
+                    } else {
+                      setEditingPost({
+                        type: 'qa',
+                        id,
+                        subject: base.subject || '',
+                        question: base.question || '',
+                        description: base.description || '',
+                        images: Array.isArray(base.images) ? base.images : (base.imageUrl ? [base.imageUrl] : []),
+                      });
+                    }
+                    setShowCreatePost(true);
+                  }}
+                  onDeletePost={handleDeletePost}
                 />
-                <span className="search-icon"><FaSearch /></span>
-              </form>
+              )}
 
-              <select
-                className="category-dropdown"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option value="">หมวดหมู่วิชา</option>
-                {allSubjects.map(subject => (
-                  <option key={subject} value={subject}>{subject}</option>
-                ))}
-              </select>
-            </div>
-          </>
-        )}
-
-        {/* Feed (still renders while viewing a detail) */}
-        {isHome && (
-          <div>
-            {activeFeed === 'tutor' ? (
-              <TutorFeed
-                posts={filteredTutorPosts}
-                openPostId={openPostRef?.type === 'tutor' ? openPostRef.id : null}
-                onDetailOpen={() => setIsFeedDetailOpen(true)}
-                onDetailClose={() => setIsFeedDetailOpen(false)}
-                hasMore={hasMoreTutorPosts}
-                isLoadingMore={isLoadingMoreTutorPosts}
-                onLoadMore={loadMoreTutorPosts}
-                canDelete={isAdmin}
-                onDeletePost={(post) => handleDeletePost({ type: 'tutor', id: post?.id })}
-              />
-            ) : (
-              <QAFeed
-                posts={filteredQaPosts}
-                openPostId={openPostRef?.type === 'qa' ? openPostRef.id : null}
-                onDetailOpen={() => setIsFeedDetailOpen(true)}
-                onDetailClose={() => setIsFeedDetailOpen(false)}
-                hasMore={hasMoreQaPosts}
-                isLoadingMore={isLoadingMoreQaPosts}
-                onLoadMore={loadMoreQaPosts}
-                canDelete={isAdmin}
-                onDeletePost={(post) => handleDeletePost({ type: 'qa', id: post?.id })}
-              />
-            )}
-          </div>
-        )}
-        {showCreateAccount && <CreateAccount onNavigate={navigateTo} />}
-      {showSignIn && <SignIn onNavigate={navigateTo} />}
-      {showProfile && (
-        <Profile
-          viewUid={viewProfileUid}
-          tutorPosts={tutorPosts}
-          qaPosts={qaPosts}
-          onEdit={() => {
-            setShowEditProfile(true);
-            setShowProfile(false);
-            setActivePage('profile');
-          }}
-          onEditPost={({ type, id, post }) => {
-            const base = post || {};
-            if (type === 'tutor') {
-              setEditingPost({
-                type: 'tutor',
-                id,
-                subject: base.subject || '',
-                location: base.location || '',
-                title: base.title || '',
-                description: base.description || '',
-                date: base.date || '',
-                time: base.time || '',
-                hours: base.hours ?? '',
-                capacity: base.capacity ?? '',
-                images: Array.isArray(base.images) ? base.images : (base.imageUrl ? [base.imageUrl] : []),
-              });
-            } else {
-              setEditingPost({
-                type: 'qa',
-                id,
-                subject: base.subject || '',
-                question: base.question || '',
-                description: base.description || '',
-                images: Array.isArray(base.images) ? base.images : (base.imageUrl ? [base.imageUrl] : []),
-              });
-            }
-            setShowCreatePost(true);
-          }}
-          onDeletePost={handleDeletePost}
-        />
-      )}
-
-      {showEditProfile && (
-        <EditProfile
-          onCancel={() => {
-            setShowEditProfile(false);
-            setShowProfile(true);
-            setActivePage('profile');
-          }}
-          onDone={() => {
-            setShowEditProfile(false);
-            setShowProfile(true);
-            setActivePage('profile');
-          }}
-        />
-      )}
-          </>
-        )}
+              {showEditProfile && (
+                <EditProfile
+                  onCancel={() => {
+                    setShowEditProfile(false);
+                    setShowProfile(true);
+                    setActivePage('profile');
+                  }}
+                  onDone={() => {
+                    setShowEditProfile(false);
+                    setShowProfile(true);
+                    setActivePage('profile');
+                  }}
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
       {showCreatePost && (
         editingPost ? (
