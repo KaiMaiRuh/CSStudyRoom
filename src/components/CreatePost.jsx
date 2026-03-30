@@ -112,8 +112,8 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
     const newImageCount = files.length;
     const totalImages = currentImageCount + newImageCount;
 
-    if (totalImages > 20) {
-      setImageError(`Cannot add ${newImageCount} images. Maximum 20 images allowed. Currently have ${currentImageCount} images.`);
+    if (totalImages > 8) {
+      setImageError(`Cannot add ${newImageCount} images. Maximum 8 images allowed. Currently have ${currentImageCount} images.`);
       return;
     }
 
@@ -122,7 +122,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
     try {
       const processedImages = await Promise.all(
         files.map(async (file) => {
-          return await imageFileToBase64DataUrl(file, { targetBytes: 300 * 1024 });
+          return await imageFileToBase64DataUrl(file);
         })
       );
 
@@ -329,7 +329,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
           
           {postType === 'qa' && (
             <div className="form-group">
-              <label>Images (Optional) - Max 20 images</label>
+              <label>Images (Optional) - Max 8 images</label>
               <input 
                 type="file" 
                 name="image"
@@ -341,7 +341,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
               
               {formData.images.length > 0 && (
                 <div className="image-preview-container">
-                  <p>Current images ({formData.images.length}/20):</p>
+                  <p>Current images ({formData.images.length}/8):</p>
                   <div className="image-grid">
                     {formData.images.map((imageUrl, index) => (
                       <div key={index} className="image-preview-item">

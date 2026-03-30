@@ -1,6 +1,6 @@
 import imageCompression from 'browser-image-compression';
 
-const DEFAULT_TARGET_BYTES = 300 * 1024;
+const DEFAULT_TARGET_BYTES = 60 * 1024;
 
 const FALLBACK_IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.avif'];
 
@@ -38,10 +38,10 @@ async function compressToTarget(file, { targetBytes = DEFAULT_TARGET_BYTES } = {
   for (let i = 0; i < 6; i += 1) {
     compressed = await imageCompression(compressed, {
       maxSizeMB,
-      maxWidthOrHeight: 1600,
+      maxWidthOrHeight: 800,
       useWebWorker: true,
       fileType: compressed.type || file.type,
-      initialQuality: 0.8,
+      initialQuality: 0.5,
     });
 
     if (compressed.size <= targetBytes) return compressed;

@@ -29,6 +29,12 @@ function App() {
     allSubjects,
     activeFeed,
     setActiveFeed,
+    hasMoreTutorPosts,
+    hasMoreQaPosts,
+    isLoadingMoreTutorPosts,
+    isLoadingMoreQaPosts,
+    loadMoreTutorPosts,
+    loadMoreQaPosts,
     addTutorPost,
     addQaPost,
     updateTutorPost,
@@ -590,6 +596,9 @@ function App() {
                 openPostId={openPostRef?.type === 'tutor' ? openPostRef.id : null}
                 onDetailOpen={() => setIsFeedDetailOpen(true)}
                 onDetailClose={() => setIsFeedDetailOpen(false)}
+                hasMore={hasMoreTutorPosts}
+                isLoadingMore={isLoadingMoreTutorPosts}
+                onLoadMore={loadMoreTutorPosts}
                 canDelete={isAdmin}
                 onDeletePost={(post) => handleDeletePost({ type: 'tutor', id: post?.id })}
               />
@@ -599,6 +608,9 @@ function App() {
                 openPostId={openPostRef?.type === 'qa' ? openPostRef.id : null}
                 onDetailOpen={() => setIsFeedDetailOpen(true)}
                 onDetailClose={() => setIsFeedDetailOpen(false)}
+                hasMore={hasMoreQaPosts}
+                isLoadingMore={isLoadingMoreQaPosts}
+                onLoadMore={loadMoreQaPosts}
                 canDelete={isAdmin}
                 onDeletePost={(post) => handleDeletePost({ type: 'qa', id: post?.id })}
               />

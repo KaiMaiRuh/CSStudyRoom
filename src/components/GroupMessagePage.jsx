@@ -4,7 +4,11 @@ import { FaArrowLeft, FaPlus } from 'react-icons/fa';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
-import { sendSharedPostMessage, subscribeToUserGroups } from './groupMessageApi';
+import {
+  sendSharedPostMessage,
+  subscribeToLatestGroupMessage,
+  subscribeToUserGroups,
+} from './groupMessageApi';
 import ChatWindow from './ChatWindow';
 import './GroupMessagePage.css';
 
@@ -16,12 +20,29 @@ const GroupMessagePage = ({ onBack }) => {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [error, setError] = useState(null);
   const [shareContext, setShareContext] = useState(null);
+  const [latestMessagesByGroupId, setLatestMessagesByGroupId] = useState({});
 
   const groups = useMemo(() => {
     return user?.uid && groupsState.uid === user.uid ? (Array.isArray(groupsState.data) ? groupsState.data : []) : [];
   }, [groupsState, user]);
 
   const loading = Boolean(user?.uid) && groupsState.uid !== user.uid;
+
+  const groupsWithLatest = useMemo(() => {
+    const base = Array.isArray(groups) ? groups : [];
+    const next = base.map((group) => ({
+      ...group,
+      latestMessage: latestMessagesByGroupId[group.id] || null,
+    }));
+
+    next.sort((a, b) => {
+      const timeA = a.latestMessage?.timestamp?.toMillis?.() || a.createdAt?.toMillis?.() || 0;
+      const timeB = b.latestMessage?.timestamp?.toMillis?.() || b.createdAt?.toMillis?.() || 0;
+      return timeB - timeA;
+    });
+
+    return next;
+  }, [groups, latestMessagesByGroupId]);
 
   // Subscribe to per-user read states for unread counters
   useEffect(() => {
@@ -50,16 +71,63 @@ const GroupMessagePage = ({ onBack }) => {
     return user?.uid && readsState.uid === user.uid ? (readsState.map && typeof readsState.map === 'object' ? readsState.map : {}) : {};
   }, [readsState, user]);
 
+  useEffect(() => {
+    const groupIds = (Array.isArray(groups) ? groups : [])
+      .map((g) => g?.id)
+      .filter(Boolean);
+
+    if (groupIds.length === 0) {
+      setLatestMessagesByGroupId({});
+      return;
+    }
+
+    setLatestMessagesByGroupId((prev) => {
+      const next = {};
+      groupIds.forEach((id) => {
+        if (prev[id]) next[id] = prev[id];
+      });
+      return next;
+    });
+
+    const unsubs = groupIds.map((groupId) => {
+      return subscribeToLatestGroupMessage(
+        groupId,
+        (latestMessage) => {
+          setLatestMessagesByGroupId((prev) => ({
+            ...prev,
+            [groupId]: latestMessage,
+          }));
+        },
+        (err) => {
+          console.error('Failed to subscribe latest group message', groupId, err);
+        }
+      );
+    });
+
+    return () => {
+      unsubs.forEach((unsub) => {
+        if (typeof unsub === 'function') unsub();
+      });
+    };
+  }, [groups]);
+
   const unreadByGroupId = useMemo(() => {
     const next = {};
-    (Array.isArray(groups) ? groups : []).forEach((g) => {
-      const messageCount = Number(g?.messageCount || 0);
-      const lastRead = Number(readsMap?.[g.id]?.lastReadMessageCount || 0);
-      const unread = Math.max(0, messageCount - lastRead);
-      next[g.id] = unread;
+    groupsWithLatest.forEach((g) => {
+      const lastReadMillis = readsMap?.[g.id]?.lastReadAt?.toMillis?.()
+        || readsMap?.[g.id]?.updatedAt?.toMillis?.()
+        || 0;
+      const latestMillis = latestMessagesByGroupId[g.id]?.timestamp?.toMillis?.() || 0;
+
+      // Legacy fallback for existing docs that still rely on messageCount counters.
+      const legacyMessageCount = Number(g?.messageCount || 0);
+      const legacyLastRead = Number(readsMap?.[g.id]?.lastReadMessageCount || 0);
+      const legacyUnread = Math.max(0, legacyMessageCount - legacyLastRead);
+
+      next[g.id] = latestMillis > lastReadMillis ? 1 : legacyUnread;
     });
     return next;
-  }, [groups, readsMap]);
+  }, [groupsWithLatest, latestMessagesByGroupId, readsMap]);
 
   // Subscribe to user's groups
   useEffect(() => {
@@ -198,7 +266,7 @@ const GroupMessagePage = ({ onBack }) => {
           <div className="gmp-loading">
             <p>Loading groups...</p>
           </div>
-        ) : groups.length === 0 ? (
+        ) : groupsWithLatest.length === 0 ? (
           <div className="gmp-empty-state">
             <FaPlus size={48} />
             <p>No groups yet</p>
@@ -206,40 +274,54 @@ const GroupMessagePage = ({ onBack }) => {
           </div>
         ) : (
           <div className="gmp-groups-list">
-            {groups.map(group => (
-              <button
-                key={group.id}
-                className="gmp-group-card"
-                onClick={() => {
-                  if (shareContext) {
-                    void handleShareToGroup(group.id);
-                    return;
-                  }
-                  handleOpenGroup(group.id);
-                }}
-              >
-                <div className="gmp-group-avatar">
-                  {group.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="gmp-group-info">
-                  <h3 className="gmp-group-name">{group.name}</h3>
-                  <p className="gmp-group-subject">{group.subject}</p>
-                  <p className="gmp-group-meta">
-                    {group.memberCount || group.members?.length || 0} members • by {group.ownerName || 'Unknown'}
-                  </p>
-                </div>
-                <div className="gmp-group-right">
-                  {unreadByGroupId[group.id] > 0 ? (
-                    <div className="gmp-unread-badge" aria-label={`${unreadByGroupId[group.id]} unread messages`}>
-                      {unreadByGroupId[group.id] > 99 ? '99+' : unreadByGroupId[group.id]}
-                    </div>
-                  ) : null}
-                  <div className="gmp-group-arrow">
-                    <span>›</span>
+            {groupsWithLatest.map((group) => {
+              const latestMessage = latestMessagesByGroupId[group.id] || null;
+              const latestText = latestMessage
+                ? (latestMessage.type === 'share'
+                  ? `Shared post: ${latestMessage.sharedPost?.title || latestMessage.text || ''}`
+                  : (latestMessage.text || ''))
+                : 'No messages yet';
+
+              const latestDate = latestMessage?.timestamp?.toDate?.();
+              const latestTime = latestDate ? latestDate.toLocaleString() : '';
+
+              return (
+                <button
+                  key={group.id}
+                  className="gmp-group-card"
+                  onClick={() => {
+                    if (shareContext) {
+                      void handleShareToGroup(group.id);
+                      return;
+                    }
+                    handleOpenGroup(group.id);
+                  }}
+                >
+                  <div className="gmp-group-avatar">
+                    {String(group.name || '?').charAt(0).toUpperCase()}
                   </div>
-                </div>
-              </button>
-            ))}
+                  <div className="gmp-group-info">
+                    <h3 className="gmp-group-name">{group.name}</h3>
+                    <p className="gmp-group-subject">{group.subject}</p>
+                    <p className="gmp-group-last-message">{latestText}</p>
+                    <p className="gmp-group-meta">
+                      {group.memberCount || group.members?.length || 0} members • by {group.ownerName || 'Unknown'}
+                      {latestTime ? ` • ${latestTime}` : ''}
+                    </p>
+                  </div>
+                  <div className="gmp-group-right">
+                    {unreadByGroupId[group.id] > 0 ? (
+                      <div className="gmp-unread-badge" aria-label={`${unreadByGroupId[group.id]} unread messages`}>
+                        {unreadByGroupId[group.id] > 99 ? '99+' : unreadByGroupId[group.id]}
+                      </div>
+                    ) : null}
+                    <div className="gmp-group-arrow">
+                      <span>›</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

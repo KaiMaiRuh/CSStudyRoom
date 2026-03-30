@@ -160,6 +160,15 @@
   text-overflow: ellipsis;
 }
 
+.gmp-group-last-message {
+  margin: 0;
+  font-size: 13px;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .gmp-group-meta {
   margin: 0;
   font-size: 12px;
@@ -225,6 +234,10 @@
 
   .gmp-group-subject {
     font-size: 13px;
+  }
+
+  .gmp-group-last-message {
+    font-size: 12px;
   }
 
   .gmp-group-meta {

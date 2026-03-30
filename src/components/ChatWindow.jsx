@@ -9,10 +9,11 @@ import {
   sendGroupMessage,
   getGroupById,
 } from './groupMessageApi';
+import { useUserProfiles } from './userProfileCache';
 import './ChatWindow.css';
 
 const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [group, setGroup] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
@@ -21,7 +22,13 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   const didScrollToInitialRef = useRef(false);
-  const lastMarkedCountRef = useRef(0);
+  const lastMarkedAtRef = useRef(0);
+
+  const senderIds = React.useMemo(
+    () => Array.from(new Set(messages.map((msg) => msg?.senderId).filter(Boolean))),
+    [messages]
+  );
+  const senderProfiles = useUserProfiles(senderIds);
 
   const openUserProfile = (uid) => {
     if (!uid) return;
@@ -37,7 +44,7 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
   }, [groupId, initialMessageId]);
 
   useEffect(() => {
-    lastMarkedCountRef.current = 0;
+    lastMarkedAtRef.current = 0;
   }, [groupId]);
 
   // Load group info
@@ -81,33 +88,34 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
     return () => unsubscribe();
   }, [groupId, initialMessageId]);
 
-  // Mark this group as read when the chat is open.
-  // Uses group.messageCount when available (fallback to messages.length).
+  // Mark this group as read based on latest visible message timestamp.
   useEffect(() => {
     if (!user?.uid) return;
     if (!groupId) return;
     if (!isFirebaseConfigured()) return;
 
-    const groupCount = Number.isFinite(group?.messageCount) ? Number(group.messageCount) : 0;
-    const msgCount = Number(messages.length || 0);
-    const currentCount = Math.max(groupCount, msgCount);
-
-    if (!currentCount) return;
-    if (currentCount <= lastMarkedCountRef.current) return;
-    lastMarkedCountRef.current = currentCount;
+    const latestMessage = messages[messages.length - 1];
+    const latestMillis = latestMessage?.timestamp?.toMillis?.() || 0;
+    if (!latestMillis) return;
+    if (latestMillis <= lastMarkedAtRef.current) return;
+    lastMarkedAtRef.current = latestMillis;
 
     try {
       const { db } = getFirebaseServices();
       const ref = doc(db, 'users', user.uid, 'groupReads', groupId);
       void setDoc(
         ref,
-        { lastReadMessageCount: currentCount, updatedAt: serverTimestamp() },
+        {
+          lastReadAt: latestMessage.timestamp,
+          lastReadMessageCount: messages.length,
+          updatedAt: serverTimestamp(),
+        },
         { merge: true }
       );
     } catch (err) {
       console.warn('Failed to mark group as read', err);
     }
-  }, [user?.uid, groupId, group?.messageCount, messages.length]);
+  }, [user?.uid, groupId, messages]);
 
   useEffect(() => {
     if (!initialMessageId) return;
@@ -129,12 +137,9 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
       return;
     }
 
-    const senderName = profile?.displayName || user.displayName || user.email || 'User';
-    const senderAvatar = profile?.avatarUrl || user.photoURL || null;
-
     setSending(true);
     try {
-      await sendGroupMessage(groupId, user.uid, senderName, messageText, senderAvatar);
+      await sendGroupMessage(groupId, user.uid, messageText);
       setMessageText('');
     } catch (err) {
       setError(err.message);
@@ -230,7 +235,11 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
                 } else {
                   // Regular message
                   const isShare = msg.type === 'share' && msg.sharedPost?.type && msg.sharedPost?.id;
-                  const avatarUrl = msg.senderAvatar || '';
+                  const senderProfile = msg.senderId ? senderProfiles[msg.senderId] : null;
+                  const avatarUrl = senderProfile?.avatarUrl || msg.senderAvatar || '';
+                  const senderName = senderProfile?.username
+                    ? `@${senderProfile.username}`
+                    : (senderProfile?.displayName || msg.senderName || 'User');
                   elements.push(
                     <div
                       key={msg.id}
@@ -255,7 +264,7 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
 
                       <div className="chat-bubble-stack">
                         {!isOwnMessage ? (
-                          <div className="chat-bubble-name">{msg.senderName}</div>
+                          <div className="chat-bubble-name">{senderName}</div>
                         ) : null}
                         <div
                           className={`chat-bubble ${isShare ? 'chat-bubble-share' : ''}`}

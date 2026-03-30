@@ -12,7 +12,6 @@ import './QAPostDetail.css';
 import ImagePreviewModal from './ImagePreviewModal';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
 import { imageFileToBase64DataUrl, isDataUrlImage } from './imageBase64';
 import {
   addQaPostComment,
@@ -22,6 +21,7 @@ import {
   subscribeQaPostLikeStatus,
   toggleQaPostLike,
 } from './qaPostApi';
+import { useUserProfiles } from './userProfileCache';
 
 const QAPostDetail = ({ post, onBack, onDelete }) => {
   const [commentText, setCommentText] = useState('');
@@ -147,7 +147,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         id: c.id,
         user: {
           uid: c.authorId || null,
-          name: c.authorName || 'Unknown',
+          name: c.authorName || '',
           avatar: c.authorAvatar || '',
         },
         text: c.text || '',
@@ -184,6 +184,15 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
       },
     ];
   }, [liveComments, mergedPost?.commentList]);
+
+  const commentAuthorIds = useMemo(() => {
+    const ids = comments
+      .map((c) => c?.user?.uid)
+      .filter(Boolean);
+    return Array.from(new Set(ids));
+  }, [comments]);
+
+  const commentAuthorProfiles = useUserProfiles(commentAuthorIds);
 
   const canAdminDeleteLiveComments = isAdmin && isFirebaseConfigured() && Boolean(postId) && Array.isArray(liveComments);
 
@@ -279,20 +288,10 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
       shouldAutoScrollRef.current = true;
       const { db } = getFirebaseServices();
 
-      let authorAvatar = '';
-      try {
-        const userSnap = await getDoc(doc(db, 'users', user.uid));
-        authorAvatar = userSnap.data()?.avatarUrl || '';
-      } catch (err) {
-        console.warn('Failed to read avatarUrl for comment authorAvatar', err);
-      }
-
       await addQaPostComment({
         db,
         postId,
         uid: user.uid,
-        authorName: profile?.username ? `@${profile.username}` : (user.displayName || user.email || 'User'),
-        authorAvatar,
         text: cleanedText,
         imageUrl: commentImageUrl,
       });
@@ -338,7 +337,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
     try {
       setComposerError('');
       setIsImageBusy(true);
-      const dataUrl = await imageFileToBase64DataUrl(file, { targetBytes: 300 * 1024 });
+      const dataUrl = await imageFileToBase64DataUrl(file);
       setCommentImageUrl(dataUrl);
     } catch (err) {
       console.error('Failed to process comment image', err);
@@ -455,72 +454,80 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         <div className="qa-comments-title">All comments</div>
 
         <div className="qa-comments">
-          {comments.map((c) => (
-            <div key={c.id} className="qa-comment">
-              <button
-                type="button"
-                className="qa-comment-avatar qa-comment-avatar-btn"
-                aria-label="Open profile"
-                onClick={() => openUserProfile(c.user?.uid)}
-                disabled={!c.user?.uid}
-              >
-                {c.user?.avatar ? (
-                  <img className="qa-comment-avatar-img" src={c.user.avatar} alt="" />
-                ) : (
-                  <FaUserCircle size={34} />
-                )}
-              </button>
-              <div className="qa-comment-content">
-                <div className="qa-comment-head">
-                  <button
-                    type="button"
-                    className="qa-comment-name qa-comment-name-btn"
-                    onClick={() => openUserProfile(c.user?.uid)}
-                    disabled={!c.user?.uid}
-                  >
-                    {c.user?.name}
-                  </button>
-                  {canAdminDeleteLiveComments ? (
+          {comments.map((c) => {
+            const profileFromCache = c.user?.uid ? commentAuthorProfiles[c.user.uid] : null;
+            const resolvedCommentName = profileFromCache?.username
+              ? `@${profileFromCache.username}`
+              : (profileFromCache?.displayName || c.user?.name || 'Unknown');
+            const resolvedCommentAvatar = profileFromCache?.avatarUrl || c.user?.avatar || '';
+
+            return (
+              <div key={c.id} className="qa-comment">
+                <button
+                  type="button"
+                  className="qa-comment-avatar qa-comment-avatar-btn"
+                  aria-label="Open profile"
+                  onClick={() => openUserProfile(c.user?.uid)}
+                  disabled={!c.user?.uid}
+                >
+                  {resolvedCommentAvatar ? (
+                    <img className="qa-comment-avatar-img" src={resolvedCommentAvatar} alt="" />
+                  ) : (
+                    <FaUserCircle size={34} />
+                  )}
+                </button>
+                <div className="qa-comment-content">
+                  <div className="qa-comment-head">
                     <button
-                      className="qa-comment-delete"
                       type="button"
-                      onClick={() => handleDeleteComment(c.id)}
+                      className="qa-comment-name qa-comment-name-btn"
+                      onClick={() => openUserProfile(c.user?.uid)}
+                      disabled={!c.user?.uid}
                     >
-                      Delete
+                      {resolvedCommentName}
+                    </button>
+                    {canAdminDeleteLiveComments ? (
+                      <button
+                        className="qa-comment-delete"
+                        type="button"
+                        onClick={() => handleDeleteComment(c.id)}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                  </div>
+                  {c.text ? <div className="qa-comment-text">{c.text}</div> : null}
+
+                  {c.imageUrl ? (
+                    <button
+                      className="qa-comment-image-link"
+                      type="button"
+                      aria-label="Open comment image"
+                      onClick={() => setPreviewSrc(c.imageUrl)}
+                    >
+                      <img className="qa-comment-image" src={c.imageUrl} alt="" />
                     </button>
                   ) : null}
+
+                  {Array.isArray(c.replies) && c.replies.length > 0 && (
+                    <div className="qa-replies">
+                      {c.replies.map((r) => (
+                        <div key={r.id} className="qa-comment qa-reply">
+                          <div className="qa-comment-avatar" aria-hidden="true">
+                            <FaUserCircle size={28} />
+                          </div>
+                          <div className="qa-comment-content">
+                            <div className="qa-comment-name">{r.user?.name}</div>
+                            <div className="qa-comment-text">{r.text}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {c.text ? <div className="qa-comment-text">{c.text}</div> : null}
-
-                {c.imageUrl ? (
-                  <button
-                    className="qa-comment-image-link"
-                    type="button"
-                    aria-label="Open comment image"
-                    onClick={() => setPreviewSrc(c.imageUrl)}
-                  >
-                    <img className="qa-comment-image" src={c.imageUrl} alt="" />
-                  </button>
-                ) : null}
-
-                {Array.isArray(c.replies) && c.replies.length > 0 && (
-                  <div className="qa-replies">
-                    {c.replies.map((r) => (
-                      <div key={r.id} className="qa-comment qa-reply">
-                        <div className="qa-comment-avatar" aria-hidden="true">
-                          <FaUserCircle size={28} />
-                        </div>
-                        <div className="qa-comment-content">
-                          <div className="qa-comment-name">{r.user?.name}</div>
-                          <div className="qa-comment-text">{r.text}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Spacer so fixed composer doesn't cover the last comments */}

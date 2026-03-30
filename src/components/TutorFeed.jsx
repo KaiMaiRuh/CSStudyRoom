@@ -1,15 +1,27 @@
 /* TutorFeed component */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FaUserCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import './TutorFeed.css';
 import TutorPostDetail from './TutorPostDetail';
 import ImagePreviewModal from './ImagePreviewModal';
 import { useAuth } from '../auth/AuthContext';
 
-const TutorFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
+const TutorFeed = ({
+  posts = [],
+  openPostId = null,
+  onDetailOpen,
+  onDetailClose,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
+  canDelete = false,
+  onDeletePost,
+}) => {
   const { user, profile } = useAuth();
   const [selectedPost, setSelectedPost] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
+  const loadMoreRef = useRef(null);
+  const observerBusyRef = useRef(false);
 
   const getUniqueJoiners = (post) => {
     const joiners = Array.isArray(post?.joiners) ? post.joiners : [];
@@ -92,6 +104,38 @@ const TutorFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose,
     const days = Math.floor(mins / 1440);
     return `posted ${days} ${days === 1 ? 'day' : 'days'} ago`;
   };
+
+  useEffect(() => {
+    if (!hasMore) return;
+    if (isLoadingMore) return;
+    if (typeof onLoadMore !== 'function') return;
+
+    const target = loadMoreRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+        if (observerBusyRef.current) return;
+
+        observerBusyRef.current = true;
+        void Promise.resolve(onLoadMore()).finally(() => {
+          observerBusyRef.current = false;
+        });
+      },
+      {
+        root: null,
+        rootMargin: '240px 0px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(target);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, isLoadingMore, onLoadMore, posts.length]);
 
   if (selectedPost) {
     const joined = getUniqueJoiners(selectedPost);
@@ -236,6 +280,11 @@ const TutorFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose,
         </div>
         );
       })}
+
+      <div ref={loadMoreRef} style={{ height: 1 }} aria-hidden="true" />
+      {isLoadingMore ? (
+        <div style={{ textAlign: 'center', color: '#6b7280', padding: '10px 0 20px' }}>Loading more posts...</div>
+      ) : null}
     </div>
   );
 };

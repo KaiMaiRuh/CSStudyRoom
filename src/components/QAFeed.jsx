@@ -1,12 +1,12 @@
 /* QAFeed component */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FaUserCircle, FaThumbsUp, FaComment, FaShare } from 'react-icons/fa';
 import './QAFeed.css';
 import QAPostDetail from './QAPostDetail';
 import ImagePreviewModal from './ImagePreviewModal';
 import { useAuth } from '../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
-import { subscribeQaPostLikeStatus, toggleQaPostLike } from './qaPostApi';
+import { getQaPostLikeStatus, toggleQaPostLike } from './qaPostApi';
 
 const QALikeAction = ({ postId, busy, onToggle }) => {
   const { user } = useAuth();
@@ -16,17 +16,42 @@ const QALikeAction = ({ postId, busy, onToggle }) => {
     if (!isFirebaseConfigured()) return;
     if (!postId) return;
 
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setLikeState({ uid: null, liked: false });
+      return;
+    }
 
     const { db } = getFirebaseServices();
-    return subscribeQaPostLikeStatus(
-      db,
-      postId,
-      user.uid,
-      (next) => setLikeState({ uid: user.uid, liked: Boolean(next) }),
-      (err) => console.error('Failed to subscribe qaPost like status', err)
-    );
+    let disposed = false;
+
+    void getQaPostLikeStatus(db, postId, user.uid)
+      .then((next) => {
+        if (disposed) return;
+        setLikeState({ uid: user.uid, liked: Boolean(next) });
+      })
+      .catch((err) => {
+        if (disposed) return;
+        console.error('Failed to load qaPost like status', err);
+      });
+
+    return () => {
+      disposed = true;
+    };
   }, [postId, user?.uid]);
+
+  const handleToggleLike = async () => {
+    await onToggle(postId);
+    if (!isFirebaseConfigured()) return;
+    if (!user?.uid) return;
+
+    try {
+      const { db } = getFirebaseServices();
+      const next = await getQaPostLikeStatus(db, postId, user.uid);
+      setLikeState({ uid: user.uid, liked: Boolean(next) });
+    } catch (err) {
+      console.error('Failed to refresh qaPost like status', err);
+    }
+  };
 
   const liked = user?.uid && likeState.uid === user.uid ? likeState.liked : false;
 
@@ -37,9 +62,13 @@ const QALikeAction = ({ postId, busy, onToggle }) => {
       tabIndex={0}
       aria-label="Like"
       aria-pressed={liked}
-      onClick={() => onToggle(postId)}
+      onClick={() => {
+        void handleToggleLike();
+      }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onToggle(postId);
+        if (e.key === 'Enter' || e.key === ' ') {
+          void handleToggleLike();
+        }
       }}
       style={busy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
     >
@@ -48,11 +77,23 @@ const QALikeAction = ({ postId, busy, onToggle }) => {
   );
 };
 
-const QAFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose, canDelete = false, onDeletePost }) => {
+const QAFeed = ({
+  posts = [],
+  openPostId = null,
+  onDetailOpen,
+  onDetailClose,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
+  canDelete = false,
+  onDeletePost,
+}) => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [busyPostId, setBusyPostId] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
   const { user, profile } = useAuth();
+  const loadMoreRef = useRef(null);
+  const observerBusyRef = useRef(false);
 
   const getPostAuthorName = (post) => {
     const fallback = post.user?.displayName || post.user?.name || post.authorName || 'Unknown';
@@ -124,6 +165,38 @@ const QAFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose, ca
     // keep the order stable and avoid duplicated URLs
     return Array.from(new Set(merged));
   };
+
+  useEffect(() => {
+    if (!hasMore) return;
+    if (isLoadingMore) return;
+    if (typeof onLoadMore !== 'function') return;
+
+    const target = loadMoreRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+        if (observerBusyRef.current) return;
+
+        observerBusyRef.current = true;
+        void Promise.resolve(onLoadMore()).finally(() => {
+          observerBusyRef.current = false;
+        });
+      },
+      {
+        root: null,
+        rootMargin: '240px 0px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(target);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, isLoadingMore, onLoadMore, posts.length]);
 
   if (selectedPost) {
     return (
@@ -323,6 +396,11 @@ const QAFeed = ({ posts = [], openPostId = null, onDetailOpen, onDetailClose, ca
           </div>
         </div>
       ))}
+
+      <div ref={loadMoreRef} style={{ height: 1 }} aria-hidden="true" />
+      {isLoadingMore ? (
+        <div style={{ textAlign: 'center', color: '#6b7280', padding: '10px 0 20px' }}>Loading more posts...</div>
+      ) : null}
     </div>
   );
 };

@@ -6,6 +6,8 @@ import {
   addDoc,
   query,
   where,
+  orderBy,
+  limit,
   onSnapshot,
   serverTimestamp,
   updateDoc,
@@ -42,13 +44,6 @@ export async function createGroup(postId, postTitle, subject, ownerId, ownerName
     members: [ownerId],
     createdAt: serverTimestamp(),
     memberCount: 1,
-    messageCount: 0,
-    lastMessageAt: null,
-    lastMessageId: null,
-    lastMessageText: null,
-    lastMessageSenderId: null,
-    lastMessageSenderName: null,
-    lastMessageType: null,
   };
 
   const docRef = await addDoc(collection(db, 'groups'), groupData);
@@ -142,10 +137,10 @@ export function subscribeToUserGroups(userId, callback) {
         id: doc.id,
         ...doc.data(),
       }));
-      // Sort by lastMessageAt (newest first), then by createdAt if no lastMessageAt
+      // Sort by createdAt (newest first).
       const sorted = groups.sort((a, b) => {
-        const timeA = a.lastMessageAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0;
-        const timeB = b.lastMessageAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0;
+        const timeA = a.createdAt?.toMillis?.() || 0;
+        const timeB = b.createdAt?.toMillis?.() || 0;
         return timeB - timeA; // Descending
       });
       console.log('Loaded groups for user', userId, ':', sorted);
@@ -166,10 +161,10 @@ export function subscribeToUserGroups(userId, callback) {
             const userGroups = allGroups.filter(
               group => group.members && Array.isArray(group.members) && group.members.includes(userId)
             );
-            // Sort by lastMessageAt (newest first), then by createdAt if no lastMessageAt
+            // Sort by createdAt (newest first).
             const sorted = userGroups.sort((a, b) => {
-              const timeA = a.lastMessageAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0;
-              const timeB = b.lastMessageAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0;
+              const timeA = a.createdAt?.toMillis?.() || 0;
+              const timeB = b.createdAt?.toMillis?.() || 0;
               return timeB - timeA; // Descending
             });
             console.log('Filtered groups for user', userId, ':', sorted);
@@ -189,10 +184,9 @@ export function subscribeToUserGroups(userId, callback) {
  * Send a message to a group
  * @param {string} groupId - The group ID
  * @param {string} senderId - The sender's user ID
- * @param {string} senderName - The sender's name
  * @param {string} text - The message text
  */
-export async function sendGroupMessage(groupId, senderId, senderName, text, senderAvatar = null) {
+export async function sendGroupMessage(groupId, senderId, text) {
   if (!isFirebaseConfigured()) {
     throw new Error('Firebase is not configured');
   }
@@ -208,25 +202,10 @@ export async function sendGroupMessage(groupId, senderId, senderName, text, send
     type: 'text',
     text: cleanedText,
     senderId,
-    senderName,
-    senderAvatar: senderAvatar || null,
     timestamp: serverTimestamp(),
   };
 
-  // Add message
   const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
-
-  // Update group's lastMessageAt for sorting
-  const groupRef = doc(db, 'groups', groupId);
-  await updateDoc(groupRef, {
-    lastMessageAt: serverTimestamp(),
-    lastMessageId: msgRef.id,
-    lastMessageText: cleanedText,
-    lastMessageSenderId: senderId,
-    lastMessageSenderName: senderName,
-    lastMessageType: 'text',
-    messageCount: increment(1),
-  });
 
   return msgRef.id;
 }
@@ -249,31 +228,15 @@ export async function sendSystemMessage(groupId, text, sender = null) {
   const { db } = getFirebaseServices();
 
   const senderId = sender?.senderId || null;
-  const senderName = sender?.senderName || null;
-  const senderAvatar = sender?.senderAvatar || null;
 
   const messageData = {
     type: 'system',
     text: cleanedText,
     senderId,
-    senderName,
-    senderAvatar,
     timestamp: serverTimestamp(),
   };
 
   const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
-
-  // Keep group sorting + unread counters consistent
-  const groupRef = doc(db, 'groups', groupId);
-  await updateDoc(groupRef, {
-    lastMessageAt: serverTimestamp(),
-    lastMessageId: msgRef.id,
-    lastMessageText: cleanedText,
-    lastMessageSenderId: senderId,
-    lastMessageSenderName: senderName,
-    lastMessageType: 'system',
-    messageCount: increment(1),
-  });
 
   return msgRef.id;
 }
@@ -292,6 +255,7 @@ export async function sendSharedPostMessage({ groupId, senderId, senderName, sen
   if (!senderName) throw new Error('senderName is required');
   if (postType !== 'qa' && postType !== 'tutor') throw new Error('Invalid postType');
   if (!postId) throw new Error('postId is required');
+  void senderAvatar;
 
   const { db } = getFirebaseServices();
 
@@ -313,8 +277,6 @@ export async function sendSharedPostMessage({ groupId, senderId, senderName, sen
     type: 'share',
     text: String(title || 'Shared a post'),
     senderId,
-    senderName,
-    senderAvatar: senderAvatar || null,
     timestamp: serverTimestamp(),
     sharedPost: {
       type: postType,
@@ -325,17 +287,6 @@ export async function sendSharedPostMessage({ groupId, senderId, senderName, sen
   };
 
   const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
-
-  const groupRef = doc(db, 'groups', groupId);
-  await updateDoc(groupRef, {
-    lastMessageAt: serverTimestamp(),
-    lastMessageId: msgRef.id,
-    lastMessageText: String(title || 'Shared a post'),
-    lastMessageSenderId: senderId,
-    lastMessageSenderName: senderName,
-    lastMessageType: 'share',
-    messageCount: increment(1),
-  });
 
   // For Q&A posts, treat "share to group" as a Share action.
   if (postType === 'qa') {
@@ -372,9 +323,9 @@ export function subscribeToGroupMessages(groupId, callback) {
   const { db } = getFirebaseServices();
 
   const q = query(
-    collection(db, 'groups', groupId, 'messages')
-    // Note: Firestore doesn't have a native orderBy with serverTimestamp on the client side
-    // We'll sort on the client side for real-time updates
+    collection(db, 'groups', groupId, 'messages'),
+    orderBy('timestamp', 'desc'),
+    limit(50)
   );
 
   return onSnapshot(q, (snapshot) => {
@@ -383,14 +334,46 @@ export function subscribeToGroupMessages(groupId, callback) {
         id: doc.id,
         ...doc.data(),
       }))
-      .sort((a, b) => {
-        const timeA = a.timestamp?.toMillis?.() || 0;
-        const timeB = b.timestamp?.toMillis?.() || 0;
-        return timeA - timeB;
-      });
+      .reverse();
 
     callback(messages);
   });
+}
+
+/**
+ * Subscribe to the latest message in a group.
+ * @param {string} groupId - The group ID
+ * @param {(message: object | null) => void} callback - Latest message callback
+ * @param {(error: Error) => void} [onError] - Error callback
+ * @returns {function} Unsubscribe function
+ */
+export function subscribeToLatestGroupMessage(groupId, callback, onError) {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase is not configured');
+  }
+
+  if (!groupId) return () => {};
+
+  const { db } = getFirebaseServices();
+  const q = query(
+    collection(db, 'groups', groupId, 'messages'),
+    orderBy('timestamp', 'desc'),
+    limit(1)
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      if (snapshot.empty) {
+        callback(null);
+        return;
+      }
+
+      const latest = snapshot.docs[0];
+      callback({ id: latest.id, ...latest.data() });
+    },
+    onError
+  );
 }
 
 /**

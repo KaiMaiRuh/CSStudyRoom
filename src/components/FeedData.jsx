@@ -1,54 +1,68 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   addDoc,
   collection,
   getDoc,
-  onSnapshot,
+  getDocs,
+  limit,
   orderBy,
   query,
   runTransaction,
+  startAfter,
   serverTimestamp,
   doc,
 } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 import { createGroup, deleteGroupByPostId } from './groupMessageApi';
 
+const PAGE_SIZE = 20;
+
+const BASE_SUBJECTS = [
+  'Mathematics I',
+  'Discrete Math. For Computer Science',
+  'Computer Programming I',
+  'Fundamental Of CS AND Prof. Issues',
+  'Economics For Everyday Life',
+  'Physics In Daily Life',
+  'Mathematics For Computing',
+  'Database Systems',
+  'Structure Programming',
+  'Computer Organization And Operating System',
+  'Human Computer Interaction',
+  'Stat. For Engineerings And Scientists',
+  'Numerical Methods',
+  'Data Structure',
+  'Object-Oriented Programming',
+  'System Analysis And Design',
+  'Digital Circuit',
+  'English I',
+  'Computer Networks',
+  'Design And Analysis Of Algorithm',
+  'Intelligent Systems',
+  'Software Engineering',
+  'Computer System Security',
+  'English II',
+  'Design Thinking',
+  'Special Project I',
+  'Special Project II'
+];
+
 const FeedData = () => {
   const [tutorPosts, setTutorPosts] = useState([]);
   const [qaPosts, setQaPosts] = useState([]);
-  const [allSubjects, setAllSubjects] = useState([
-    'Mathematics I',
-    'Discrete Math. For Computer Science',
-    'Computer Programming I',
-    'Fundamental Of CS AND Prof. Issues',
-    'Economics For Everyday Life',
-    'Physics In Daily Life',
-    'Mathematics For Computing',
-    'Database Systems',
-    'Structure Programming',
-    'Computer Organization And Operating System',
-    'Human Computer Interaction',
-    'Stat. For Engineerings And Scientists',
-    'Numerical Methods',
-    'Data Structure',
-    'Object-Oriented Programming',
-    'System Analysis And Design',
-    'Digital Circuit',
-    'English I',
-    'Computer Networks',
-    'Design And Analysis Of Algorithm',
-    'Intelligent Systems',
-    'Software Engineering',
-    'Computer System Security',
-    'English II',
-    'Design Thinking',
-    'Special Project I',
-    'Special Project II'
-  ]);
+  const [allSubjects, setAllSubjects] = useState(BASE_SUBJECTS);
+  const [tutorCursor, setTutorCursor] = useState(null);
+  const [qaCursor, setQaCursor] = useState(null);
+  const [hasMoreTutorPosts, setHasMoreTutorPosts] = useState(true);
+  const [hasMoreQaPosts, setHasMoreQaPosts] = useState(true);
+  const [isLoadingMoreTutorPosts, setIsLoadingMoreTutorPosts] = useState(false);
+  const [isLoadingMoreQaPosts, setIsLoadingMoreQaPosts] = useState(false);
+  const tutorLoadLockRef = useRef(false);
+  const qaLoadLockRef = useRef(false);
 
   // Update subjects whenever posts change
   useEffect(() => {
-    const subjectsSet = new Set(allSubjects);
+    const subjectsSet = new Set(BASE_SUBJECTS);
 
     tutorPosts.forEach(post => {
       if (post.subject) subjectsSet.add(post.subject);
@@ -60,112 +74,208 @@ const FeedData = () => {
 
     const sortedSubjects = Array.from(subjectsSet).sort();
     setAllSubjects(sortedSubjects);
-  }, [allSubjects, tutorPosts, qaPosts]);
+  }, [tutorPosts, qaPosts]);
 
   const [activeFeed, setActiveFeed] = useState('tutor');
+
+  const mapTutorPostDoc = (d) => {
+    const data = d.data() || {};
+    const createdAtDate = data.createdAt?.toDate?.() ?? null;
+    const minutesAgo = createdAtDate
+      ? Math.max(0, Math.round((Date.now() - createdAtDate.getTime()) / 60000))
+      : 0;
+
+    return {
+      id: d.id,
+      user: {
+        name: data.authorUsername || data.authorName || 'Unknown',
+        displayName: data.authorName || 'Unknown',
+        username: data.authorUsername || null,
+        avatar: data.authorAvatar || '',
+        uid: data.authorId || null,
+      },
+      subject: data.subject || '',
+      location: data.location || '',
+      title: data.title || '',
+      description: data.description || '',
+      experience: data.experience || '',
+      date: data.date || '',
+      time: data.time || '',
+      minutesAgo,
+      capacity: data.capacity ?? 0,
+      joiners: Array.isArray(data.joiners) ? data.joiners : [],
+      current: Array.isArray(data.joiners) ? data.joiners.length : 0,
+      joinedCount: Array.isArray(data.joiners) ? data.joiners.length : 0,
+      hours: data.hours ?? 0,
+      images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
+      authorId: data.authorId || null,
+    };
+  };
+
+  const mapQaPostDoc = (d) => {
+    const data = d.data() || {};
+    const createdAtDate = data.createdAt?.toDate?.() ?? null;
+    const minutesAgo = createdAtDate
+      ? Math.max(0, Math.round((Date.now() - createdAtDate.getTime()) / 60000))
+      : 0;
+
+    return {
+      id: d.id,
+      user: {
+        name: data.authorUsername || data.authorName || 'Unknown',
+        username: data.authorUsername || null,
+        avatar: data.authorAvatar || '',
+        uid: data.authorId || null,
+      },
+      subject: data.subject || '',
+      question: data.question || '',
+      description: data.description || '',
+      date: data.date || '',
+      createdAt: createdAtDate,
+      time: data.time || '',
+      minutesAgo,
+      likes: data.likes ?? data.likeCount ?? 0,
+      comments: data.comments ?? data.commentCount ?? 0,
+      shares: data.shares ?? data.shareCount ?? 0,
+      images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
+      authorId: data.authorId || null,
+      commentList: data.commentList || null,
+    };
+  };
+
+  const mergeUniquePosts = (prev, next) => {
+    const seen = new Set(prev.map((item) => item.id));
+    const merged = [...prev];
+    next.forEach((item) => {
+      if (seen.has(item.id)) return;
+      seen.add(item.id);
+      merged.push(item);
+    });
+    return merged;
+  };
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
 
-    let unsubTutor = null;
-    let unsubQa = null;
+    let disposed = false;
 
     try {
       const { db } = getFirebaseServices();
 
-      const tutorQuery = query(collection(db, 'tutorPosts'), orderBy('createdAt', 'desc'));
-      unsubTutor = onSnapshot(
-        tutorQuery,
-        (snap) => {
-          const next = snap.docs.map((d) => {
-            const data = d.data() || {};
-            const createdAtDate = data.createdAt?.toDate?.() ?? null;
-            const minutesAgo = createdAtDate
-              ? Math.max(0, Math.round((Date.now() - createdAtDate.getTime()) / 60000))
-              : 0;
+      const loadInitialFeed = async () => {
+        const tutorQuery = query(
+          collection(db, 'tutorPosts'),
+          orderBy('createdAt', 'desc'),
+          limit(PAGE_SIZE)
+        );
+        const qaQuery = query(
+          collection(db, 'qaPosts'),
+          orderBy('createdAt', 'desc'),
+          limit(PAGE_SIZE)
+        );
 
-            return {
-              id: d.id,
-              user: { 
-                name: data.authorUsername || data.authorName || 'Unknown', 
-                displayName: data.authorName || 'Unknown',
-                username: data.authorUsername || null,
-                avatar: data.authorAvatar || '',
-                uid: data.authorId || null,
-              },
-              subject: data.subject || '',
-              location: data.location || '',
-              title: data.title || '',
-              description: data.description || '',
-              experience: data.experience || '',
-              date: data.date || '',
-              time: data.time || '',
-              minutesAgo,
-              capacity: data.capacity ?? 0,
-              joiners: Array.isArray(data.joiners) ? data.joiners : [],
-              current: Array.isArray(data.joiners) ? data.joiners.length : 0,
-              joinedCount: Array.isArray(data.joiners) ? data.joiners.length : 0,
-              hours: data.hours ?? 0,
-              images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
-              authorId: data.authorId || null,
-            };
-          });
-          setTutorPosts(next);
-        },
-        (err) => {
-          console.error('Failed To Subscribe To Tutor Posts:', err);
-        }
-      );
+        const [tutorSnap, qaSnap] = await Promise.all([
+          getDocs(tutorQuery),
+          getDocs(qaQuery),
+        ]);
 
-      const qaQuery = query(collection(db, 'qaPosts'), orderBy('createdAt', 'desc'));
-      unsubQa = onSnapshot(
-        qaQuery,
-        (snap) => {
-          const next = snap.docs.map((d) => {
-            const data = d.data() || {};
-            const createdAtDate = data.createdAt?.toDate?.() ?? null;
-            const minutesAgo = createdAtDate
-              ? Math.max(0, Math.round((Date.now() - createdAtDate.getTime()) / 60000))
-              : 0;
+        if (disposed) return;
 
-            return {
-              id: d.id,
-              user: {
-                name: data.authorUsername || data.authorName || 'Unknown',
-                username: data.authorUsername || null,
-                avatar: data.authorAvatar || '',
-                uid: data.authorId || null,
-              },
-              subject: data.subject || '',
-              question: data.question || '',
-              description: data.description || '',
-              date: data.date || '',
-              createdAt: createdAtDate,
-              time: data.time || '',
-              minutesAgo,
-              likes: data.likes ?? data.likeCount ?? 0,
-              comments: data.comments ?? data.commentCount ?? 0,
-              shares: data.shares ?? data.shareCount ?? 0,
-              images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
-              authorId: data.authorId || null,
-              commentList: data.commentList || null,
-            };
-          });
-          setQaPosts(next);
-        },
-        (err) => {
-          console.error('Failed To Subscribe To QA Posts:', err);
-        }
-      );
+        const nextTutorPosts = tutorSnap.docs.map(mapTutorPostDoc);
+        const nextQaPosts = qaSnap.docs.map(mapQaPostDoc);
+
+        setTutorPosts(nextTutorPosts);
+        setQaPosts(nextQaPosts);
+
+        setTutorCursor(tutorSnap.docs[tutorSnap.docs.length - 1] || null);
+        setQaCursor(qaSnap.docs[qaSnap.docs.length - 1] || null);
+
+        setHasMoreTutorPosts(tutorSnap.docs.length === PAGE_SIZE);
+        setHasMoreQaPosts(qaSnap.docs.length === PAGE_SIZE);
+      };
+
+      void loadInitialFeed().catch((err) => {
+        if (disposed) return;
+        console.error('FeedData Error', err);
+      });
     } catch (err) {
       console.error('FeedData Error', err);
     }
 
     return () => {
-      if (typeof unsubTutor === 'function') unsubTutor();
-      if (typeof unsubQa === 'function') unsubQa();
+      disposed = true;
     };
+  // map helpers are intentionally excluded to keep one-time loading behavior.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadMoreTutorPosts = async () => {
+    if (!isFirebaseConfigured()) return;
+    if (!hasMoreTutorPosts || isLoadingMoreTutorPosts || tutorLoadLockRef.current) return;
+
+    const { db } = getFirebaseServices();
+    tutorLoadLockRef.current = true;
+    setIsLoadingMoreTutorPosts(true);
+
+    try {
+      const constraints = [
+        orderBy('createdAt', 'desc'),
+      ];
+
+      if (tutorCursor) {
+        constraints.push(startAfter(tutorCursor));
+      }
+
+      constraints.push(limit(PAGE_SIZE));
+
+      const nextQuery = query(collection(db, 'tutorPosts'), ...constraints);
+      const snap = await getDocs(nextQuery);
+      const nextPosts = snap.docs.map(mapTutorPostDoc);
+
+      setTutorPosts((prev) => mergeUniquePosts(prev, nextPosts));
+      setTutorCursor(snap.docs[snap.docs.length - 1] || tutorCursor);
+      setHasMoreTutorPosts(snap.docs.length === PAGE_SIZE);
+    } catch (err) {
+      console.error('Failed To Load More Tutor Posts:', err);
+    } finally {
+      setIsLoadingMoreTutorPosts(false);
+      tutorLoadLockRef.current = false;
+    }
+  };
+
+  const loadMoreQaPosts = async () => {
+    if (!isFirebaseConfigured()) return;
+    if (!hasMoreQaPosts || isLoadingMoreQaPosts || qaLoadLockRef.current) return;
+
+    const { db } = getFirebaseServices();
+    qaLoadLockRef.current = true;
+    setIsLoadingMoreQaPosts(true);
+
+    try {
+      const constraints = [
+        orderBy('createdAt', 'desc'),
+      ];
+
+      if (qaCursor) {
+        constraints.push(startAfter(qaCursor));
+      }
+
+      constraints.push(limit(PAGE_SIZE));
+
+      const nextQuery = query(collection(db, 'qaPosts'), ...constraints);
+      const snap = await getDocs(nextQuery);
+      const nextPosts = snap.docs.map(mapQaPostDoc);
+
+      setQaPosts((prev) => mergeUniquePosts(prev, nextPosts));
+      setQaCursor(snap.docs[snap.docs.length - 1] || qaCursor);
+      setHasMoreQaPosts(snap.docs.length === PAGE_SIZE);
+    } catch (err) {
+      console.error('Failed To Load More QA Posts:', err);
+    } finally {
+      setIsLoadingMoreQaPosts(false);
+      qaLoadLockRef.current = false;
+    }
+  };
 
   const addTutorPost = async (post) => {
     if (!isFirebaseConfigured()) {
@@ -464,6 +574,12 @@ const FeedData = () => {
     allSubjects,
     activeFeed,
     setActiveFeed,
+    hasMoreTutorPosts,
+    hasMoreQaPosts,
+    isLoadingMoreTutorPosts,
+    isLoadingMoreQaPosts,
+    loadMoreTutorPosts,
+    loadMoreQaPosts,
     addTutorPost,
     addQaPost,
     updateTutorPost,
