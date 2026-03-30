@@ -17,6 +17,7 @@ import Navbar from './components/Navbar';
 import FloatingMenu from './components/FloatingMenu';
 import AdminPanel from './components/admin/AdminPanel';
 import GroupMessagePage from './components/GroupMessagePage';
+import Calendar from './components/Calendar';
 import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [activePage, setActivePage] = useState('home');
@@ -52,6 +54,7 @@ function App() {
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
   const isAdminPage = activePage === 'admin';
   const isGroupMessagePage = activePage === 'groupmessage';
+  const isCalendarPage = activePage === 'calendar';
 
   // Filter posts based on search and category
   const filteredTutorPosts = tutorPosts.filter(post => {
@@ -88,6 +91,7 @@ function App() {
       case 'signin': return '#/signin';
       case 'createPost': return '#/create-post';
       case 'admin': return '#/admin';
+      case 'calendar': return '#/calendar';
       case 'groupmessage': return '#/groupmessage';
       default: return '#/';
     }
@@ -106,6 +110,7 @@ function App() {
     if (p.startsWith('/signin')) return 'signin';
     if (p.startsWith('/create-post')) return 'createPost';
     if (p.startsWith('/admin')) return 'admin';
+    if (p.startsWith('/calendar')) return 'calendar';
     if (p.startsWith('/groupmessage')) return 'groupmessage';
     return 'home';
   };
@@ -154,6 +159,7 @@ function App() {
     setShowEditProfile(false);
     setShowSignIn(false);
     setShowCreatePost(false);
+    setShowCalendar(false);
     setIsFeedDetailOpen(false);
 
     // Prevent unauthenticated access to certain pages
@@ -222,6 +228,19 @@ function App() {
           setActivePage('groupmessage');
         }
         break;
+      case 'calendar':
+        if (!user) {
+          if (authLoading) return;
+          setShowSignIn(true);
+          setActivePage('signin');
+        } else if (!isAdmin) {
+          setShowCalendar(true);
+          setActivePage('calendar');
+        } else {
+          alert('Admin does not have Calendar page');
+          setActivePage('home');
+        }
+        break;
       default:
         setActivePage('home');
     }
@@ -242,6 +261,7 @@ function App() {
     setShowEditProfile(false);
     setShowSignIn(false);
     setShowCreatePost(false);
+    setShowCalendar(false);
     setIsFeedDetailOpen(false);
 
     switch (page) {
@@ -270,6 +290,10 @@ function App() {
         break;
       case 'admin':
         setActivePage('admin');
+        break;
+      case 'calendar':
+        setShowCalendar(true);
+        setActivePage('calendar');
         break;
       case 'groupmessage':
         setActivePage('groupmessage');
@@ -519,6 +543,8 @@ function App() {
           <GroupMessagePage onBack={() => {
             navigateTo('home');
           }} />
+        ) : isCalendarPage ? (
+          <Calendar tutorPosts={tutorPosts} onBack={() => navigateTo('home')} />
         ) : isAdminPage ? (
           <AdminPanel />
         ) : (

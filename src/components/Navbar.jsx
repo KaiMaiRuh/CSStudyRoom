@@ -26,6 +26,14 @@ const Navbar = ({
       
       <div className="navbar-right">
         <button className={`nav-button ${activePage === 'home' ? 'active' : ''} home-button`} onClick={() => onNavigate?.('home')}>Home</button>
+        {!isAdmin && isLoggedIn ? (
+          <button
+            className={`nav-button ${activePage === 'calendar' ? 'active' : ''}`}
+            onClick={() => onNavigate?.('calendar')}
+          >
+            Calendar
+          </button>
+        ) : null}
         {isAdmin ? (
           <button
             className={`nav-button ${activePage === 'admin' ? 'active' : ''}`}
