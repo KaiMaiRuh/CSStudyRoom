@@ -15,6 +15,7 @@ import EditProfile from './components/EditProfile';
 import CreatePost from './components/CreatePost';
 import Navbar from './components/Navbar';
 import FloatingMenu from './components/FloatingMenu';
+import Footer from './components/Footer';
 import AdminPanel from './components/admin/AdminPanel';
 import GroupMessagePage from './components/GroupMessagePage';
 import Calendar from './components/Calendar';
@@ -54,6 +55,7 @@ function App() {
   const isAdminPage = activePage === 'admin';
   const isGroupMessagePage = activePage === 'groupmessage';
   const isCalendarPage = activePage === 'calendar';
+  const showFooter = !showCreatePost;
 
   // Filter posts based on search and category
   const filteredTutorPosts = tutorPosts.filter(post => {
@@ -519,7 +521,7 @@ function App() {
   }, [user, activePage, logActivity]);
 
   return (
-    <div>
+    <div className="app-shell">
       <Navbar
         onLogout={() => {
           const p = Promise.resolve(signOut());
@@ -688,6 +690,7 @@ function App() {
           onNavigate={navigateTo}
         />
       )}
+      {showFooter && <Footer />}
     </div>
   );
 }

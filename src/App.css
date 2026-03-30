@@ -5,6 +5,12 @@
   text-align: left;
 }
 
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 /* App root */
 .app-root {
   width: 100%;
@@ -48,6 +54,7 @@
   box-shadow: none;
   color: #213547;
   min-height: 100vh;
+  flex: 1;
 }
 
 h1 {
