@@ -61,7 +61,7 @@ const FloatingMenu = ({
               if (typeof onCreatePost === 'function') {
                 onCreatePost();
               } else {
-                window.location.hash = '#create-post';
+                window.location.hash = '#/create-post';
               }
             }}
           >

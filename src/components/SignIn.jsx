@@ -20,7 +20,7 @@ export default function SignIn({ onNavigate }) {
       onNavigate?.('home');
     } catch (err) {
       setIsSubmitting(false);
-      alert(err?.message || 'Sign In Failed');
+      alert(err?.message || 'Log in Failed');
     }
   };
 
@@ -35,7 +35,7 @@ export default function SignIn({ onNavigate }) {
 
         <div className="right-panel">
           <div className="create-account-form">
-            <h2>Sign in</h2>
+            <h2>Log in</h2>
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -85,7 +85,7 @@ export default function SignIn({ onNavigate }) {
               </div>
 
               <button type="submit" disabled={isSubmitting} className="submit-button">
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
+                {isSubmitting ? 'Logging in...' : 'Log in'}
               </button>
             </form>
 

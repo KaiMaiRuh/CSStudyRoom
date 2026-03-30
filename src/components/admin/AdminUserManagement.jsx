@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FaSearch, FaTrashAlt } from 'react-icons/fa';
+import { FaSearch, FaTrashAlt, FaUserCheck, FaUserSlash } from 'react-icons/fa';
 import './AdminUserManagement.css';
 import { useAuth } from '../../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../../firebase';
-import { collection, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 const normalize = (v) => String(v || '').toLowerCase().normalize('NFC');
 
@@ -30,6 +30,7 @@ const AdminUserManagement = () => {
             email: data.email || '',
             year: data.year || data.education?.year || '',
             role: data.role || '',
+            banned: Boolean(data.banned),
           };
         });
         next.sort((a, b) => a.name.localeCompare(b.name));
@@ -55,7 +56,7 @@ const AdminUserManagement = () => {
   const handleDelete = async (uid) => {
     if (!isFirebaseConfigured()) return;
 
-    const ok = window.confirm('Delete this user document?');
+    const ok = window.confirm('Delete this user document? (Firestore only)');
     if (!ok) return;
 
     try {
@@ -64,6 +65,21 @@ const AdminUserManagement = () => {
     } catch (err) {
       console.error('Failed to delete user', err);
       alert(err?.message || 'Failed to delete user');
+    }
+  };
+
+  const handleBanToggle = async (uid, currentlyBanned) => {
+    if (!isFirebaseConfigured()) return;
+
+    const ok = window.confirm(`${currentlyBanned ? 'Unban' : 'Ban'} this user?`);
+    if (!ok) return;
+
+    try {
+      const { db } = getFirebaseServices();
+      await setDoc(doc(db, 'users', uid), { banned: !currentlyBanned }, { merge: true });
+    } catch (err) {
+      console.error('Failed to toggle ban', err);
+      alert(err?.message || 'Failed to update ban status');
     }
   };
 
@@ -115,16 +131,30 @@ const AdminUserManagement = () => {
                     <td>{u.year}</td>
                     <td>{u.role}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        className="admin-users-delete"
-                        aria-label="Delete user"
-                        onClick={() => handleDelete(u.uid)}
-                        disabled={Boolean(currentUser?.uid) && u.uid === currentUser.uid}
-                        aria-disabled={Boolean(currentUser?.uid) && u.uid === currentUser.uid}
-                      >
-                        <FaTrashAlt />
-                      </button>
+                      <div className="admin-users-actions">
+                        <button
+                          type="button"
+                          className="admin-users-ban"
+                          aria-label={u.banned ? 'Unban user' : 'Ban user'}
+                          onClick={() => handleBanToggle(u.uid, u.banned)}
+                          disabled={Boolean(currentUser?.uid) && u.uid === currentUser.uid}
+                          aria-disabled={Boolean(currentUser?.uid) && u.uid === currentUser.uid}
+                          title={u.banned ? 'Unban user' : 'Ban user'}
+                        >
+                          {u.banned ? <FaUserCheck size={16} /> : <FaUserSlash size={16} />}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="admin-users-delete"
+                          aria-label="Delete user"
+                          onClick={() => handleDelete(u.uid)}
+                          disabled={Boolean(currentUser?.uid) && u.uid === currentUser.uid}
+                          aria-disabled={Boolean(currentUser?.uid) && u.uid === currentUser.uid}
+                        >
+                          <FaTrashAlt />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

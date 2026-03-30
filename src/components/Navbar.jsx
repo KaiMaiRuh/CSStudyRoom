@@ -55,7 +55,7 @@ const Navbar = ({
         {isLoggedIn ? (
           <button className="nav-button logout-button" onClick={onLogout}>Log out</button>
         ) : (
-          <button className={`nav-button signup-button ${activePage === 'signin' ? 'active' : ''}`} onClick={() => onNavigate?.('signin')}>Sign in</button>
+          <button className={`nav-button signup-button ${activePage === 'signin' ? 'active' : ''}`} onClick={() => onNavigate?.('signin')}>Log in</button>
         )}
       </div>
     </nav>

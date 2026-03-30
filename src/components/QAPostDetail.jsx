@@ -163,7 +163,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
   const handleToggleLike = async () => {
     if (!isFirebaseConfigured()) return;
     if (!user?.uid) {
-      alert('Please sign in to like posts');
+      alert('Please log in to like posts');
       return;
     }
 
@@ -187,7 +187,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
   const handleSendComment = async () => {
     if (!isFirebaseConfigured()) return;
     if (!user?.uid) {
-      alert('Please sign in to comment');
+      alert('Please log in to comment');
       return;
     }
 

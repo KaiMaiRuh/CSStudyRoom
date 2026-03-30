@@ -6,7 +6,7 @@ import AdminDashboard from './AdminDashboard';
 import AdminUserManagement from './AdminUserManagement';
 
 const AdminPanel = () => {
-  const { isAdmin, profileLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin, profileLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const pageTitle = useMemo(() => {
@@ -14,11 +14,22 @@ const AdminPanel = () => {
     return 'Admin Dashboard';
   }, [activeTab]);
 
-  if (profileLoading) {
+  if (authLoading || (user?.uid && profileLoading)) {
     return (
       <div className="admin-shell">
         <div className="admin-main">
           <h1 className="admin-title">Loading…</h1>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="admin-shell">
+        <div className="admin-main">
+          <h1 className="admin-title">Not authorized</h1>
+          <p className="admin-muted">Please log in to access admin tools.</p>
         </div>
       </div>
     );

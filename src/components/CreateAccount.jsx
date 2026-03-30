@@ -214,7 +214,7 @@ const CreateAccount = ({ onNavigate }) => {
                     onNavigate?.('signin');
                   }}
                 >
-                  Sign in
+                  Log in
                 </button>
               </p>
             </div>

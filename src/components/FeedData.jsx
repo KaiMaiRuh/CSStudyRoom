@@ -184,7 +184,7 @@ const FeedData = () => {
 
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Please Sign In Before Creating A Post.');
+    if (!currentUser) throw new Error('Please Log In Before Creating A Post.');
 
     // Get author info from auth and users collection
     const authorName = currentUser.displayName || currentUser.email || 'You';
@@ -259,7 +259,7 @@ const FeedData = () => {
 
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Please Sign In Before Creating A Post.');
+    if (!currentUser) throw new Error('Please Log In Before Creating A Post.');
 
     // Get author info from auth and users collection
     const authorName = currentUser.displayName || currentUser.email || 'You';
@@ -300,7 +300,7 @@ const FeedData = () => {
 
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Please Sign In Before Editing A Post.');
+    if (!currentUser) throw new Error('Please Log In Before Editing A Post.');
 
     const postRef = doc(db, 'tutorPosts', postId);
     const payload = {
@@ -349,7 +349,7 @@ const FeedData = () => {
 
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Please Sign In Before Editing A Post.');
+    if (!currentUser) throw new Error('Please Log In Before Editing A Post.');
 
     const postRef = doc(db, 'qaPosts', postId);
     const payload = {
@@ -391,7 +391,7 @@ const FeedData = () => {
     if (!isFirebaseConfigured()) return;
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Please Sign In Before Deleting A Post.');
+    if (!currentUser) throw new Error('Please Log In Before Deleting A Post.');
 
     const postRef = doc(db, 'tutorPosts', postId);
     await runTransaction(db, async (tx) => {
@@ -426,7 +426,7 @@ const FeedData = () => {
     if (!isFirebaseConfigured()) return;
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Please Sign In Before Deleting A Post.');
+    if (!currentUser) throw new Error('Please Log In Before Deleting A Post.');
 
     const postRef = doc(db, 'qaPosts', postId);
     await runTransaction(db, async (tx) => {

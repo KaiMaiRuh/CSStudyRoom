@@ -108,7 +108,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       return;
     }
     if (!user?.uid || !profile?.displayName) {
-      setJoinError('Please sign in first');
+      setJoinError('Please log in first');
       return;
     }
 
@@ -194,7 +194,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
 
   const handleLeavePost = async () => {
     if (!user?.uid || !profile?.displayName) {
-      setJoinError('Please sign in first');
+      setJoinError('Please log in first');
       return;
     }
 

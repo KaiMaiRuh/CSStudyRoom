@@ -30,6 +30,16 @@ export function AuthProvider({ children }) {
     const unsub = onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
       setLoading(false);
+
+      // Avoid a brief "Not authorized" flash on routes that depend on profile role
+      // by marking the profile as loading immediately when a user is present.
+      if (nextUser?.uid) {
+        setProfile(null);
+        setProfileLoading(true);
+      } else {
+        setProfile(null);
+        setProfileLoading(false);
+      }
     });
 
     return () => unsub();
@@ -55,8 +65,15 @@ export function AuthProvider({ children }) {
     return onSnapshot(
       ref,
       (snap) => {
-        setProfile(snap.exists() ? snap.data() : null);
+        const data = snap.exists() ? snap.data() : null;
+        setProfile(data);
         setProfileLoading(false);
+        if (data && data.banned) {
+          const { auth } = getFirebaseServices();
+          firebaseSignOut(auth).catch((e) => {
+            console.error('Failed to sign out banned user', e);
+          });
+        }
       },
       (err) => {
         console.error('Failed to subscribe user profile', err);
@@ -96,10 +113,29 @@ export function AuthProvider({ children }) {
             { merge: true }
           );
         } catch (e) {
-          console.error('Failed To Update Visit On Sign In', e);
+          console.error('Failed To Update Visit On Log In', e);
         }
       } catch (err) {
-        console.error('Failed To Log Sign-In Activity', err);
+        console.error('Failed To Log Log In Activity', err);
+      }
+
+      // Check if the user's account is banned. If so, sign them out immediately.
+      try {
+        const { db } = getFirebaseServices();
+        const userRef = doc(db, 'users', cred.user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists() && userSnap.data()?.banned) {
+          const { auth } = getFirebaseServices();
+          await firebaseSignOut(auth);
+          const bannedError = new Error('This account has been banned');
+          bannedError.code = 'auth/banned';
+          throw bannedError;
+        }
+      } catch (checkErr) {
+        if (checkErr?.code === 'auth/banned') {
+          throw checkErr;
+        }
+        console.error('Failed to check ban status after sign in', checkErr);
       }
       return cred.user;
     }
@@ -115,6 +151,9 @@ export function AuthProvider({ children }) {
         throw new Error('Email is required');
       }
 
+      // Whitelist check: allowedEmails/{email}
+      // The user created allowedEmails collection with Document ID equal to email.
+      // We try exact match first, then lowercased (recommended) to avoid case issues.
       // Whitelist check: allowedEmails/{email}
       // The user created allowedEmails collection with Document ID equal to email.
       // We try exact match first, then lowercased (recommended) to avoid case issues.

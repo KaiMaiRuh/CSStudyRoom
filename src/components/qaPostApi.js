@@ -55,7 +55,7 @@ export function subscribeQaPostComments(db, postId, onComments, onError) {
 export async function toggleQaPostLike({ db, postId, uid, authorName }) {
   if (!db) throw new Error('Firestore is not available');
   if (!postId) throw new Error('postId is required');
-  if (!uid) throw new Error('Please sign in to like posts');
+  if (!uid) throw new Error('Please log in to like posts');
 
   const postRef = doc(db, 'qaPosts', postId);
   const likeRef = doc(db, 'qaPosts', postId, 'likes', uid);
@@ -89,7 +89,7 @@ export async function toggleQaPostLike({ db, postId, uid, authorName }) {
 export async function addQaPostComment({ db, postId, uid, authorName, authorAvatar, text, imageUrl = null }) {
   if (!db) throw new Error('Firestore is not available');
   if (!postId) throw new Error('postId is required');
-  if (!uid) throw new Error('Please sign in to comment');
+  if (!uid) throw new Error('Please log in to comment');
 
   const cleaned = String(text || '').trim();
   const cleanedImageUrl = typeof imageUrl === 'string' ? imageUrl.trim() : '';

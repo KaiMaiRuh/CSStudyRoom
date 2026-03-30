@@ -207,7 +207,7 @@ export default function EditProfile({ onCancel, onDone }) {
       <div className="edit-profile-container">
         <div className="edit-profile-card">
           <div className="edit-profile-title">Edit Profile</div>
-          <div className="edit-profile-hint">Please sign in first.</div>
+          <div className="edit-profile-hint">Please log in first.</div>
           <div className="edit-profile-actions">
             <button className="edit-profile-btn-secondary" type="button" onClick={onCancel}>
               Back

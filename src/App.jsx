@@ -20,7 +20,7 @@ import GroupMessagePage from './components/GroupMessagePage';
 import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
-  const { user, loading: authLoading, signOut, logActivity, isAdmin } = useAuth();
+  const { user, loading: authLoading, profileLoading, signOut, logActivity, isAdmin } = useAuth();
   const {
     tutorPosts,
     qaPosts,
@@ -44,9 +44,9 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
   const [isFeedDetailOpen, setIsFeedDetailOpen] = useState(false);
+  const [initialRouteApplied, setInitialRouteApplied] = useState(false);
 
   const isHome = activePage === 'home';
-  const isCreateAccountPage = activePage === 'createAccount';
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
   const isAdminPage = activePage === 'admin';
   const isGroupMessagePage = activePage === 'groupmessage';
@@ -74,23 +74,30 @@ function App() {
   });
 
   // --- URL <-> page helper: keep existing state-based navigation but sync browser URL
+  // Use hash-based URLs to avoid server 404 on refresh (works on GitHub Pages)
   const pageToPath = (page) => {
     switch (page) {
-      case 'home': return '/';
-      case 'profile': return '/profile';
-      case 'editProfile': return '/profile/edit';
-      case 'createAccount': return '/create-account';
-      case 'signin': return '/signin';
-      case 'createPost': return '/create-post';
-      case 'admin': return '/admin';
-      case 'groupmessage': return '/groupmessage';
-      default: return '/';
+      case 'home': return '#/';
+      case 'tutor': return '#/tutor';
+      case 'qa': return '#/qa';
+      case 'profile': return '#/profile';
+      case 'editProfile': return '#/profile/edit';
+      case 'createAccount': return '#/create-account';
+      case 'signin': return '#/signin';
+      case 'createPost': return '#/create-post';
+      case 'admin': return '#/admin';
+      case 'groupmessage': return '#/groupmessage';
+      default: return '#/';
     }
   };
 
-  const pathToPage = (pathname) => {
-    const p = (pathname || '').replace(/\/+$/, '') || '/';
+  const pathToPage = (raw) => {
+    // prefer hash if present, otherwise pathname
+    const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
+    const p = (src || '').replace(/\/+$/, '') || '/';
     if (p === '/' || p === '' || p === '/home') return 'home';
+    if (p === '/tutor') return 'home';
+    if (p === '/qa') return 'home';
     if (p.startsWith('/profile/edit')) return 'editProfile';
     if (p.startsWith('/profile')) return 'profile';
     if (p.startsWith('/create-account')) return 'createAccount';
@@ -99,6 +106,14 @@ function App() {
     if (p.startsWith('/admin')) return 'admin';
     if (p.startsWith('/groupmessage')) return 'groupmessage';
     return 'home';
+  };
+
+  const extractFeedFromRaw = (raw) => {
+    const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
+    const p = (src || '').replace(/\/+$/, '') || '/';
+    if (p === '/tutor') return 'tutor';
+    if (p === '/qa') return 'qa';
+    return null;
   };
 
   const applyPageState = (page) => {
@@ -112,6 +127,10 @@ function App() {
 
     // Prevent unauthenticated access to certain pages
     if (!user && (page === 'home' || page === 'profile' || page === 'admin')) {
+      // If auth is still initializing, postpone the redirect to avoid a flash
+      if (authLoading) {
+        return;
+      }
       setShowSignIn(true);
       setActivePage('signin');
       return;
@@ -145,10 +164,17 @@ function App() {
         setActivePage('signin');
         break;
       case 'createPost':
+        // Keep CreatePost as an overlay so the feed remains visible underneath
         setShowCreatePost(true);
-        setActivePage('createPost');
         break;
       case 'admin':
+        // Wait until auth + profile are ready before deciding admin permission.
+        // This prevents a brief unauthorized flash on refresh.
+        if (authLoading || profileLoading) {
+          setActivePage('admin');
+          break;
+        }
+
         if (!isAdmin) {
           alert('You are not authorized to access Admin');
           setActivePage('home');
@@ -158,6 +184,7 @@ function App() {
         break;
       case 'groupmessage':
         if (!user) {
+          if (authLoading) return;
           setShowSignIn(true);
           setActivePage('signin');
         } else {
@@ -169,36 +196,132 @@ function App() {
     }
   };
 
+  // Apply route immediately without performing auth redirects.
+  // Used on initial load or when hash changes while auth is still initializing.
+  const applyInitialRoute = (page) => {
+    // reset modal/page-specific flags first
+    setShowCreateAccount(false);
+    setShowProfile(false);
+    setShowEditProfile(false);
+    setShowSignIn(false);
+    setShowCreatePost(false);
+    setIsFeedDetailOpen(false);
+
+    switch (page) {
+      case 'home':
+        setActivePage('home');
+        break;
+      case 'profile':
+        setShowProfile(true);
+        setActivePage('profile');
+        break;
+      case 'editProfile':
+        setShowEditProfile(true);
+        setActivePage('profile');
+        break;
+      case 'createAccount':
+        setShowCreateAccount(true);
+        setActivePage('createAccount');
+        break;
+      case 'signin':
+        setShowSignIn(true);
+        setActivePage('signin');
+        break;
+      case 'createPost':
+        // overlay only; keep feed visible
+        setShowCreatePost(true);
+        break;
+      case 'admin':
+        setActivePage('admin');
+        break;
+      case 'groupmessage':
+        setActivePage('groupmessage');
+        break;
+      default:
+        setActivePage('home');
+    }
+  };
+
   const navigateTo = (page, { push = true, replace = false } = {}) => {
     applyPageState(page);
     if (push) {
       try {
-        const url = pageToPath(page);
+        const hash = pageToPath(page); // e.g. '#/profile'
         if (replace) {
-          window.history.replaceState({ page }, '', url);
+          window.history.replaceState({ page }, '', hash);
         } else {
-          window.history.pushState({ page }, '', url);
+          // set hash (creates history entry)
+          window.location.hash = hash.replace(/^#/, '');
         }
       } catch (err) {
-        console.warn('History API not available', err);
+        console.warn('Navigation failed', err);
       }
     }
   };
 
+  const setActiveFeedAndNavigate = (feed) => {
+    if (!feed) return;
+    setActiveFeed(feed);
+    try {
+      window.location.hash = (feed === 'tutor') ? '/tutor' : '/qa';
+    } catch {
+      // ignore
+    }
+  };
+
+  // After successful login, take user to Home/Feed
+  // (but do NOT override the current page on refresh)
   useEffect(() => {
-    const handlePop = () => {
-      const p = pathToPage(window.location.pathname);
-      applyPageState(p);
+    if (authLoading) return;
+    if (!user) return;
+
+    const raw = window.location.hash || window.location.pathname;
+    const pageFromUrl = pathToPage(raw);
+    const onSignInPage = activePage === 'signin' || showSignIn || pageFromUrl === 'signin';
+    if (onSignInPage) {
+      navigateTo('home', { replace: true });
+    }
+  }, [user, authLoading, activePage, showSignIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const handleHash = () => {
+      const raw = window.location.hash || window.location.pathname;
+      const p = pathToPage(raw);
+      const feed = extractFeedFromRaw(raw);
+      if (feed) setActiveFeed(feed);
+      if (authLoading) {
+        applyInitialRoute(p);
+      } else {
+        applyPageState(p);
+      }
     };
-    window.addEventListener('popstate', handlePop);
+    window.addEventListener('hashchange', handleHash);
 
-    // initial sync from URL
-    const initial = pathToPage(window.location.pathname);
-    applyPageState(initial);
-    window.history.replaceState({ page: initial }, '', window.location.pathname);
+    // initial sync from URL (use hash when available)
+    const raw = window.location.hash || window.location.pathname;
+    const initial = pathToPage(raw);
+    const initialFeed = extractFeedFromRaw(raw);
+    if (initialFeed) setActiveFeed(initialFeed);
 
-    return () => window.removeEventListener('popstate', handlePop);
-  }, [user, isAdmin]);
+    if (!initialRouteApplied) {
+      applyInitialRoute(initial);
+      setInitialRouteApplied(true);
+    }
+
+    // Once auth is ready, enforce auth-based redirects
+    if (!authLoading) {
+      applyPageState(initial);
+      // ensure URL has a hash so refresh keeps the route
+      try {
+        const currentHash = window.location.hash || '#/';
+        window.history.replaceState({ page: initial }, '', currentHash);
+      } catch {
+        // ignore
+      }
+    }
+
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, [user, isAdmin, authLoading, profileLoading, initialRouteApplied]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
 
@@ -337,7 +460,7 @@ function App() {
         {isHome && !isFeedDetailOpen && (
           <>
             <div className="feed-top">
-              <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeed} />
+              <FeedSelector activeFeed={activeFeed} setActiveFeed={setActiveFeedAndNavigate} />
             </div>
 
             <div className="toolbar">

@@ -105,7 +105,7 @@ const QAFeed = ({ posts = [], onDetailOpen, onDetailClose, canDelete = false, on
   const handleToggleLike = async (postId) => {
     if (!isFirebaseConfigured()) return;
     if (!user?.uid) {
-      alert('Please sign in to like posts');
+      alert('Please log in to like posts');
       return;
     }
 
