@@ -103,8 +103,12 @@
   background-color: #1a2b48;
   border-top-left-radius: 30px;
   border-top-right-radius: 30px;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
   padding: 30px 20px 20px;
   margin-top: 0;
+  margin-left: 150px;
+  margin-right: 150px;
   position: relative;
   z-index: 2;
 }
@@ -219,6 +223,8 @@
   gap: 12px;
   align-items: stretch;
   margin-bottom: 20px;
+  margin-left: 50px;
+  margin-right: 50px;
 }
 
 .tutor-post-detail .summary-column {
@@ -269,7 +275,7 @@
 }
 
 .tutor-post-detail .small-text {
-  font-size: 12px;
+  font-size: 15px;
   color: #1a2b48;
   opacity: 0.8;
 }
@@ -287,6 +293,8 @@
 .tutor-post-detail .details-section,
 .tutor-post-detail .experience-section {
   margin-bottom: 20px;
+  margin-left: 50px;
+  margin-right: 50px;
 }
 
 .tutor-post-detail .section-title {
