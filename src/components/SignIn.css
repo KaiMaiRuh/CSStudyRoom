@@ -16,8 +16,8 @@
 }
 
 .signin-logo-circle {
-  width: 320px;
-  height: 320px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: linear-gradient(180deg,#1a2b48,#243447);
   color: white;
@@ -45,5 +45,5 @@
 
 @media (max-width: 768px) {
   .signin-container { flex-direction: column; }
-  .signin-logo-circle { width: 220px; height: 220px; }
+  .signin-logo-circle { width: 300px; height: 300px; }
 }

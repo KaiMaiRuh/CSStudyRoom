@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './CreateAccount.css';
 import { useAuth } from '../auth/AuthContext.jsx';
+import LogoImg from '../assets/Logo.png';
 
 export default function SignIn({ onNavigate }) {
   const { signIn, resetPassword } = useAuth();
@@ -74,7 +75,7 @@ export default function SignIn({ onNavigate }) {
       <div className="create-account-container">
         <div className="left-panel">
           <div className="logo-circle">
-            <h2>CS STUDY ROOM</h2>
+            <img src={LogoImg} alt="CS Study Room Logo" style={{ width: '180%', height: '180%', objectFit: 'contain' }} />
           </div>
         </div>
 
@@ -115,19 +116,20 @@ export default function SignIn({ onNavigate }) {
               </>
             ) : (
               <>
-                <h2>Log in</h2>
+                <h2 style={{ fontSize: '35px', fontWeight: 600, color: '#121212', marginBottom: '32px', textAlign: 'center', whiteSpace: 'nowrap' }}>Welcome to CS study room!</h2>
+                <h2 style={{ fontSize: '30px', fontWeight: 600, color: '#444', marginBottom: '32px', textAlign: 'center' }}>Sign in</h2>
 
                 <form onSubmit={handleSubmit}>
                   <div className="form-group">
-                    <label htmlFor="email">Email address</label>
+                    <label htmlFor="email"style={{ margin: 0, fontWeight: 600, color: '#BEBEBE', fontSize: '20px' }}>Email address</label>
                     <input id="email" name="email" value={form.email} onChange={handleChange} />
                   </div>
 
                   <div className="form-group">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-                      <label htmlFor="password" style={{ margin: 0 }}>password</label>
-                      <button type="button" className="link-button" onClick={openForgotView}>
-                        Forgot Password?
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: '8px' }}>
+                      <label htmlFor="password" style={{ margin: 0, fontWeight: 600, color: '#BEBEBE', fontSize: '20px' }}>Password</label>
+                      <button type="button" className="link-button" onClick={openForgotView} style={{ fontWeight: 600, fontSize: '20px', color: '#1a2b48' }}>
+                        Forgot password?
                       </button>
                     </div>
                     <div className="input-with-icon">
@@ -150,7 +152,7 @@ export default function SignIn({ onNavigate }) {
                   </div>
 
                   <button type="submit" disabled={isSubmitting} className="submit-button">
-                    {isSubmitting ? 'Logging in...' : 'Log in'}
+                    {isSubmitting ? 'Signing in...' : 'Sign in'}
                   </button>
                 </form>
 
@@ -158,7 +160,7 @@ export default function SignIn({ onNavigate }) {
                   <p>
                     Don't have an account?{' '}
                     <button type="button" className="link-button" onClick={() => onNavigate?.('createAccount')}>
-                      Create Account
+                      Sign up
                     </button>
                   </p>
                 </div>

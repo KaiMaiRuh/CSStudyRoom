@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './CreateAccount.css';
 import { useAuth } from '../auth/AuthContext.jsx';
+import LogoImg from '../assets/Logo.png';
 
 const STRENGTH_MAP = {
   weak: { label: 'Weak', color: '#e74c3c', rank: 0 },
@@ -129,13 +130,14 @@ const CreateAccount = ({ onNavigate }) => {
       <div className="create-account-container">
         <div className="left-panel">
           <div className="logo-circle">
-            <h2>CS STUDY ROOM</h2>
+            <img src={LogoImg} alt="CS Study Room Logo" style={{ width: '180%', height: '180%', objectFit: 'contain' }} />
           </div>
         </div>
         
         <div className="right-panel">
           <div className="create-account-form">
-            <h2>Create Account</h2>
+            <h2 style={{ fontSize: '50px', fontWeight: 600, color: '#000000', marginBottom: '32px', textAlign: 'left' }}>Create Account</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#444', marginBottom: '32px', textAlign: 'center' }}>Join us</h2>
 
             {serverError && (
               <div className="error-message" role="alert" style={{ marginBottom: 10 }}>
@@ -145,7 +147,7 @@ const CreateAccount = ({ onNavigate }) => {
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="fullName">Full Name</label>
+                <label htmlFor="fullName" style={{ fontSize: '20px', fontWeight: 600, color: '#BEBEBE',textAlign: 'left' }}>Full Name</label>
                 <input
                   type="text"
                   id="fullName"
@@ -158,7 +160,7 @@ const CreateAccount = ({ onNavigate }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="username">Username</label>
+                <label htmlFor="username"style={{ fontSize: '20px', fontWeight: 600, color: '#BEBEBE',textAlign: 'left' }}>Username</label>
                 <input
                   type="text"
                   id="username"
@@ -171,7 +173,7 @@ const CreateAccount = ({ onNavigate }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email</label>
+                <label htmlFor="email"style={{ fontSize: '20px', fontWeight: 600, color: '#BEBEBE',textAlign: 'left' }}>Email (s6X0406261xxxx@email.kmutnb.ac.th)</label>
                 <input
                   type="email"
                   id="email"
@@ -184,7 +186,7 @@ const CreateAccount = ({ onNavigate }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="password">Password</label>
+                <label htmlFor="password"style={{ fontSize: '20px', fontWeight: 600, color: '#BEBEBE',textAlign: 'left' }}>Password</label>
                 <div className="input-with-icon">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -220,7 +222,7 @@ const CreateAccount = ({ onNavigate }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm Password</label>
+                <label htmlFor="confirmPassword"style={{ fontSize: '20px', fontWeight: 600, color: '#BEBEBE',textAlign: 'left' }}>Confirm Password</label>
                 <div className="input-with-icon">
                   <input
                     type={showConfirmPassword ? "text" : "password"}
@@ -254,7 +256,7 @@ const CreateAccount = ({ onNavigate }) => {
                     onNavigate?.('signin');
                   }}
                 >
-                  Log in
+                  Sign in
                 </button>
               </p>
             </div>
