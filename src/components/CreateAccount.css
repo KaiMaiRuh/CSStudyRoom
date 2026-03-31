@@ -164,18 +164,28 @@
 
 .toggle-password {
   position: absolute;
-  right: 8px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 18px;
   background: none;
   border: none;
-  padding: 4px;
+  padding: 6px 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #1a2b48;
+  transition: all 0.2s ease;
+}
+
+.toggle-password:hover {
+  color: #0b72bc;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.toggle-password:active {
+  transform: translateY(-50%) scale(0.95);
 }
 
 .create-password-strength {

@@ -144,7 +144,7 @@ export default function SignIn({ onNavigate }) {
                         onClick={() => setShowPassword(s => !s)}
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
-                        {showPassword ? <FaEyeSlash /> : <FaEye />}
+                        {showPassword ? <FaEye /> : <FaEyeSlash />}
                       </button>
                     </div>
                   </div>

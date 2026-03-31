@@ -195,7 +195,7 @@ const CreateAccount = ({ onNavigate }) => {
                     className={errors.password ? 'error' : ''}
                   />
                   <button type="button" className="toggle-password" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    {showPassword ? <FaEye /> : <FaEyeSlash />}
                   </button>
                 </div>
                 <div
@@ -231,7 +231,7 @@ const CreateAccount = ({ onNavigate }) => {
                     className={errors.confirmPassword ? 'error' : ''}
                   />
                   <button type="button" className="toggle-password" aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'} onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
                   </button>
                 </div>
                 {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FaArrowLeft, FaMapMarkerAlt, FaTrashAlt, FaUserCircle } from 'react-icons/fa';
+import { FaArrowLeft, FaMapMarkerAlt, FaTrashAlt, FaUserCircle, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '../auth/AuthContext';
 import './Calendar.css';
 
@@ -53,7 +53,7 @@ const formatPostedAgo = (minutesAgo) => {
   return `posted ${days} ${days === 1 ? 'day' : 'days'} ago`;
 };
 
-const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminView = false, onDeletePost }) => {
+const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminView = false, onDeletePost, onChangeFeedType }) => {
   const { isAdmin } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDateKey, setSelectedDateKey] = useState(null);
@@ -149,6 +149,10 @@ const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminVi
 
   const handleNextMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  };
+
+  const handleChangeFeedType = (newFeedType) => {
+    onChangeFeedType?.(newFeedType);
   };
 
   const monthString = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -270,6 +274,24 @@ const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminVi
           </p>
         </div>
         <button className="calendar-nav-button" onClick={handleNextMonth}>›</button>
+      </div>
+
+      <div className="calendar-feed-switcher">
+        <button 
+          className={`feed-switch-button ${normalizedFeed === 'tutor' ? 'active' : ''}`}
+          onClick={() => handleChangeFeedType('tutor')}
+          title="Switch to Tutor Calendar"
+        >
+           Tutor Calendar
+        </button>
+        <div className="feed-switch-divider"></div>
+        <button 
+          className={`feed-switch-button ${normalizedFeed === 'qa' ? 'active' : ''}`}
+          onClick={() => handleChangeFeedType('qa')}
+          title="Switch to Q&A Calendar"
+        >
+          Q&A Calendar 
+        </button>
       </div>
 
       <div className="calendar-weekdays">

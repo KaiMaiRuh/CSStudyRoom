@@ -614,6 +614,7 @@ function App() {
               feedType={activeFeed}
               isAdminView={Boolean(isAdmin)}
               onBack={() => navigateTo('home')}
+              onChangeFeedType={setActiveFeed}
               onDeletePost={(post) => {
                 const postType = post?.type === 'qa' ? 'qa' : 'tutor';
                 handleDeletePost({ type: postType, id: post?.id });
