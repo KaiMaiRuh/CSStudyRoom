@@ -386,9 +386,9 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
             </div>
           )}
           
-          <div className="form-actions">
-            <button type="button" className="cancel-button" onClick={requestClose} disabled={isClosing}>Cancel</button>
-            <button type="submit" className="submit-button" disabled={isClosing}>{mode === 'edit' ? 'Save' : 'Create Post'}</button>
+          <div className="create-post-actions">
+            <button type="button" className="create-post-cancel-button" onClick={requestClose} disabled={isClosing}>Cancel</button>
+            <button type="submit" className="create-post-submit-button" disabled={isClosing}>{mode === 'edit' ? 'Save' : 'Create Post'}</button>
           </div>
         </form>
       </div>

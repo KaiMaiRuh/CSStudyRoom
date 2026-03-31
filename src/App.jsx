@@ -598,6 +598,7 @@ function App() {
         disableCreatePost={isAuthPage || isAdminPage || isAdmin}
         showCreatePost={!isAdminPage && !isAdmin}
         onNavigate={navigateTo}
+        onCreatePost={handleShowCreatePost}
       />
       <div
         className={`app-root ${(isFeedDetailOpen || Boolean(openPostRef)) ? 'app-root-detail-open' : ''} ${isResetPasswordPage ? 'app-root-reset-password' : ''}`.trim()}
