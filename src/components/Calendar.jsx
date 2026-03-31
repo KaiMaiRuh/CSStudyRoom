@@ -215,7 +215,11 @@ const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminVi
                   ) : null}
 
                   <div className="calendar-day-post-avatar" aria-hidden="true">
-                    <FaUserCircle />
+                    {post.user?.avatar ? (
+                      <img src={post.user.avatar} alt="" className="calendar-avatar-img" />
+                    ) : (
+                      <FaUserCircle />
+                    )}
                   </div>
 
                   <div className="calendar-day-post-content">

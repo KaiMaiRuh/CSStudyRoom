@@ -37,7 +37,8 @@
 .admin-delete-icon-btn svg {
   width: 18px;
   height: 18px;
-  display: block;
+  flex-shrink: 0;
+  color: #ffffff;
 }
 
 .admin-delete-icon-btn:hover {
@@ -305,5 +306,6 @@
   .admin-delete-icon-btn svg {
     width: 18px;
     height: 18px;
+    flex-shrink: 0;
   }
 }
