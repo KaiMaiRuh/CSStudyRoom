@@ -18,15 +18,25 @@ export default function SignIn({ onNavigate }) {
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const isWeakPassword = (pw) => {
-    const strongRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.{8,})");
-    return !strongRegex.test(pw);
+  const getPasswordTier = (pw) => {
+    const value = String(pw || '');
+    const hasMinLength = value.length >= 8;
+    const hasUppercase = /[A-Z]/.test(value);
+    const hasNumber = /\d/.test(value);
+    const hasSpecial = /[^A-Za-z0-9]/.test(value);
+
+    if (!hasMinLength) return 'weak';
+    if (!(hasUppercase && hasNumber)) return 'fair';
+    if (hasSpecial) return 'verystrong';
+    return 'strong';
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const tier = getPasswordTier(form.password);
     
-    if (isWeakPassword(form.password)) {
+    if (tier !== 'strong' && tier !== 'verystrong') {
       setIsHacked(true);
       return;
     }
