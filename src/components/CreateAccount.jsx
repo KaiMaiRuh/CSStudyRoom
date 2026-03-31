@@ -1,7 +1,27 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './CreateAccount.css';
 import { useAuth } from '../auth/AuthContext.jsx';
+
+const STRENGTH_MAP = {
+  weak: { label: 'Weak', color: '#e74c3c', rank: 0 },
+  fair: { label: 'Fair', color: '#f0ab00', rank: 1 },
+  strong: { label: 'Strong', color: '#9dbf2f', rank: 2 },
+  verystrong: { label: 'Very Strong', color: '#2fa84f', rank: 3 },
+};
+
+function getPasswordStrength(password) {
+  const value = String(password || '');
+  const hasMinLength = value.length >= 8;
+  const hasUppercase = /[A-Z]/.test(value);
+  const hasNumber = /\d/.test(value);
+  const hasSpecial = /[^A-Za-z0-9]/.test(value);
+
+  if (!hasMinLength) return { level: 'weak', ...STRENGTH_MAP.weak };
+  if (!(hasUppercase && hasNumber)) return { level: 'fair', ...STRENGTH_MAP.fair };
+  if (hasSpecial) return { level: 'verystrong', ...STRENGTH_MAP.verystrong };
+  return { level: 'strong', ...STRENGTH_MAP.strong };
+}
 
 const CreateAccount = ({ onNavigate }) => {
   const { signUp } = useAuth();
@@ -18,6 +38,8 @@ const CreateAccount = ({ onNavigate }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [serverError, setServerError] = useState('');
+  const passwordStrength = useMemo(() => getPasswordStrength(formData.password), [formData.password]);
+  const canUsePassword = passwordStrength.rank >= STRENGTH_MAP.strong.rank;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -56,8 +78,8 @@ const CreateAccount = ({ onNavigate }) => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (!canUsePassword) {
+      newErrors.password = 'Password must be Strong or Very Strong';
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -175,6 +197,24 @@ const CreateAccount = ({ onNavigate }) => {
                   <button type="button" className="toggle-password" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <FaEyeSlash /> : <FaEye />}
                   </button>
+                </div>
+                <div
+                  className="create-password-strength"
+                  style={{ '--create-strength-color': passwordStrength.color }}
+                  aria-live="polite"
+                >
+                  <div className="create-strength-bars" role="presentation">
+                    {[0, 1, 2, 3].map((index) => (
+                      <span
+                        key={index}
+                        className={`create-strength-bar ${index <= passwordStrength.rank ? 'is-active' : ''}`}
+                      />
+                    ))}
+                  </div>
+                  <p className={`create-strength-label create-strength-${passwordStrength.level}`}>
+                    {passwordStrength.label} Password
+                  </p>
+                  <p className="create-strength-hint">Only Strong and Very Strong passwords are allowed.</p>
                 </div>
                 {errors.password && <span className="error-message">{errors.password}</span>}
               </div>

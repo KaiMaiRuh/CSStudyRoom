@@ -141,6 +141,19 @@
   display: block;
 }
 
+.success-message {
+  color: #2f9f4f;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+}
+
+.signin-forgot-helper {
+  margin: -10px 0 16px;
+  color: #5f7380;
+  font-size: 0.92rem;
+}
+
 .input-with-icon {
   position: relative;
 }
@@ -163,6 +176,56 @@
   align-items: center;
   justify-content: center;
   color: #1a2b48;
+}
+
+.create-password-strength {
+  --create-strength-color: #e74c3c;
+  margin-top: 10px;
+}
+
+.create-strength-bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.create-strength-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: #c8c8c8;
+  transition: background-color 150ms ease;
+}
+
+.create-strength-bar.is-active {
+  background: var(--create-strength-color);
+}
+
+.create-strength-label {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.create-strength-label.create-strength-weak {
+  color: #d84a3f;
+}
+
+.create-strength-label.create-strength-fair {
+  color: #b58600;
+}
+
+.create-strength-label.create-strength-strong {
+  color: #7f9f2a;
+}
+
+.create-strength-label.create-strength-verystrong {
+  color: #2f9f4f;
+}
+
+.create-strength-hint {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #6f7f8f;
 }
 
 .submit-button {

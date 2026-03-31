@@ -8,7 +8,14 @@ import {
   signOut as firebaseSignOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc, increment, onSnapshot } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  increment,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from '../firebase';
 
 const AuthContext = createContext(null);
@@ -89,10 +96,16 @@ export function AuthProvider({ children }) {
 
     async function signIn(email, password) {
       if (!isFirebaseConfigured()) throw notConfiguredError();
+
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      if (!normalizedEmail) {
+        throw new Error('Email is required');
+      }
       const { auth } = getFirebaseServices();
-      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
       try {
         const { db } = getFirebaseServices();
+
         // update today's visit doc with lastSignIn and lastSeen
         try {
           const d = new Date();
@@ -146,6 +159,7 @@ export function AuthProvider({ children }) {
 
       const normalizedEmail = String(email || '').trim();
       const normalizedEmailLower = normalizedEmail.toLowerCase();
+      const normalizedUsername = String(username || '').trim();
 
       if (!normalizedEmailLower) {
         throw new Error('Email is required');
@@ -179,7 +193,7 @@ export function AuthProvider({ children }) {
 
       const cred = await createUserWithEmailAndPassword(auth, normalizedEmailLower, password);
 
-      const displayName = fullName || username || '';
+      const displayName = fullName || normalizedUsername || '';
       if (displayName) {
         await updateProfile(cred.user, { displayName });
       }
@@ -190,7 +204,7 @@ export function AuthProvider({ children }) {
           uid: cred.user.uid,
           email: cred.user.email,
           displayName,
-          username: username || null,
+          username: normalizedUsername || null,
           year: year || null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
