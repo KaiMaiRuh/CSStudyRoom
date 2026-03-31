@@ -6,41 +6,18 @@ import { useAuth } from '../auth/AuthContext.jsx';
 export default function SignIn({ onNavigate }) {
   const { signIn, resetPassword } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [showForgotView, setShowForgotView] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState('');
   const [forgotError, setForgotError] = useState('');
-  
-  const [isHacked, setIsHacked] = useState(false);
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const getPasswordTier = (pw) => {
-    const value = String(pw || '');
-    const hasMinLength = value.length >= 8;
-    const hasUppercase = /[A-Z]/.test(value);
-    const hasNumber = /\d/.test(value);
-    const hasSpecial = /[^A-Za-z0-9]/.test(value);
-
-    if (!hasMinLength) return 'weak';
-    if (!(hasUppercase && hasNumber)) return 'fair';
-    if (hasSpecial) return 'verystrong';
-    return 'strong';
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const tier = getPasswordTier(form.password);
-    
-    if (tier !== 'strong' && tier !== 'verystrong') {
-      setIsHacked(true);
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       await signIn(form.email, form.password);
@@ -91,51 +68,6 @@ export default function SignIn({ onNavigate }) {
       setIsForgotSubmitting(false);
     }
   };
-
-  if (isHacked) {
-    return (
-      <div style={{
-        height: '100vh',
-        width: '100vw',
-        backgroundColor: 'black',
-        color: '#ff0000',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        zIndex: 9999,
-        fontFamily: "'Courier New', Courier, monospace",
-        textAlign: 'center'
-      }}>
-        <h1 style={{ fontSize: 'clamp(3rem, 8vw, 6rem)', margin: 0, textShadow: '0 0 10px red' }}>
-          YOU ARE HACKED
-        </h1>
-        <p style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', color: '#00ff00', marginTop: '20px' }}>
-          กุบอกให้มึงไป reset password
-        </p>
-        <button 
-          onClick={() => setIsHacked(false)}
-          style={{
-            marginTop: '50px',
-            padding: '15px 30px',
-            fontSize: '1.2rem',
-            backgroundColor: 'transparent',
-            color: 'white',
-            border: '2px solid #333',
-            cursor: 'pointer',
-            transition: 'all 0.3s'
-          }}
-          onMouseOver={(e) => e.target.style.borderColor = 'red'}
-          onMouseOut={(e) => e.target.style.borderColor = '#333'}
-        >
-          ยอมรับความโง่แล้วกลับไปหน้า Login
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="create-account-wrapper">
