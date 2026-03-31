@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import './CreatePost.css';
 import './ImagePreviewModal.css';
 
 const PREVIEW_EXIT_MS = 300;
@@ -6,14 +8,25 @@ const PREVIEW_EXIT_MS = 300;
 const ImagePreviewModal = ({ src, onClose }) => {
   const [isClosing, setIsClosing] = useState(false);
   const closeTimerRef = useRef(null);
+  const isClosingRef = useRef(false);
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
 
   const requestClose = useCallback(() => {
-    if (isClosing) return;
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
     setIsClosing(true);
+    clearCloseTimer();
     closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
       onClose?.();
     }, PREVIEW_EXIT_MS);
-  }, [isClosing, onClose]);
+  }, [clearCloseTimer, onClose]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -23,15 +36,16 @@ const ImagePreviewModal = ({ src, onClose }) => {
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
-      if (closeTimerRef.current) {
-        window.clearTimeout(closeTimerRef.current);
-      }
     };
   }, [requestClose]);
 
+  useEffect(() => () => {
+    clearCloseTimer();
+  }, [clearCloseTimer]);
+
   if (!src) return null;
 
-  return (
+  const modalContent = (
     <div
       className={`create-post-modal ${isClosing ? 'is-closing' : ''}`}
       role="dialog"
@@ -53,6 +67,10 @@ const ImagePreviewModal = ({ src, onClose }) => {
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return modalContent;
+
+  return createPortal(modalContent, document.body);
 };
 
 export default ImagePreviewModal;
