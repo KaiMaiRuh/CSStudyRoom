@@ -50,13 +50,17 @@ export default function SignIn({ onNavigate }) {
                     type="button"
                     className="link-button"
                     onClick={async () => {
-                        try {
+                      try {
                         if (!form.email) {
                           alert('Please enter your email first.');
                           return;
                         }
+                        if (!/\S+@\S+\.\S+/.test(form.email)) {
+                          alert('Please enter a valid email address.');
+                          return;
+                        }
                         await resetPassword(form.email);
-                        alert('Password Reset Email Sent');
+                        alert('Password reset link sent. Please check your email.');
                       } catch (err) {
                         alert(err?.message || 'Failed To Send Reset Email');
                       }

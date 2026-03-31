@@ -19,6 +19,7 @@ import Footer from './components/Footer';
 import AdminPanel from './components/admin/AdminPanel';
 import GroupMessagePage from './components/GroupMessagePage';
 import Calendar from './components/Calendar';
+import ResetPassword from './components/ResetPassword';
 import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
   const isAdminPage = activePage === 'admin';
   const isGroupMessagePage = activePage === 'groupmessage';
   const isCalendarPage = activePage === 'calendar';
+  const isResetPasswordPage = activePage === 'resetPassword';
   const showFooter = !showCreatePost;
 
   // Filter posts based on search and category
@@ -89,6 +91,30 @@ function App() {
 
   // --- URL <-> page helper: keep existing state-based navigation but sync browser URL
   // Use hash-based URLs to avoid server 404 on refresh (works on GitHub Pages)
+  const getRawPathSource = (raw) =>
+    (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
+
+  const getNormalizedPath = (raw) => {
+    const src = getRawPathSource(raw);
+    const [pathOnly = '/'] = String(src).split('?');
+    return pathOnly.replace(/\/+$/, '') || '/';
+  };
+
+  const getActionParams = (raw) => {
+    const params = new URLSearchParams(window.location.search || '');
+    const src = getRawPathSource(raw);
+    const [, query = ''] = String(src).split('?');
+
+    if (query) {
+      const hashParams = new URLSearchParams(query);
+      hashParams.forEach((value, key) => {
+        params.set(key, value);
+      });
+    }
+
+    return params;
+  };
+
   const pageToPath = (page) => {
     switch (page) {
       case 'home': return '#/';
@@ -98,6 +124,7 @@ function App() {
       case 'editProfile': return '#/profile/edit';
       case 'createAccount': return '#/create-account';
       case 'signin': return '#/signin';
+      case 'resetPassword': return '#/reset-password';
       case 'createPost': return '#/create-post';
       case 'admin': return '#/admin';
       case 'calendar': return '#/calendar';
@@ -107,9 +134,13 @@ function App() {
   };
 
   const pathToPage = (raw) => {
-    // prefer hash if present, otherwise pathname
-    const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
-    const p = (src || '').replace(/\/+$/, '') || '/';
+    const params = getActionParams(raw);
+    if (params.get('mode') === 'resetPassword') {
+      return 'resetPassword';
+    }
+
+    const p = getNormalizedPath(raw);
+
     if (p === '/' || p === '' || p === '/home') return 'home';
     if (p === '/tutor') return 'home';
     if (p === '/qa') return 'home';
@@ -117,6 +148,7 @@ function App() {
     if (p.startsWith('/profile')) return 'profile';
     if (p.startsWith('/create-account')) return 'createAccount';
     if (p.startsWith('/signin')) return 'signin';
+    if (p.startsWith('/reset-password')) return 'resetPassword';
     if (p.startsWith('/create-post')) return 'createPost';
     if (p.startsWith('/admin')) return 'admin';
     if (p.startsWith('/calendar')) return 'calendar';
@@ -125,16 +157,15 @@ function App() {
   };
 
   const extractFeedFromRaw = (raw) => {
-    const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
-    const p = (src || '').replace(/\/+$/, '') || '/';
+    const p = getNormalizedPath(raw);
+
     if (p === '/tutor' || p.startsWith('/tutor/')) return 'tutor';
     if (p === '/qa' || p.startsWith('/qa/')) return 'qa';
     return null;
   };
 
   const extractPostRefFromRaw = (raw) => {
-    const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
-    const p = (src || '').replace(/\/+$/, '') || '/';
+    const p = getNormalizedPath(raw);
 
     const tutorMatch = p.match(/^\/tutor\/([^/]+)$/);
     if (tutorMatch) return { type: 'tutor', id: tutorMatch[1] };
@@ -146,8 +177,7 @@ function App() {
   };
 
   const extractProfileUidFromRaw = (raw) => {
-    const src = (window.location.hash && window.location.hash.replace(/^#/, '')) || raw || window.location.pathname || '/';
-    const p = (src || '').replace(/\/+$/, '') || '/';
+    const p = getNormalizedPath(raw);
 
     // /profile/{uid}
     const m = p.match(/^\/profile\/([^/]+)$/);
@@ -207,6 +237,9 @@ function App() {
       case 'signin':
         setShowSignIn(true);
         setActivePage('signin');
+        break;
+      case 'resetPassword':
+        setActivePage('resetPassword');
         break;
       case 'createPost':
         // Keep CreatePost as an overlay so the feed remains visible underneath
@@ -286,6 +319,9 @@ function App() {
       case 'signin':
         setShowSignIn(true);
         setActivePage('signin');
+        break;
+      case 'resetPassword':
+        setActivePage('resetPassword');
         break;
       case 'createPost':
         // overlay only; keep feed visible
@@ -563,7 +599,9 @@ function App() {
         showCreatePost={!isAdminPage && !isAdmin}
         onNavigate={navigateTo}
       />
-      <div className={`app-root ${(isFeedDetailOpen || Boolean(openPostRef)) ? 'app-root-detail-open' : ''}`}>
+      <div
+        className={`app-root ${(isFeedDetailOpen || Boolean(openPostRef)) ? 'app-root-detail-open' : ''} ${isResetPasswordPage ? 'app-root-reset-password' : ''}`.trim()}
+      >
         <div key={pageTransitionKey} className="app-page-transition">
           {isGroupMessagePage ? (
             <GroupMessagePage onBack={() => {
@@ -583,6 +621,8 @@ function App() {
             />
           ) : isAdminPage ? (
             <AdminPanel />
+          ) : isResetPasswordPage ? (
+            <ResetPassword onNavigate={navigateTo} />
           ) : (
             <>
               {isHome && !isFeedDetailOpen && <h1>CS StudyRoom</h1>}
@@ -728,7 +768,7 @@ function App() {
           <CreatePost key="create" allSubjects={allSubjects} onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />
         )
       )}
-      {!isAuthPage && !showCreatePost && !isAdminPage && (
+      {!isAuthPage && !isResetPasswordPage && !showCreatePost && !isAdminPage && (
         <FloatingMenu
           onCreatePost={handleShowCreatePost}
           hideCreatePost={isAdmin}

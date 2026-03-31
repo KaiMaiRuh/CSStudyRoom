@@ -209,8 +209,19 @@ export function AuthProvider({ children }) {
 
     async function resetPassword(email) {
       if (!isFirebaseConfigured()) throw notConfiguredError();
+      const normalizedEmail = String(email || '').trim();
+      if (!normalizedEmail) {
+        throw new Error('Email is required');
+      }
+
+      const envRedirectUrl = String(import.meta.env.VITE_PASSWORD_RESET_REDIRECT_URL || '').trim();
+      const resetRedirectUrl = envRedirectUrl || `${window.location.origin}/#/reset-password`;
+
       const { auth } = getFirebaseServices();
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, normalizedEmail, {
+        url: resetRedirectUrl,
+        handleCodeInApp: false,
+      });
     }
 
     async function logActivity(type, meta = {}) {

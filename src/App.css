@@ -61,6 +61,11 @@
   padding: 0;
 }
 
+.app-root.app-root-reset-password {
+  padding: 0;
+  background: #efefef;
+}
+
 .app-page-transition {
   animation: appPageIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transform-origin: center top;
