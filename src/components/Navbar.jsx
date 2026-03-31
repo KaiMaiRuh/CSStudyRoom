@@ -1,8 +1,9 @@
 /* Navbar component */
 import React from 'react';
-import { FaBook, FaUserCircle } from 'react-icons/fa';
+import { FaUserCircle } from 'react-icons/fa';
 import './Navbar.css';
 import { useAuth } from '../auth/AuthContext';
+import logoImage from '../assets/Logo.png';
 
 const Navbar = ({
   onLogout,
@@ -11,6 +12,7 @@ const Navbar = ({
   onNavigate,
   disableCreatePost = false,
   showCreatePost = true,
+  onCreatePost,
 }) => {
   const { profile, isAdmin } = useAuth();
   const visibleAvatarUrl = isLoggedIn ? (profile?.avatarUrl || '') : '';
@@ -18,10 +20,20 @@ const Navbar = ({
   return (
     <nav className="navbar">
       <div className="navbar-left">
-        <div className="logo-container">
-          <div className="logo-icon"><FaBook /></div>
-          <span className="logo-text">CS Study Room</span>
-        </div>
+        <button
+          type="button"
+          className="logo-container"
+          onClick={() => onNavigate?.('home')}
+          aria-label="Go to Home"
+        >
+          <span className="logo-badge" aria-hidden="true">
+            <img className="logo-image" src={logoImage} alt="" />
+          </span>
+          <span className="logo-wordmark" aria-hidden="true">
+            <span className="logo-wordmark-accent">CS Stu</span>
+            <span className="logo-wordmark-main">dyRoom</span>
+          </span>
+        </button>
       </div>
       
       <div className="navbar-right">
@@ -47,7 +59,13 @@ const Navbar = ({
           <button
             className={`nav-button create-post-button ${activePage === 'createPost' ? 'active' : ''}`}
             onClick={() => {
-              if (!disableCreatePost) onNavigate?.('createPost');
+              if (!disableCreatePost) {
+                if (typeof onCreatePost === 'function') {
+                  onCreatePost();
+                } else {
+                  onNavigate?.('createPost');
+                }
+              }
             }}
             disabled={disableCreatePost}
             aria-disabled={disableCreatePost}
