@@ -770,7 +770,7 @@ function App() {
           <CreatePost key="create" allSubjects={allSubjects} onCancel={handleCloseCreatePost} onCreate={handleCreatePost} />
         )
       )}
-      {!isAuthPage && !isResetPasswordPage && !showCreatePost && !isAdminPage && (
+      {!isAuthPage && !isResetPasswordPage && !showCreatePost && !isAdminPage && (!isFeedDetailOpen || openPostRef?.type !== 'qa') && (
         <FloatingMenu
           onCreatePost={handleShowCreatePost}
           hideCreatePost={isAdmin}
