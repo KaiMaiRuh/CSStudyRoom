@@ -405,10 +405,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
   return (
     <div className="qa-post-detail">
       {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
-      <button className="qa-back" type="button" onClick={onBack} aria-label="Back">
-        <MdArrowBack size={24} />
-      </button>
-
+     
       {isAdmin && typeof onDelete === 'function' ? (
         <button className="qa-delete" type="button" onClick={() => onDelete()} aria-label="Delete post">
           <FaTrashAlt />
@@ -416,6 +413,9 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
       ) : null}
 
       <div className="qa-detail-scroll" ref={detailScrollRef}>
+        <button className="qa-back" type="button" onClick={onBack} aria-label="Back">
+        <MdArrowBack size={24} />
+      </button>
         <div className="qa-detail-card">
           <div className="qa-detail-header">
             <button

@@ -18,7 +18,7 @@
 }
 
 .qa-back {
-  position: fixed;
+  position: absolute;
   top: 18px;
   left: 18px;
   background: none;
@@ -54,6 +54,7 @@
 }
 
 .qa-detail-scroll {
+  position: relative;
   height: 90vh;
   overflow-y: auto;
   padding: 18px;
