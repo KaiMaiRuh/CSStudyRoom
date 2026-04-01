@@ -65,6 +65,7 @@ export default function ResetPassword({ onNavigate }) {
   const [submitError, setSubmitError] = useState('');
 
   const strength = useMemo(() => getPasswordStrength(password), [password]);
+  const hasPasswordValue = Boolean(password);
   const canUsePassword = strength.rank >= STRENGTH_MAP.strong.rank;
 
   useEffect(() => {
@@ -223,24 +224,26 @@ export default function ResetPassword({ onNavigate }) {
                   </button>
                 </div>
 
-                <div
-                  className="password-strength"
-                  style={{ '--strength-color': strength.color }}
-                  aria-live="polite"
-                >
-                  <div className="strength-bars" role="presentation">
-                    {[0, 1, 2, 3].map((index) => (
-                      <span
-                        key={index}
-                        className={`strength-bar ${index <= strength.rank ? 'is-active' : ''}`}
-                      />
-                    ))}
+                {hasPasswordValue && (
+                  <div
+                    className="password-strength"
+                    style={{ '--strength-color': strength.color }}
+                    aria-live="polite"
+                  >
+                    <div className="strength-bars" role="presentation">
+                      {[0, 1, 2, 3].map((index) => (
+                        <span
+                          key={index}
+                          className={`strength-bar ${index <= strength.rank ? 'is-active' : ''}`}
+                        />
+                      ))}
+                    </div>
+                    <p className={`strength-label strength-${strength.level}`}>
+                      {strength.label} password
+                    </p>
+                    <p className="strength-hint">Password must contain at least 8 characters including upper case, lowercase, numbers, special character (Optional).</p>
                   </div>
-                  <p className={`strength-label strength-${strength.level}`}>
-                    {strength.label} password
-                  </p>
-                  <p className="strength-hint">Only Strong and Very Strong passwords are allowed.</p>
-                </div>
+                )}
               </div>
 
               <div className="reset-field-group">
