@@ -4,6 +4,8 @@ import { FaArrowLeft, FaTrashAlt, FaUserCircle } from 'react-icons/fa';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { getFirebaseServices, isFirebaseConfigured } from '../../api/firebaseConfig.js';
+import { userGroupReadDocPath } from '../../api/dbSchema.js';
+import { readMessageSender } from '../../api/dbModels.js';
 import {
   deleteGroupMessage,
   subscribeToGroupMessages,
@@ -14,7 +16,7 @@ import { useUserProfiles } from '../../api/userService.js';
 import './ChatWindow.css';
 
 const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
-  const { user, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [group, setGroup] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
@@ -104,7 +106,7 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
 
     try {
       const { db } = getFirebaseServices();
-      const ref = doc(db, 'users', user.uid, 'groupReads', groupId);
+      const ref = doc(db, ...userGroupReadDocPath(user.uid, groupId));
       void setDoc(
         ref,
         {
@@ -141,7 +143,12 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
 
     setSending(true);
     try {
-      await sendGroupMessage(groupId, user.uid, messageText);
+      await sendGroupMessage(groupId, user.uid, messageText, {
+        senderName: profile?.displayName || user.displayName || user.email || 'User',
+        senderUsername: profile?.username || null,
+        senderAvatar: profile?.avatarUrl || user.photoURL || null,
+        email: user.email || null,
+      });
       setMessageText('');
     } catch (err) {
       setError(err.message);
@@ -240,7 +247,9 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
               let lastDate = null;
               return messages.map((msg, index) => {
                 const elements = [];
-                const isOwnMessage = msg.senderId === user?.uid;
+                const senderData = readMessageSender(msg);
+                const senderId = senderData.uid || msg.senderId || null;
+                const isOwnMessage = senderId === user?.uid;
                 const msgDate = msg.timestamp ? new Date(msg.timestamp.toMillis?.() || 0) : null;
                 const msgDateString = msgDate ? msgDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
 
@@ -265,11 +274,15 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
                   // Regular message
                   const isShare = msg.type === 'share' && msg.sharedPost?.type && msg.sharedPost?.id;
                   const canDeleteMessage = Boolean(msg?.id) && (isOwnMessage || isAdmin);
-                  const senderProfile = msg.senderId ? senderProfiles[msg.senderId] : null;
-                  const avatarUrl = senderProfile?.avatarUrl || msg.senderAvatar || '';
+                  const senderProfile = senderId ? senderProfiles[senderId] : null;
+                  const avatarUrl = senderProfile?.avatarUrl || senderData.avatarUrl || '';
                   const senderName = senderProfile?.username
                     ? `@${senderProfile.username}`
-                    : (senderProfile?.displayName || msg.senderName || 'User');
+                    : (
+                      senderProfile?.displayName
+                      || (senderData.username ? `@${senderData.username}` : senderData.displayName)
+                      || 'User'
+                    );
                   elements.push(
                     <div
                       key={msg.id}
@@ -281,8 +294,8 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
                           type="button"
                           className="chat-avatar chat-avatar-btn"
                           aria-label="Open profile"
-                          onClick={() => openUserProfile(msg.senderId)}
-                          disabled={!msg.senderId}
+                          onClick={() => openUserProfile(senderId)}
+                          disabled={!senderId}
                         >
                           {avatarUrl ? (
                             <img className="chat-avatar-img" src={avatarUrl} alt="" />

@@ -18,26 +18,42 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from './firebaseConfig.js';
+import {
+  COLLECTIONS,
+  groupDocPath,
+  groupMessageDocPath,
+  groupMessagesPath,
+  qaPostDocPath,
+  tutorPostDocPath,
+} from './dbSchema.js';
+import {
+  buildActorSnapshot,
+  buildGroupDocument,
+  buildGroupMessageDocument,
+} from './dbModels.js';
 
-export async function createGroup(postId, postTitle, subject, ownerId, ownerName) {
+export async function createGroup(postId, postTitle, subject, ownerId, ownerName, ownerAvatar = null, ownerUsername = null) {
   if (!isFirebaseConfigured()) {
     throw new Error('Firebase is not configured');
   }
 
   const { db } = getFirebaseServices();
 
-  const groupData = {
-    postId,
-    name: postTitle,
-    subject,
-    ownerId,
-    ownerName,
-    members: [ownerId],
-    createdAt: serverTimestamp(),
-    memberCount: 1,
-  };
+  const owner = buildActorSnapshot({
+    uid: ownerId,
+    displayName: ownerName,
+    username: ownerUsername,
+    avatarUrl: ownerAvatar,
+  });
 
-  const docRef = await addDoc(collection(db, 'groups'), groupData);
+  const groupData = buildGroupDocument({
+    postId,
+    postTitle,
+    subject,
+    owner,
+  });
+
+  const docRef = await addDoc(collection(db, COLLECTIONS.GROUPS), groupData);
   return docRef.id;
 }
 
@@ -50,7 +66,7 @@ export async function addMemberToGroup(groupId, userId, userName) {
   const { db } = getFirebaseServices();
 
   try {
-    const groupRef = doc(db, 'groups', groupId);
+    const groupRef = doc(db, ...groupDocPath(groupId));
     const groupSnap = await getDoc(groupRef);
     const members = groupSnap.data()?.members || [];
 
@@ -72,7 +88,7 @@ export async function removeMemberFromGroup(groupId, userId) {
   }
 
   const { db } = getFirebaseServices();
-  const groupRef = doc(db, 'groups', groupId);
+  const groupRef = doc(db, ...groupDocPath(groupId));
   const groupSnap = await getDoc(groupRef);
 
   if (!groupSnap.exists()) {
@@ -99,7 +115,7 @@ export function subscribeToUserGroups(userId, callback) {
   const { db } = getFirebaseServices();
 
   const q = query(
-    collection(db, 'groups'),
+    collection(db, COLLECTIONS.GROUPS),
     where('members', 'array-contains', userId)
   );
 
@@ -123,7 +139,7 @@ export function subscribeToUserGroups(userId, callback) {
       if (error.code === 'failed-precondition' || error.message?.includes('index')) {
         console.warn('Falling back to client-side filtering');
         const unsubscribe = onSnapshot(
-          collection(db, 'groups'),
+          collection(db, COLLECTIONS.GROUPS),
           (snapshot) => {
             const allGroups = snapshot.docs.map((doc) => ({
               id: doc.id,
@@ -150,9 +166,13 @@ export function subscribeToUserGroups(userId, callback) {
   );
 }
 
-export async function sendGroupMessage(groupId, senderId, text) {
+export async function sendGroupMessage(groupId, senderId, text, sender = null) {
   if (!isFirebaseConfigured()) {
     throw new Error('Firebase is not configured');
+  }
+
+  if (!senderId) {
+    throw new Error('senderId is required');
   }
 
   const cleanedText = String(text || '').trim();
@@ -162,14 +182,21 @@ export async function sendGroupMessage(groupId, senderId, text) {
 
   const { db } = getFirebaseServices();
 
-  const messageData = {
+  const senderActor = buildActorSnapshot({
+    uid: senderId,
+    displayName: sender?.senderName || sender?.displayName,
+    username: sender?.senderUsername || sender?.username,
+    avatarUrl: sender?.senderAvatar || sender?.avatarUrl,
+    email: sender?.email,
+  });
+
+  const messageData = buildGroupMessageDocument({
     type: 'text',
     text: cleanedText,
-    senderId,
-    timestamp: serverTimestamp(),
-  };
+    sender: senderActor,
+  });
 
-  const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
+  const msgRef = await addDoc(collection(db, ...groupMessagesPath(groupId)), messageData);
 
   return msgRef.id;
 }
@@ -186,16 +213,23 @@ export async function sendSystemMessage(groupId, text, sender = null) {
 
   const { db } = getFirebaseServices();
 
-  const senderId = sender?.senderId || null;
+  const senderActor = sender
+    ? buildActorSnapshot({
+      uid: sender?.senderId || sender?.uid,
+      displayName: sender?.senderName || sender?.displayName,
+      username: sender?.senderUsername || sender?.username,
+      avatarUrl: sender?.senderAvatar || sender?.avatarUrl,
+      email: sender?.email,
+    })
+    : null;
 
-  const messageData = {
+  const messageData = buildGroupMessageDocument({
     type: 'system',
     text: cleanedText,
-    senderId,
-    timestamp: serverTimestamp(),
-  };
+    sender: senderActor,
+  });
 
-  const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
+  const msgRef = await addDoc(collection(db, ...groupMessagesPath(groupId)), messageData);
 
   return msgRef.id;
 }
@@ -213,7 +247,7 @@ export async function sendSharedPostMessage({ groupId, senderId, senderName, sen
 
   const { db } = getFirebaseServices();
 
-  const postRef = doc(db, postType === 'qa' ? 'qaPosts' : 'tutorPosts', postId);
+  const postRef = doc(db, ...(postType === 'qa' ? qaPostDocPath(postId) : tutorPostDocPath(postId)));
   const postSnap = await getDoc(postRef);
   if (!postSnap.exists()) {
     throw new Error('Post not found');
@@ -226,20 +260,25 @@ export async function sendSharedPostMessage({ groupId, senderId, senderName, sen
     'Post';
   const subject = postData.subject || '';
 
-  const messageData = {
+  const senderActor = buildActorSnapshot({
+    uid: senderId,
+    displayName: senderName,
+    avatarUrl: senderAvatar,
+  });
+
+  const messageData = buildGroupMessageDocument({
     type: 'share',
     text: String(title || 'Shared a post'),
-    senderId,
-    timestamp: serverTimestamp(),
+    sender: senderActor,
     sharedPost: {
       type: postType,
       id: postId,
       title: String(title || ''),
       subject: String(subject || ''),
     },
-  };
+  });
 
-  const msgRef = await addDoc(collection(db, 'groups', groupId, 'messages'), messageData);
+  const msgRef = await addDoc(collection(db, ...groupMessagesPath(groupId)), messageData);
 
   if (postType === 'qa') {
     try {
@@ -268,7 +307,7 @@ export function subscribeToGroupMessages(groupId, callback) {
   const { db } = getFirebaseServices();
 
   const q = query(
-    collection(db, 'groups', groupId, 'messages'),
+    collection(db, ...groupMessagesPath(groupId)),
     orderBy('timestamp', 'desc'),
     limit(50)
   );
@@ -294,7 +333,7 @@ export function subscribeToLatestGroupMessage(groupId, callback, onError) {
 
   const { db } = getFirebaseServices();
   const q = query(
-    collection(db, 'groups', groupId, 'messages'),
+    collection(db, ...groupMessagesPath(groupId)),
     orderBy('timestamp', 'desc'),
     limit(1)
   );
@@ -320,7 +359,7 @@ export async function getGroupById(groupId) {
   }
 
   const { db } = getFirebaseServices();
-  const docRef = doc(db, 'groups', groupId);
+  const docRef = doc(db, ...groupDocPath(groupId));
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
@@ -340,7 +379,7 @@ export async function getGroupByPostId(postId) {
 
   const { db } = getFirebaseServices();
   const q = query(
-    collection(db, 'groups'),
+    collection(db, COLLECTIONS.GROUPS),
     where('postId', '==', postId)
   );
 
@@ -371,13 +410,13 @@ export async function deleteGroupByPostId(postId) {
   const groupId = group.id;
 
   const messagesSnapshot = await getDocs(
-    collection(db, 'groups', groupId, 'messages')
+    collection(db, ...groupMessagesPath(groupId))
   );
   for (const messageDoc of messagesSnapshot.docs) {
-    await deleteDoc(doc(db, 'groups', groupId, 'messages', messageDoc.id));
+    await deleteDoc(doc(db, ...groupMessageDocPath(groupId, messageDoc.id)));
   }
 
-  await deleteDoc(doc(db, 'groups', groupId));
+  await deleteDoc(doc(db, ...groupDocPath(groupId)));
 }
 
 export async function deleteGroupMessage({ groupId, messageId, requesterId, requesterIsAdmin = false }) {
@@ -390,7 +429,7 @@ export async function deleteGroupMessage({ groupId, messageId, requesterId, requ
   if (!requesterId) throw new Error('requesterId is required');
 
   const { db } = getFirebaseServices();
-  const msgRef = doc(db, 'groups', groupId, 'messages', messageId);
+  const msgRef = doc(db, ...groupMessageDocPath(groupId, messageId));
   const msgSnap = await getDoc(msgRef);
 
   if (!msgSnap.exists()) {

@@ -12,12 +12,30 @@ import {
 import { getFirebaseServices, isFirebaseConfigured } from './firebaseConfig.js';
 import { createGroup, deleteGroupByPostId } from './chatService.js';
 import { isDataUrlImage } from '../utils/imageHelpers.js';
+import {
+  COLLECTIONS,
+  qaPostCommentsPath,
+  qaPostCommentDocPath,
+  qaPostDocPath,
+  qaPostLikeDocPath,
+  qaPostRevisionsPath,
+  tutorPostDocPath,
+  tutorPostRevisionsPath,
+  userDocPath,
+} from './dbSchema.js';
+import {
+  buildActorFromCurrentUser,
+  buildActorSnapshot,
+  buildQaCommentDocument,
+  buildQaPostDocument,
+  buildTutorPostDocument,
+} from './dbModels.js';
 
 async function getAuthorProfile(db, userId) {
   if (!db || !userId) return null;
 
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
+    const userSnap = await getDoc(doc(db, ...userDocPath(userId)));
     return userSnap.exists() ? userSnap.data() : null;
   } catch (error) {
     console.warn('Failed to read user profile for author fields', error);
@@ -25,18 +43,9 @@ async function getAuthorProfile(db, userId) {
   }
 }
 
-function resolveAuthorFields(currentUser, authorProfile) {
-  return {
-    authorName: authorProfile?.displayName || currentUser.displayName || currentUser.email || 'You',
-    authorUsername: authorProfile?.username || null,
-    authorAvatar:
-      authorProfile?.avatarUrl || authorProfile?.photoURL || currentUser.photoURL || '',
-  };
-}
-
 export function subscribeQaPost(db, postId, onData, onError) {
   if (!db || !postId) return () => {};
-  const postRef = doc(db, 'qaPosts', postId);
+  const postRef = doc(db, ...qaPostDocPath(postId));
   return onSnapshot(
     postRef,
     (snap) => {
@@ -52,7 +61,7 @@ export function subscribeQaPost(db, postId, onData, onError) {
 
 export function subscribeQaPostLikeStatus(db, postId, uid, onLiked, onError) {
   if (!db || !postId || !uid) return () => {};
-  const likeRef = doc(db, 'qaPosts', postId, 'likes', uid);
+  const likeRef = doc(db, ...qaPostLikeDocPath(postId, uid));
   return onSnapshot(
     likeRef,
     (snap) => {
@@ -64,14 +73,14 @@ export function subscribeQaPostLikeStatus(db, postId, uid, onLiked, onError) {
 
 export async function getQaPostLikeStatus(db, postId, uid) {
   if (!db || !postId || !uid) return false;
-  const likeRef = doc(db, 'qaPosts', postId, 'likes', uid);
+  const likeRef = doc(db, ...qaPostLikeDocPath(postId, uid));
   const snap = await getDoc(likeRef);
   return snap.exists();
 }
 
 export function subscribeQaPostComments(db, postId, onComments, onError) {
   if (!db || !postId) return () => {};
-  const commentsRef = collection(db, 'qaPosts', postId, 'comments');
+  const commentsRef = collection(db, ...qaPostCommentsPath(postId));
   const q = query(commentsRef, orderBy('createdAt', 'asc'));
 
   return onSnapshot(
@@ -89,8 +98,8 @@ export async function toggleQaPostLike({ db, postId, uid, authorName }) {
   if (!postId) throw new Error('postId is required');
   if (!uid) throw new Error('Please log in to like posts');
 
-  const postRef = doc(db, 'qaPosts', postId);
-  const likeRef = doc(db, 'qaPosts', postId, 'likes', uid);
+  const postRef = doc(db, ...qaPostDocPath(postId));
+  const likeRef = doc(db, ...qaPostLikeDocPath(postId, uid));
 
   return runTransaction(db, async (tx) => {
     const [postSnap, likeSnap] = await Promise.all([tx.get(postRef), tx.get(likeRef)]);
@@ -111,6 +120,10 @@ export async function toggleQaPostLike({ db, postId, uid, authorName }) {
     tx.set(likeRef, {
       userId: uid,
       userName: authorName || null,
+      actor: {
+        uid,
+        displayName: authorName || null,
+      },
       createdAt: serverTimestamp(),
     });
     tx.update(postRef, {
@@ -137,8 +150,20 @@ export async function addQaPostComment({ db, postId, uid, text, imageUrl = null 
   if (!hasText && !hasImage) throw new Error('Comment cannot be empty');
   if (hasImage && !isDataUrlImage(cleanedImageUrl)) throw new Error('Invalid comment image');
 
-  const postRef = doc(db, 'qaPosts', postId);
-  const commentRef = doc(collection(db, 'qaPosts', postId, 'comments'));
+  const postRef = doc(db, ...qaPostDocPath(postId));
+  const commentRef = doc(collection(db, ...qaPostCommentsPath(postId)));
+
+  const authorProfile = await getAuthorProfile(db, uid);
+  const commentActor = buildActorSnapshot({
+    uid,
+    displayName: authorProfile?.displayName,
+    username: authorProfile?.username,
+    avatarUrl: authorProfile?.avatarUrl || authorProfile?.photoURL,
+    email: authorProfile?.email,
+  });
+  const commentAuthorLabel = commentActor.username
+    ? `@${commentActor.username}`
+    : (commentActor.displayName || null);
 
   return runTransaction(db, async (tx) => {
     const postSnap = await tx.get(postRef);
@@ -147,20 +172,22 @@ export async function addQaPostComment({ db, postId, uid, text, imageUrl = null 
     const data = postSnap.data() || {};
     const current = Number(data.commentCount ?? 0);
 
-    tx.set(commentRef, {
-      authorId: uid,
-      text: cleaned,
-      imageUrl: hasImage ? cleanedImageUrl : null,
-      parentId: null,
-      createdAt: serverTimestamp(),
-    });
+    tx.set(
+      commentRef,
+      buildQaCommentDocument({
+        uid,
+        text: cleaned,
+        imageUrl: hasImage ? cleanedImageUrl : null,
+        actor: commentActor,
+      })
+    );
 
     tx.update(postRef, {
       commentCount: current + 1,
       updatedAt: serverTimestamp(),
       lastCommentAt: serverTimestamp(),
       lastCommentById: uid,
-      lastCommentByName: null,
+      lastCommentByName: commentAuthorLabel,
       lastCommentId: commentRef.id,
     });
 
@@ -173,8 +200,8 @@ export async function deleteQaPostComment({ db, postId, commentId }) {
   if (!postId) throw new Error('postId is required');
   if (!commentId) throw new Error('commentId is required');
 
-  const postRef = doc(db, 'qaPosts', postId);
-  const commentRef = doc(db, 'qaPosts', postId, 'comments', commentId);
+  const postRef = doc(db, ...qaPostDocPath(postId));
+  const commentRef = doc(db, ...qaPostCommentDocPath(postId, commentId));
 
   return runTransaction(db, async (tx) => {
     const [postSnap, commentSnap] = await Promise.all([tx.get(postRef), tx.get(commentRef)]);
@@ -204,38 +231,20 @@ export async function createTutorPost(post) {
   if (!currentUser) throw new Error('Please Log In Before Creating A Post.');
 
   const authorProfile = await getAuthorProfile(db, currentUser.uid);
-  const { authorName, authorUsername, authorAvatar } = resolveAuthorFields(currentUser, authorProfile);
+  const authorActor = buildActorFromCurrentUser(currentUser, authorProfile);
+  const baseDoc = buildTutorPostDocument(post, authorActor);
 
-  const baseDoc = {
-    type: 'tutor',
-    authorId: currentUser.uid,
-    authorName,
-    authorUsername,
-    authorAvatar,
-    subject: post.subject || post.title || 'Untitled',
-    location: post.location || '',
-    title: post.title || post.subject || 'Untitled',
-    description: post.description || '',
-    experience: post.experience || '',
-    date: post.date || new Date().toISOString().slice(0, 10),
-    time: post.time || '',
-    capacity: post.capacity ? Number(post.capacity) : 1,
-    joinedCount: post.current ? Number(post.current) : 1,
-    hours: post.hours ? Number(post.hours) : 1,
-    images: Array.isArray(post.images) ? post.images : (post.imageUrl ? [post.imageUrl] : []),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
-  const docRef = await addDoc(collection(db, 'tutorPosts'), baseDoc);
+  const docRef = await addDoc(collection(db, COLLECTIONS.TUTOR_POSTS), baseDoc);
 
   try {
     await createGroup(
       docRef.id,
       baseDoc.title,
       baseDoc.subject,
-      currentUser.uid,
-      authorName
+      authorActor.uid,
+      authorActor.displayName,
+      authorActor.avatarUrl,
+      authorActor.username
     );
   } catch (error) {
     console.warn('Failed to create group for post:', error);
@@ -254,27 +263,10 @@ export async function createQaPost(post) {
   if (!currentUser) throw new Error('Please Log In Before Creating A Post.');
 
   const authorProfile = await getAuthorProfile(db, currentUser.uid);
-  const { authorName, authorUsername, authorAvatar } = resolveAuthorFields(currentUser, authorProfile);
+  const authorActor = buildActorFromCurrentUser(currentUser, authorProfile);
+  const baseDoc = buildQaPostDocument(post, authorActor);
 
-  const baseDoc = {
-    type: 'qa',
-    authorId: currentUser.uid,
-    authorName,
-    authorUsername,
-    authorAvatar,
-    subject: post.subject || '',
-    question: post.question || post.title || 'Untitled question',
-    description: post.description || '',
-    date: post.date || new Date().toISOString().slice(0, 10),
-    likeCount: 0,
-    commentCount: 0,
-    shareCount: 0,
-    images: Array.isArray(post.images) ? post.images : (post.imageUrl ? [post.imageUrl] : []),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
-  const docRef = await addDoc(collection(db, 'qaPosts'), baseDoc);
+  const docRef = await addDoc(collection(db, COLLECTIONS.QA_POSTS), baseDoc);
   return docRef.id;
 }
 
@@ -286,7 +278,7 @@ export async function updateTutorPost(postId, updates) {
   const currentUser = auth.currentUser;
   if (!currentUser) throw new Error('Please Log In Before Editing A Post.');
 
-  const postRef = doc(db, 'tutorPosts', postId);
+  const postRef = doc(db, ...tutorPostDocPath(postId));
   const payload = {
     subject: updates.subject || updates.title || '',
     location: updates.location || '',
@@ -299,47 +291,10 @@ export async function updateTutorPost(postId, updates) {
     capacity: updates.capacity ? Number(updates.capacity) : 1,
   };
 
-  if (Array.isArray(updates.images)) {
-    payload.images = updates.images;
-  } else if (typeof updates.imageUrl === 'string') {
-    payload.images = [updates.imageUrl];
-  } else if (updates.imageUrl === null) {
-    payload.images = [];
-  }
-
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(postRef);
-    if (!snap.exists()) throw new Error('Post not found');
-
-    const before = snap.data() || {};
-    const revisionRef = doc(collection(db, 'tutorPosts', postId, 'revisions'));
-
-    tx.set(revisionRef, {
-      postId,
-      editorId: currentUser.uid,
-      editorName: currentUser.displayName || currentUser.email || null,
-      type: 'edit',
-      before,
-      createdAt: serverTimestamp(),
-    });
-
-    tx.update(postRef, { ...payload, updatedAt: serverTimestamp() });
-  });
-}
-
-export async function updateQaPost(postId, updates) {
-  if (!postId) throw new Error('postId is required');
-  if (!isFirebaseConfigured()) return;
-
-  const { auth, db } = getFirebaseServices();
-  const currentUser = auth.currentUser;
-  if (!currentUser) throw new Error('Please Log In Before Editing A Post.');
-
-  const postRef = doc(db, 'qaPosts', postId);
-  const payload = {
-    subject: updates.subject || '',
-    question: updates.question || updates.title || '',
-    description: updates.description || '',
+  payload.schedule = {
+    date: payload.date,
+    time: payload.time,
+    hours: payload.hours,
   };
 
   if (Array.isArray(updates.images)) {
@@ -355,7 +310,12 @@ export async function updateQaPost(postId, updates) {
     if (!snap.exists()) throw new Error('Post not found');
 
     const before = snap.data() || {};
-    const revisionRef = doc(collection(db, 'qaPosts', postId, 'revisions'));
+    const revisionRef = doc(collection(db, ...tutorPostRevisionsPath(postId)));
+    const joinedCount = Number(
+      before.joinedCount
+      ?? before.joinCount
+      ?? (Array.isArray(before.joiners) ? before.joiners.length : 0)
+    );
 
     tx.set(revisionRef, {
       postId,
@@ -366,7 +326,72 @@ export async function updateQaPost(postId, updates) {
       createdAt: serverTimestamp(),
     });
 
-    tx.update(postRef, { ...payload, updatedAt: serverTimestamp() });
+    tx.update(postRef, {
+      ...payload,
+      stats: {
+        ...(before.stats || {}),
+        joinedCount: Number.isFinite(joinedCount) ? Math.max(0, joinedCount) : 0,
+      },
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+export async function updateQaPost(postId, updates) {
+  if (!postId) throw new Error('postId is required');
+  if (!isFirebaseConfigured()) return;
+
+  const { auth, db } = getFirebaseServices();
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error('Please Log In Before Editing A Post.');
+
+  const postRef = doc(db, ...qaPostDocPath(postId));
+  const payload = {
+    subject: updates.subject || '',
+    question: updates.question || updates.title || '',
+    description: updates.description || '',
+  };
+
+  payload.content = {
+    subject: payload.subject,
+    question: payload.question,
+    description: payload.description,
+  };
+
+  if (Array.isArray(updates.images)) {
+    payload.images = updates.images;
+  } else if (typeof updates.imageUrl === 'string') {
+    payload.images = [updates.imageUrl];
+  } else if (updates.imageUrl === null) {
+    payload.images = [];
+  }
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(postRef);
+    if (!snap.exists()) throw new Error('Post not found');
+
+    const before = snap.data() || {};
+    const revisionRef = doc(collection(db, ...qaPostRevisionsPath(postId)));
+
+    tx.set(revisionRef, {
+      postId,
+      editorId: currentUser.uid,
+      editorName: currentUser.displayName || currentUser.email || null,
+      type: 'edit',
+      before,
+      createdAt: serverTimestamp(),
+    });
+
+    tx.update(postRef, {
+      ...payload,
+      stats: {
+        ...(before.stats || {}),
+        likeCount: Number(before.likeCount ?? before.stats?.likeCount ?? 0),
+        commentCount: Number(before.commentCount ?? before.stats?.commentCount ?? 0),
+        shareCount: Number(before.shareCount ?? before.stats?.shareCount ?? 0),
+      },
+      updatedAt: serverTimestamp(),
+    });
   });
 }
 
@@ -378,13 +403,13 @@ export async function deleteTutorPost(postId) {
   const currentUser = auth.currentUser;
   if (!currentUser) throw new Error('Please Log In Before Deleting A Post.');
 
-  const postRef = doc(db, 'tutorPosts', postId);
+  const postRef = doc(db, ...tutorPostDocPath(postId));
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(postRef);
     if (!snap.exists()) throw new Error('Post not found');
     const before = snap.data() || {};
 
-    const revisionRef = doc(collection(db, 'tutorPosts', postId, 'revisions'));
+    const revisionRef = doc(collection(db, ...tutorPostRevisionsPath(postId)));
 
     tx.set(revisionRef, {
       postId,
@@ -413,13 +438,13 @@ export async function deleteQaPost(postId) {
   const currentUser = auth.currentUser;
   if (!currentUser) throw new Error('Please Log In Before Deleting A Post.');
 
-  const postRef = doc(db, 'qaPosts', postId);
+  const postRef = doc(db, ...qaPostDocPath(postId));
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(postRef);
     if (!snap.exists()) throw new Error('Post not found');
     const before = snap.data() || {};
 
-    const revisionRef = doc(collection(db, 'qaPosts', postId, 'revisions'));
+    const revisionRef = doc(collection(db, ...qaPostRevisionsPath(postId)));
     tx.set(revisionRef, {
       postId,
       editorId: currentUser.uid,

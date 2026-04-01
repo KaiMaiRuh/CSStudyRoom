@@ -13,6 +13,7 @@ import {
   removeMemberFromGroup,
   sendSystemMessage,
 } from '../../api/chatService.js';
+import { readActorFromDoc, readTutorSchedule } from '../../api/dbModels.js';
 
 const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const { user, profile, isAdmin } = useAuth();
@@ -65,15 +66,17 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       (docSnapshot) => {
         if (docSnapshot.exists()) {
           const postData = docSnapshot.data();
+          const actor = readActorFromDoc(postData || {});
           const enrichedPost = {
             id: docSnapshot.id,
             ...postData,
-            user: postData.user || {
-              name: postData.authorUsername || postData.authorName || 'Unknown',
-              displayName: postData.authorName || 'Unknown',
-              username: postData.authorUsername || null,
-              avatar: postData.authorAvatar || '',
-              uid: postData.authorId || null,
+            user: {
+              ...(postData.user || {}),
+              name: actor.username || actor.displayName || postData.user?.name || 'Unknown',
+              displayName: actor.displayName || postData.user?.displayName || 'Unknown',
+              username: actor.username || postData.user?.username || null,
+              avatar: actor.avatarUrl || postData.user?.avatar || '',
+              uid: actor.uid || postData.user?.uid || null,
             },
           };
 
@@ -263,19 +266,33 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     }
   };
 
+  const tutorSchedule = readTutorSchedule(displayPost || {});
   const {
-    user: postAuthor,
+    user: legacyPostAuthor,
     subject,
-    hours,
     capacity,
     description,
     experience,
     location,
     authorId,
-    authorUsername,
   } = displayPost || {};
 
-  const postOwnerUid = postAuthor?.uid || authorId || null;
+  const authorActor = readActorFromDoc(displayPost || {}, {
+    uid: legacyPostAuthor?.uid || authorId,
+    displayName: legacyPostAuthor?.displayName || legacyPostAuthor?.name,
+    username: legacyPostAuthor?.username,
+    avatarUrl: legacyPostAuthor?.avatar,
+  });
+
+  const postAuthor = {
+    uid: authorActor.uid,
+    displayName: authorActor.displayName,
+    name: authorActor.username || authorActor.displayName,
+    avatar: authorActor.avatarUrl,
+  };
+
+  const hours = tutorSchedule.hours;
+  const postOwnerUid = postAuthor?.uid || null;
 
   const rawJoiners = Array.isArray(displayPost.joiners) ? displayPost.joiners : [];
   const normalizedJoiners = rawJoiners
@@ -292,8 +309,8 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
 
   const plainAuthor = {
     uid: postOwnerUid,
-    name: authorUsername ? `@${authorUsername}` : (postAuthor?.displayName || postAuthor?.name || 'Unknown'),
-    avatar: postAuthor?.avatar || '',
+    name: authorActor.username ? `@${authorActor.username}` : (authorActor.displayName || 'Unknown'),
+    avatar: authorActor.avatarUrl || '',
   };
 
   const allJoiners = [plainAuthor, ...uniqueJoiners];
@@ -500,9 +517,9 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
           <p className="subject">Subject : {subject}</p>
         </div>
 
-        {Array.isArray(post.images) && post.images.length > 0 ? (
+        {Array.isArray(displayPost.images) && displayPost.images.length > 0 ? (
           <div className="tutor-post-images">
-            {post.images.map((imageUrl, index) => (
+            {displayPost.images.map((imageUrl, index) => (
               <button
                 key={index}
                 type="button"
@@ -514,14 +531,14 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
               </button>
             ))}
           </div>
-        ) : post.imageUrl ? (
+        ) : displayPost.imageUrl ? (
           <button
             type="button"
             aria-label="Open image"
-            onClick={() => setPreviewSrc(post.imageUrl)}
+            onClick={() => setPreviewSrc(displayPost.imageUrl)}
             style={{ background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'pointer' }}
           >
-            <img className="tutor-post-image" src={post.imageUrl} alt="" />
+            <img className="tutor-post-image" src={displayPost.imageUrl} alt="" />
           </button>
         ) : null}
 

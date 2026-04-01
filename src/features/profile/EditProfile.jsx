@@ -46,20 +46,29 @@ export default function EditProfile({ onCancel, onDone }) {
 
   const pickProfileRevisionFields = (data) => {
     const safe = data && typeof data === 'object' ? data : {};
+    const profile = safe.profile && typeof safe.profile === 'object' ? safe.profile : {};
+    const education = safe.education && typeof safe.education === 'object'
+      ? safe.education
+      : (profile.education && typeof profile.education === 'object' ? profile.education : {});
+
     return {
-      displayName: safe.displayName ?? null,
-      username: safe.username ?? null,
-      year: safe.year ?? safe.education?.year ?? null,
+      displayName: safe.displayName ?? profile.displayName ?? null,
+      username: safe.username ?? profile.username ?? null,
+      year: safe.year ?? profile.year ?? education.year ?? null,
       education: {
-        year: safe.education?.year ?? safe.year ?? null,
-        major: safe.education?.major ?? null,
-        university: safe.education?.university ?? null,
+        year: education.year ?? safe.year ?? profile.year ?? null,
+        major: education.major ?? null,
+        university: education.university ?? null,
       },
-      subjectsToTutor: Array.isArray(safe.subjectsToTutor) ? safe.subjectsToTutor : [],
-      subjectsNeedingHelp: Array.isArray(safe.subjectsNeedingHelp) ? safe.subjectsNeedingHelp : [],
-      role: safe.role ?? null,
-      contactText: safe.contactText ?? null,
-      bio: safe.bio ?? null,
+      subjectsToTutor: Array.isArray(safe.subjectsToTutor)
+        ? safe.subjectsToTutor
+        : (Array.isArray(profile.subjectsToTutor) ? profile.subjectsToTutor : []),
+      subjectsNeedingHelp: Array.isArray(safe.subjectsNeedingHelp)
+        ? safe.subjectsNeedingHelp
+        : (Array.isArray(profile.subjectsNeedingHelp) ? profile.subjectsNeedingHelp : []),
+      role: safe.role ?? profile.role ?? null,
+      contactText: safe.contactText ?? profile.contactText ?? null,
+      bio: safe.bio ?? profile.bio ?? null,
     };
   };
 
@@ -93,18 +102,23 @@ export default function EditProfile({ onCancel, onDone }) {
 
   const initial = useMemo(() => {
     const data = profileDoc || {};
+    const profileData = data.profile && typeof data.profile === 'object' ? data.profile : {};
+    const education = data.education && typeof data.education === 'object'
+      ? data.education
+      : (profileData.education && typeof profileData.education === 'object' ? profileData.education : {});
     const contactFromLegacy = [data.contact?.discord, data.contact?.line].filter(Boolean).join(' / ');
+
     return {
-      displayName: data.displayName || user?.displayName || '',
-      username: data.username || '',
-      year: data.year || data.education?.year || '',
-      major: data.education?.major || '',
-      university: data.education?.university || '',
-      subjectsToTutor: toCommaString(data.subjectsToTutor),
-      subjectsNeedingHelp: toCommaString(data.subjectsNeedingHelp),
-      role: data.role || '',
-      contact: data.contactText || contactFromLegacy || '',
-      bio: data.bio || '',
+      displayName: profileData.displayName || data.displayName || user?.displayName || '',
+      username: profileData.username || data.username || '',
+      year: profileData.year || data.year || education.year || '',
+      major: education.major || '',
+      university: education.university || '',
+      subjectsToTutor: toCommaString(profileData.subjectsToTutor || data.subjectsToTutor),
+      subjectsNeedingHelp: toCommaString(profileData.subjectsNeedingHelp || data.subjectsNeedingHelp),
+      role: profileData.role || data.role || '',
+      contact: profileData.contactText || data.contactText || contactFromLegacy || '',
+      bio: profileData.bio || data.bio || '',
     };
   }, [profileDoc, user?.displayName]);
 
@@ -160,9 +174,7 @@ export default function EditProfile({ onCancel, onDone }) {
         await updateAuthProfile(auth.currentUser, { displayName: nextDisplayName });
       }
 
-      const nextProfileDoc = {
-        uid,
-        email: user?.email || null,
+      const nextProfile = {
         displayName: nextDisplayName,
         username: nextUsername,
         year: year ? String(year).trim() : null,
@@ -176,6 +188,16 @@ export default function EditProfile({ onCancel, onDone }) {
         role: role ? String(role).trim() : null,
         contactText: contact ? String(contact).trim() : null,
         bio: bio ? String(bio).trim() : null,
+      };
+
+      const nextProfileDoc = {
+        uid,
+        email: user?.email || null,
+        ...nextProfile,
+        profile: nextProfile,
+        meta: {
+          updatedAt: serverTimestamp(),
+        },
         updatedAt: serverTimestamp(),
       };
 

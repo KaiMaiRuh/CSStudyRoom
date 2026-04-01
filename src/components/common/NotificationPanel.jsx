@@ -15,6 +15,11 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { getFirebaseServices, isFirebaseConfigured } from '../../api/firebaseConfig.js';
+import {
+  userGroupReadDocPath,
+  userGroupReadsPath,
+  userNotificationReadDocPath,
+} from '../../api/dbSchema.js';
 import { subscribeToLatestGroupMessage, subscribeToUserGroups } from '../../api/chatService.js';
 
 const toMillis = (ts) => (ts?.toMillis?.() ? ts.toMillis() : 0);
@@ -71,7 +76,7 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
 
     const { db } = getFirebaseServices();
     await setDoc(
-      doc(db, 'users', user.uid, 'groupReads', groupId),
+      doc(db, ...userGroupReadDocPath(user.uid, groupId)),
       {
         lastReadAt: ts,
         updatedAt: serverTimestamp(),
@@ -89,7 +94,7 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
 
     const { db } = getFirebaseServices();
     await setDoc(
-      doc(db, 'users', user.uid, 'notificationReads', 'qa'),
+      doc(db, ...userNotificationReadDocPath(user.uid, 'qa')),
       {
         lastSeenAt: ts,
         updatedAt: serverTimestamp(),
@@ -131,7 +136,7 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     }
 
     const { db } = getFirebaseServices();
-    const readsRef = collection(db, 'users', user.uid, 'groupReads');
+    const readsRef = collection(db, ...userGroupReadsPath(user.uid));
 
     return onSnapshot(
       readsRef,
@@ -158,7 +163,7 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     }
 
     const { db } = getFirebaseServices();
-    const qaReadRef = doc(db, 'users', user.uid, 'notificationReads', 'qa');
+    const qaReadRef = doc(db, ...userNotificationReadDocPath(user.uid, 'qa'));
 
     return onSnapshot(
       qaReadRef,

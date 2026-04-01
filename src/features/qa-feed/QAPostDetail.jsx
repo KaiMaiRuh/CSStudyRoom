@@ -23,6 +23,7 @@ import {
   toggleQaPostLike,
 } from '../../api/postService.js';
 import { useUserProfiles } from '../../api/userService.js';
+import { readActorFromDoc, readQaStats } from '../../api/dbModels.js';
 
 const QAPostDetail = ({ post, onBack, onDelete }) => {
   const [commentText, setCommentText] = useState('');
@@ -149,19 +150,31 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
   const mergedPost = useMemo(() => {
     if (!post) return null;
     if (!livePost) return post;
+    const stats = readQaStats({ ...post, ...livePost });
     return {
       ...post,
       ...livePost,
-      likes: livePost.likeCount ?? livePost.likes ?? post.likes,
-      comments: livePost.commentCount ?? livePost.comments ?? post.comments,
-      shares: livePost.shareCount ?? livePost.shares ?? post.shares,
+      likes: stats.likes,
+      comments: stats.comments,
+      shares: stats.shares,
     };
   }, [post, livePost]);
 
-  const authorUid = mergedPost?.authorId ?? mergedPost?.user?.uid ?? null;
-  const authorName = mergedPost?.user?.name ?? mergedPost?.authorName ?? mergedPost?.author ?? 'Unknown';
-  const authorLabel = mergedPost?.user?.username ? `@${mergedPost.user.username}` : authorName;
-  const authorAvatar = mergedPost?.user?.avatar ?? mergedPost?.authorAvatar ?? '';
+  const mergedAuthor = useMemo(() => {
+    return readActorFromDoc(mergedPost || {}, {
+      uid: mergedPost?.user?.uid,
+      displayName: mergedPost?.user?.displayName || mergedPost?.user?.name,
+      username: mergedPost?.user?.username,
+      avatarUrl: mergedPost?.user?.avatar,
+    });
+  }, [mergedPost]);
+
+  const mergedStats = useMemo(() => readQaStats(mergedPost || {}), [mergedPost]);
+
+  const authorUid = mergedAuthor.uid || null;
+  const authorName = mergedAuthor.displayName || 'Unknown';
+  const authorLabel = mergedAuthor.username ? `@${mergedAuthor.username}` : authorName;
+  const authorAvatar = mergedAuthor.avatarUrl || '';
   const formatPostedTime = (minutesAgo) => {
     if (minutesAgo == null || Number.isNaN(minutesAgo)) return '';
     const mins = Number(minutesAgo);
@@ -472,11 +485,11 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
               style={isLikeBusy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
             >
               <FaThumbsUp />
-              <span className="qa-action-count">{mergedPost?.likes ?? 0}</span>
+              <span className="qa-action-count">{mergedStats.likes}</span>
             </span>
             <span className="qa-action" role="button" tabIndex={0} aria-label="Comment">
               <FaComment />
-              <span className="qa-action-count">{mergedPost?.comments ?? 0}</span>
+              <span className="qa-action-count">{mergedStats.comments}</span>
             </span>
             <span
               className="qa-action"

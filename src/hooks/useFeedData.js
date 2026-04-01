@@ -8,6 +8,13 @@ import {
   startAfter,
 } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from '../api/firebaseConfig.js';
+import { COLLECTIONS } from '../api/dbSchema.js';
+import {
+  readActorFromDoc,
+  readQaStats,
+  readTutorSchedule,
+  readTutorStats,
+} from '../api/dbModels.js';
 import {
   createQaPost as createQaPostService,
   createTutorPost as createTutorPostService,
@@ -51,6 +58,11 @@ const BASE_SUBJECTS = [
 
 function mapTutorPostDoc(d) {
   const data = d.data() || {};
+  const author = readActorFromDoc(data);
+  const schedule = readTutorSchedule(data);
+  const stats = readTutorStats(data);
+  const joiners = Array.isArray(data.joiners) ? data.joiners : [];
+
   const createdAtDate = data.createdAt?.toDate?.() ?? null;
   const minutesAgo = createdAtDate
     ? Math.max(0, Math.round((Date.now() - createdAtDate.getTime()) / 60000))
@@ -59,32 +71,35 @@ function mapTutorPostDoc(d) {
   return {
     id: d.id,
     user: {
-      name: data.authorUsername || data.authorName || 'Unknown',
-      displayName: data.authorName || 'Unknown',
-      username: data.authorUsername || null,
-      avatar: data.authorAvatar || '',
-      uid: data.authorId || null,
+      name: author.username || author.displayName || 'Unknown',
+      displayName: author.displayName || 'Unknown',
+      username: author.username || null,
+      avatar: author.avatarUrl || '',
+      uid: author.uid || null,
     },
     subject: data.subject || '',
     location: data.location || '',
     title: data.title || '',
     description: data.description || '',
     experience: data.experience || '',
-    date: data.date || '',
-    time: data.time || '',
+    date: schedule.date,
+    time: schedule.time,
     minutesAgo,
     capacity: data.capacity ?? 0,
-    joiners: Array.isArray(data.joiners) ? data.joiners : [],
-    current: Array.isArray(data.joiners) ? data.joiners.length : 0,
-    joinedCount: Array.isArray(data.joiners) ? data.joiners.length : 0,
-    hours: data.hours ?? 0,
+    joiners,
+    current: joiners.length,
+    joinedCount: Math.max(joiners.length, stats.joinedCount),
+    hours: schedule.hours,
     images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
-    authorId: data.authorId || null,
+    authorId: author.uid || null,
   };
 }
 
 function mapQaPostDoc(d) {
   const data = d.data() || {};
+  const author = readActorFromDoc(data);
+  const stats = readQaStats(data);
+
   const createdAtDate = data.createdAt?.toDate?.() ?? null;
   const minutesAgo = createdAtDate
     ? Math.max(0, Math.round((Date.now() - createdAtDate.getTime()) / 60000))
@@ -93,23 +108,23 @@ function mapQaPostDoc(d) {
   return {
     id: d.id,
     user: {
-      name: data.authorUsername || data.authorName || 'Unknown',
-      username: data.authorUsername || null,
-      avatar: data.authorAvatar || '',
-      uid: data.authorId || null,
+      name: author.username || author.displayName || 'Unknown',
+      username: author.username || null,
+      avatar: author.avatarUrl || '',
+      uid: author.uid || null,
     },
-    subject: data.subject || '',
-    question: data.question || '',
-    description: data.description || '',
+    subject: data.subject || data.content?.subject || '',
+    question: data.question || data.content?.question || '',
+    description: data.description || data.content?.description || '',
     date: data.date || '',
     createdAt: createdAtDate,
     time: data.time || '',
     minutesAgo,
-    likes: data.likes ?? data.likeCount ?? 0,
-    comments: data.comments ?? data.commentCount ?? 0,
-    shares: data.shares ?? data.shareCount ?? 0,
+    likes: stats.likes,
+    comments: stats.comments,
+    shares: stats.shares,
     images: Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []),
-    authorId: data.authorId || null,
+    authorId: author.uid || null,
     commentList: data.commentList || null,
   };
 }
@@ -164,12 +179,12 @@ export default function useFeedData() {
 
       const loadInitialFeed = async () => {
         const tutorQuery = query(
-          collection(db, 'tutorPosts'),
+          collection(db, COLLECTIONS.TUTOR_POSTS),
           orderBy('createdAt', 'desc'),
           limit(PAGE_SIZE)
         );
         const qaQuery = query(
-          collection(db, 'qaPosts'),
+          collection(db, COLLECTIONS.QA_POSTS),
           orderBy('createdAt', 'desc'),
           limit(PAGE_SIZE)
         );
@@ -224,7 +239,7 @@ export default function useFeedData() {
 
       constraints.push(limit(PAGE_SIZE));
 
-      const nextQuery = query(collection(db, 'tutorPosts'), ...constraints);
+      const nextQuery = query(collection(db, COLLECTIONS.TUTOR_POSTS), ...constraints);
       const snap = await getDocs(nextQuery);
       const nextPosts = snap.docs.map(mapTutorPostDoc);
 
@@ -256,7 +271,7 @@ export default function useFeedData() {
 
       constraints.push(limit(PAGE_SIZE));
 
-      const nextQuery = query(collection(db, 'qaPosts'), ...constraints);
+      const nextQuery = query(collection(db, COLLECTIONS.QA_POSTS), ...constraints);
       const snap = await getDocs(nextQuery);
       const nextPosts = snap.docs.map(mapQaPostDoc);
 

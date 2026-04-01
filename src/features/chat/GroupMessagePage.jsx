@@ -4,6 +4,7 @@ import { FaArrowLeft, FaPlus } from 'react-icons/fa';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { getFirebaseServices, isFirebaseConfigured } from '../../api/firebaseConfig.js';
+import { userGroupReadsPath } from '../../api/dbSchema.js';
 import {
   sendSharedPostMessage,
   subscribeToLatestGroupMessage,
@@ -50,7 +51,7 @@ const GroupMessagePage = ({ onBack }) => {
     if (!isFirebaseConfigured()) return;
 
     const { db } = getFirebaseServices();
-    const ref = collection(db, 'users', user.uid, 'groupReads');
+    const ref = collection(db, ...userGroupReadsPath(user.uid));
     return onSnapshot(
       ref,
       (snap) => {
@@ -305,7 +306,7 @@ const GroupMessagePage = ({ onBack }) => {
                     <p className="gmp-group-subject">{group.subject}</p>
                     <p className="gmp-group-last-message">{latestText}</p>
                     <p className="gmp-group-meta">
-                      {group.memberCount || group.members?.length || 0} members • by {group.ownerName || 'Unknown'}
+                      {group.memberCount || group.members?.length || 0} members • by {group.owner?.displayName || group.ownerName || 'Unknown'}
                       {latestTime ? ` • ${latestTime}` : ''}
                     </p>
                   </div>

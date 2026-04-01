@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from './firebaseConfig.js';
+import { userDocPath } from './dbSchema.js';
 
 const profileCache = Object.create(null);
 const inflightCache = Object.create(null);
@@ -16,16 +17,28 @@ function normalizeUserProfile(userId, raw) {
     };
   }
 
+  const profile = raw.profile && typeof raw.profile === 'object' ? raw.profile : null;
+
   return {
     uid: userId,
-    displayName: typeof raw.displayName === 'string' ? raw.displayName : '',
-    username: typeof raw.username === 'string' ? raw.username : null,
+    displayName:
+      (typeof raw.displayName === 'string' && raw.displayName)
+      || (typeof profile?.displayName === 'string' && profile.displayName)
+      || '',
+    username:
+      (typeof raw.username === 'string' && raw.username)
+      || (typeof profile?.username === 'string' && profile.username)
+      || null,
     avatarUrl:
       (typeof raw.avatarUrl === 'string' && raw.avatarUrl) ||
+      (typeof profile?.avatarUrl === 'string' && profile.avatarUrl) ||
       (typeof raw.photoURL === 'string' && raw.photoURL) ||
       (typeof raw.avatar === 'string' && raw.avatar) ||
       '',
-    email: typeof raw.email === 'string' ? raw.email : null,
+    email:
+      (typeof raw.email === 'string' && raw.email)
+      || (typeof profile?.email === 'string' && profile.email)
+      || null,
   };
 }
 
@@ -73,7 +86,7 @@ export async function getUserProfileById(userId, { db } = {}) {
     return fallback;
   }
 
-  inflightCache[userId] = getDoc(doc(resolvedDb, 'users', userId))
+  inflightCache[userId] = getDoc(doc(resolvedDb, ...userDocPath(userId)))
     .then((snap) => {
       const next = normalizeUserProfile(userId, snap.exists() ? snap.data() : null);
       profileCache[userId] = next;

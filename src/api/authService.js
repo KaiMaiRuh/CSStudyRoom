@@ -13,6 +13,11 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from './firebaseConfig.js';
+import {
+  allowedEmailDocPath,
+  userDocPath,
+  userVisitDocPath,
+} from './dbSchema.js';
 
 function notConfiguredError() {
   return new Error('Firebase is not configured. Add .env.local (see .env.example).');
@@ -25,7 +30,7 @@ async function updateVisitStats(db, uid, { signIn = false } = {}) {
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const key = `${yyyy}-${mm}-${dd}`;
-    const visitRef = doc(db, `users/${uid}/visits`, key);
+    const visitRef = doc(db, ...userVisitDocPath(uid, key));
 
     await setDoc(
       visitRef,
@@ -68,7 +73,7 @@ export async function signInUser(email, password) {
   }
 
   try {
-    const userRef = doc(db, 'users', cred.user.uid);
+    const userRef = doc(db, ...userDocPath(cred.user.uid));
     const userSnap = await getDoc(userRef);
     if (userSnap.exists() && userSnap.data()?.banned) {
       await firebaseSignOut(auth);
@@ -99,8 +104,10 @@ export async function signUpUser({ email, password, fullName, username, year }) 
   }
 
   try {
-    const exactRef = doc(db, 'allowedEmails', normalizedEmail);
-    const lowerRef = normalizedEmailLower !== normalizedEmail ? doc(db, 'allowedEmails', normalizedEmailLower) : null;
+    const exactRef = doc(db, ...allowedEmailDocPath(normalizedEmail));
+    const lowerRef = normalizedEmailLower !== normalizedEmail
+      ? doc(db, ...allowedEmailDocPath(normalizedEmailLower))
+      : null;
 
     const exactSnap = await getDoc(exactRef);
     const lowerSnap = lowerRef ? await getDoc(lowerRef) : null;
@@ -123,14 +130,24 @@ export async function signUpUser({ email, password, fullName, username, year }) 
     await updateProfile(cred.user, { displayName });
   }
 
+  const normalizedYear = year || null;
   await setDoc(
-    doc(db, 'users', cred.user.uid),
+    doc(db, ...userDocPath(cred.user.uid)),
     {
       uid: cred.user.uid,
       email: cred.user.email,
       displayName,
       username: normalizedUsername || null,
-      year: year || null,
+      year: normalizedYear,
+      profile: {
+        displayName,
+        username: normalizedUsername || null,
+        year: normalizedYear,
+      },
+      meta: {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     },
@@ -179,7 +196,7 @@ export async function logActivity({ uid, type, meta = {} }) {
       const key = `${yyyy}-${mm}-${dd}`;
       const hourField = `hours.h${hh}`;
 
-      const visitRef = doc(db, `users/${uid}/visits`, key);
+      const visitRef = doc(db, ...userVisitDocPath(uid, key));
       const lastPage = meta?.page ?? null;
       await setDoc(
         visitRef,
