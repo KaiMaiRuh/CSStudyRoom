@@ -232,7 +232,7 @@ const TutorFeed = ({
               <h3 className="post-title">{post.title}</h3>
               <p className="post-description">{post.description}</p>
               <div className="date-time">
-                <span className="date">{post.date}{post.time ? ` at ${post.time}` : ''}</span>
+                <span className="tutor-date-blue">{post.date} {post.time && `at ${post.time}`}</span>
                 <span className="ago">{formatPostedTime(post.minutesAgo)}</span>
               </div>
               <div className="subject-by">

@@ -122,16 +122,18 @@
   overflow-wrap: break-word;
 }
 
-.date-time {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: flex-start;
-  justify-content: flex-start;
-  margin-top: 6px;
-  margin-left: 0;
+.date-time .date {
+  font-weight: 700;
+  color: #0b72bc !important; /* ใส่ !important เพื่อตัดปัญหาโดนตัวอื่นทับ */
+  font-size: 1.2rem;
 }
-
+.tutor-card .tutor-date-blue {
+  color: #0b72bc !important; /* ใส่ !important เพื่อยืนยันว่า "ฉันจะเอาสีนี้!" */
+  font-weight: 700;
+  font-size: 1.2rem;
+  display: block; /* สั่งให้มันแยกบรรทัดกับคำว่า ago ให้ชัดเจน */
+  margin-bottom: 2px;
+}
 .date-time span {
   text-align: left;
   margin-left: 0;

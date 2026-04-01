@@ -603,14 +603,24 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         />
 
         {commentImageUrl ? (
-          <button
-            className="qa-composer-image-thumb"
-            type="button"
-            aria-label="Open attached image"
-            onClick={() => setPreviewSrc(commentImageUrl)}
-          >
-            <img className="qa-composer-image-thumb-img" src={commentImageUrl} alt="" />
-          </button>
+          <div className="qa-composer-image-thumb-wrapper">
+            <button
+              className="qa-composer-image-thumb"
+              type="button"
+              aria-label="Open attached image"
+              onClick={() => setPreviewSrc(commentImageUrl)}
+            >
+              <img className="qa-composer-image-thumb-img" src={commentImageUrl} alt="" />
+            </button>
+            <button
+              className="qa-composer-image-remove"
+              type="button"
+              aria-label="Remove attached image"
+              onClick={() => setCommentImageUrl(null)}
+            >
+              &times;
+            </button>
+          </div>
         ) : null}
 
         <button

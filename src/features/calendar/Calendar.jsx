@@ -120,12 +120,12 @@ const getTutorCalendarStatus = (post, userUid) => {
     return 'owner';
   }
 
-  if (isTutorPostFull(post)) {
-    return 'full';
-  }
-
   if (hasUserJoinedTutorPost(post, userUid)) {
     return 'joined';
+  }
+
+  if (isTutorPostFull(post)) {
+    return 'full';
   }
 
   return 'unjoined';

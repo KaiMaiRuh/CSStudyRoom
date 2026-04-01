@@ -387,6 +387,35 @@
   display: none;
 }
 
+.qa-composer-image-thumb-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.qa-composer-image-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #c21807;
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 2;
+}
+
+.qa-composer-image-remove:hover {
+  background-color: #a01005;
+}
+
 .qa-composer-image-thumb {
   width: 36px;
   height: 36px;

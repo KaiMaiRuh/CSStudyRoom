@@ -54,9 +54,20 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
-  const [isFeedDetailOpen, setIsFeedDetailOpen] = useState(false);
+  const [isFeedDetailOpen, setIsFeedDetailOpen] = useState(() => {
+    const hash = (window.location.hash || '').replace(/^#/, '');
+    return /^\/(qa|tutor)\/[^/]+$/.test(hash.split('?')[0]);
+  });
   const [initialRouteApplied, setInitialRouteApplied] = useState(false);
-  const [openPostRef, setOpenPostRef] = useState(null);
+  const [openPostRef, setOpenPostRef] = useState(() => {
+    const hash = (window.location.hash || '').replace(/^#/, '');
+    const pathOnly = (hash.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+    const tutorM = pathOnly.match(/^\/tutor\/([^/]+)$/);
+    if (tutorM) return { type: 'tutor', id: tutorM[1], backHash: null };
+    const qaM = pathOnly.match(/^\/qa\/([^/]+)$/);
+    if (qaM) return { type: 'qa', id: qaM[1], backHash: null };
+    return null;
+  });
   const [viewProfileUid, setViewProfileUid] = useState(null);
   const [displayFeed, setDisplayFeed] = useState(() => (activeFeed === 'qa' ? 'qa' : 'tutor'));
   const [feedTransitionPhase, setFeedTransitionPhase] = useState('idle');
@@ -234,7 +245,10 @@ function App() {
     setShowEditProfile(false);
     setShowSignIn(false);
     setShowCreatePost(false);
-    setIsFeedDetailOpen(false);
+    // Only reset detail open if URL is not pointing at a post detail
+    if (!extractPostRefFromRaw(window.location.hash || window.location.pathname)) {
+      setIsFeedDetailOpen(false);
+    }
 
     // Prevent unauthenticated access to certain pages
     if (!user && (page === 'home' || page === 'profile' || page === 'admin')) {
@@ -334,7 +348,10 @@ function App() {
     setShowEditProfile(false);
     setShowSignIn(false);
     setShowCreatePost(false);
-    setIsFeedDetailOpen(false);
+    // Only reset detail open if URL is not pointing at a post detail
+    if (!extractPostRefFromRaw(window.location.hash || window.location.pathname)) {
+      setIsFeedDetailOpen(false);
+    }
 
     switch (page) {
       case 'home':
