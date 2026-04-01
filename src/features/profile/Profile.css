@@ -171,6 +171,35 @@
   min-height: 0;
 }
 
+.profile-panel-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 2px 0 14px;
+}
+
+.profile-panel-tab {
+  border: 1px solid #b8c7d8;
+  background-color: #ffffff;
+  color: #1a2b48;
+  border-radius: 999px;
+  padding: 11px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-panel-tab:hover {
+  border-color: #1a2b48;
+}
+
+.profile-panel-tab.active {
+  background-color: #1a2b48;
+  color: #ffffff;
+  border-color: #1a2b48;
+  box-shadow: 0 3px 8px rgba(11, 21, 38, 0.2);
+}
+
 .posts-header {
   margin: 2px 0 14px;
 }
@@ -250,6 +279,62 @@
   align-items: flex-start;
   gap: 11px;
   box-shadow: 0 3px 10px rgba(24, 33, 45, 0.18);
+}
+
+.joined-group-card {
+  width: 100%;
+  text-align: left;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.joined-group-card:hover {
+  transform: translateY(-1px);
+  border-color: #1a2b48;
+  box-shadow: 0 5px 12px rgba(10, 22, 40, 0.2);
+}
+
+.joined-group-card:focus-within {
+  outline: 3px solid rgba(26, 43, 72, 0.2);
+  outline-offset: 2px;
+}
+
+.joined-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.joined-group-action {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.joined-group-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(10, 22, 40, 0.18);
+}
+
+.joined-group-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+.joined-group-action-primary {
+  background-color: #1a2b48;
+  color: #ffffff;
+}
+
+.joined-group-action-secondary {
+  background-color: #ffffff;
+  color: #1a2b48;
+  border: 1px solid #1a2b48;
 }
 
 .post-icon {
@@ -470,6 +555,10 @@
 
   .posts-header h2 {
     font-size: 1.8rem;
+  }
+
+  .profile-panel-tabs {
+    grid-template-columns: 1fr;
   }
 
   .posts-list {

@@ -101,16 +101,6 @@
   text-align: center;
 }
 
-
-.create-post-brand-shell {
-  display: flex;
-  justify-content: center;
-  margin: 0 0 24px;
-}
-
-.create-post-brand-showcase {
-  max-width: 100%;
-}
 .close-button {
   position: absolute;
   top: 50%;
@@ -366,10 +356,6 @@
     font-size: clamp(30px, 4.8vw, 40px);
   }
 
-  .create-post-brand-shell {
-    margin-bottom: 22px;
-  }
-
   .type-button {
     font-size: 1.35rem;
   }
@@ -400,10 +386,6 @@
 
   .modal-title {
     font-size: clamp(26px, 7vw, 34px);
-  }
-
-  .create-post-brand-shell {
-    margin-bottom: 18px;
   }
 
   .close-button {
