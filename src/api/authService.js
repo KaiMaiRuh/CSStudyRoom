@@ -23,6 +23,12 @@ function notConfiguredError() {
   return new Error('Firebase is not configured. Add .env.local (see .env.example).');
 }
 
+function buildBlockedAccountError(message, code = 'auth/account-disabled') {
+  const err = new Error(message);
+  err.code = code;
+  return err;
+}
+
 async function updateVisitStats(db, uid, { signIn = false } = {}) {
   try {
     const d = new Date();
@@ -75,17 +81,39 @@ export async function signInUser(email, password) {
   try {
     const userRef = doc(db, ...userDocPath(cred.user.uid));
     const userSnap = await getDoc(userRef);
-    if (userSnap.exists() && userSnap.data()?.banned) {
+
+    if (!userSnap.exists()) {
       await firebaseSignOut(auth);
-      const bannedError = new Error('This account has been banned');
-      bannedError.code = 'auth/banned';
-      throw bannedError;
+      throw buildBlockedAccountError('This account is no longer available', 'auth/account-deleted');
+    }
+
+    const userData = userSnap.data() || {};
+    if (userData?.deleted) {
+      await firebaseSignOut(auth);
+      throw buildBlockedAccountError('This account has been removed', 'auth/account-deleted');
+    }
+
+    if (userData?.banned) {
+      await firebaseSignOut(auth);
+      throw buildBlockedAccountError('This account has been banned', 'auth/banned');
     }
   } catch (checkErr) {
-    if (checkErr?.code === 'auth/banned') {
+    if (checkErr?.code === 'auth/banned' || checkErr?.code === 'auth/account-deleted') {
       throw checkErr;
     }
+
+    if (checkErr?.code === 'permission-denied') {
+      await firebaseSignOut(auth).catch((err) => {
+        console.error('Failed to sign out blocked account after permission check', err);
+      });
+      throw buildBlockedAccountError('This account is no longer available', 'auth/account-deleted');
+    }
+
     console.error('Failed to check ban status after sign in', checkErr);
+    await firebaseSignOut(auth).catch((err) => {
+      console.error('Failed to sign out after account status verification error', err);
+    });
+    throw new Error('Unable to verify account status. Please try again.');
   }
 
   return cred.user;

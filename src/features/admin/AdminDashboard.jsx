@@ -378,8 +378,32 @@ const AdminDashboard = () => {
     const start = startOfDay(startParsed);
     const end = startOfDay(endParsed);
     if (start.getTime() <= end.getTime()) return { start, end };
-    return { start: end, end: start };
+    return { start, end: start };
   }, [rangeStartStr, rangeEndStr]);
+
+  const handleRangeStartChange = (value) => {
+    setRangeStartStr(value);
+
+    const nextStart = safeParseDateInput(value);
+    const currentEnd = safeParseDateInput(rangeEndStr);
+    if (!nextStart || !currentEnd) return;
+
+    if (nextStart.getTime() > currentEnd.getTime()) {
+      setRangeEndStr(value);
+    }
+  };
+
+  const handleRangeEndChange = (value) => {
+    const nextEnd = safeParseDateInput(value);
+    const currentStart = safeParseDateInput(rangeStartStr);
+
+    if (nextEnd && currentStart && nextEnd.getTime() < currentStart.getTime()) {
+      setRangeEndStr(rangeStartStr);
+      return;
+    }
+
+    setRangeEndStr(value);
+  };
 
   // Subscribe posts for analytics (filter client-side by range).
   // This is more robust than Firestore range queries when legacy data has mixed createdAt types.
@@ -626,7 +650,8 @@ const AdminDashboard = () => {
               className="admin-range-input"
               type="date"
               value={rangeStartStr}
-              onChange={(e) => setRangeStartStr(e.target.value)}
+              onChange={(e) => handleRangeStartChange(e.target.value)}
+              max={rangeEndStr || undefined}
               aria-label="Start date"
             />
             <span className="admin-range-sep" aria-hidden="true">
@@ -636,7 +661,8 @@ const AdminDashboard = () => {
               className="admin-range-input"
               type="date"
               value={rangeEndStr}
-              onChange={(e) => setRangeEndStr(e.target.value)}
+              onChange={(e) => handleRangeEndChange(e.target.value)}
+              min={rangeStartStr || undefined}
               aria-label="End date"
             />
           </div>

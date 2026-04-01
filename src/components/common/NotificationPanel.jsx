@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FaArrowLeft } from 'react-icons/fa';
 import {
+  collectionGroup,
   collection,
   doc,
   limit,
@@ -40,11 +41,14 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [groupState, setGroupState] = useState({ uid: null, groups: [] });
   const [qaState, setQaState] = useState({ uid: null, posts: [] });
+  const [adminDeleteState, setAdminDeleteState] = useState({ uid: null, items: [] });
   const [groupReadsState, setGroupReadsState] = useState({ uid: null, map: {} });
   const [qaReadState, setQaReadState] = useState({ uid: null, lastSeenAt: null });
+  const [adminDeleteReadState, setAdminDeleteReadState] = useState({ uid: null, lastSeenAt: null });
   const [latestMessagesByGroupId, setLatestMessagesByGroupId] = useState({});
   const [groupError, setGroupError] = useState(null);
   const [qaError, setQaError] = useState(null);
+  const [adminDeleteError, setAdminDeleteError] = useState(null);
   const markSignatureRef = useRef('');
 
   useEffect(() => {
@@ -103,6 +107,24 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     );
   }, [user?.uid]);
 
+  const markAdminDeleteNotificationsAsRead = useCallback(async (tsMillis) => {
+    if (!user?.uid) return;
+    if (!isFirebaseConfigured()) return;
+
+    const ts = toTimestamp(tsMillis);
+    if (!ts) return;
+
+    const { db } = getFirebaseServices();
+    await setDoc(
+      doc(db, ...userNotificationReadDocPath(user.uid, 'adminDelete')),
+      {
+        lastSeenAt: ts,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }, [user?.uid]);
+
   useEffect(() => {
     if (!user?.uid) {
       return;
@@ -150,6 +172,32 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
       (err) => {
         console.error('Failed to subscribe group read state for notifications', err);
         setGroupReadsState({ uid: user.uid, map: {} });
+      }
+    );
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      return;
+    }
+    if (!isFirebaseConfigured()) {
+      return;
+    }
+
+    const { db } = getFirebaseServices();
+    const adminDeleteReadRef = doc(db, ...userNotificationReadDocPath(user.uid, 'adminDelete'));
+
+    return onSnapshot(
+      adminDeleteReadRef,
+      (snap) => {
+        setAdminDeleteReadState({
+          uid: user.uid,
+          lastSeenAt: snap.exists() ? snap.data()?.lastSeenAt || null : null,
+        });
+      },
+      (err) => {
+        console.error('Failed to subscribe admin-delete notification read state', err);
+        setAdminDeleteReadState({ uid: user.uid, lastSeenAt: null });
       }
     );
   }, [user?.uid]);
@@ -234,6 +282,84 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     unsub = subscribePrimary();
     return () => {
       setQaState({ uid: null, posts: [] });
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      return;
+    }
+    if (!isFirebaseConfigured()) {
+      return;
+    }
+
+    const { db } = getFirebaseServices();
+    const mapRevisionDocs = (snap) => {
+      const next = snap.docs.map((d) => {
+        const data = d.data() || {};
+        const pathParts = String(d.ref?.path || '').split('/');
+        const parentCollection = pathParts[0] || '';
+        const postType = parentCollection === 'qaPosts'
+          ? 'qa'
+          : (parentCollection === 'tutorPosts' ? 'tutor' : '');
+
+        return {
+          id: d.id,
+          path: d.ref?.path || d.id,
+          postType,
+          before: data.before || {},
+          type: data.type || '',
+          editorId: data.editorId || null,
+          editorName: data.editorName || null,
+          createdAtMillis: toMillis(data.createdAt),
+        };
+      });
+
+      setAdminDeleteState({ uid: user.uid, items: next });
+      setAdminDeleteError(null);
+    };
+
+    const onRevisionError = (err) => {
+      console.error('Failed to subscribe admin-delete notifications', err);
+      setAdminDeleteState({ uid: user.uid, items: [] });
+      setAdminDeleteError(err?.message || 'Failed to load admin-delete notifications');
+    };
+
+    let unsub = null;
+
+    const subscribeFallback = () => onSnapshot(
+      query(
+        collectionGroup(db, 'revisions'),
+        where('before.authorId', '==', user.uid),
+        limit(80)
+      ),
+      mapRevisionDocs,
+      onRevisionError
+    );
+
+    const subscribePrimary = () => onSnapshot(
+      query(
+        collectionGroup(db, 'revisions'),
+        where('before.authorId', '==', user.uid),
+        orderBy('createdAt', 'desc'),
+        limit(80)
+      ),
+      mapRevisionDocs,
+      (err) => {
+        if (err?.code === 'failed-precondition' || err?.message?.includes('index')) {
+          if (typeof unsub === 'function') unsub();
+          unsub = subscribeFallback();
+          return;
+        }
+        onRevisionError(err);
+      }
+    );
+
+    unsub = subscribePrimary();
+    return () => {
+      setAdminDeleteState({ uid: null, items: [] });
+      setAdminDeleteError(null);
       if (typeof unsub === 'function') unsub();
     };
   }, [user?.uid]);
@@ -341,6 +467,11 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     return toMillis(qaReadState.lastSeenAt);
   }, [qaReadState, user]);
 
+  const adminDeleteLastSeenMillis = useMemo(() => {
+    if (!user?.uid || adminDeleteReadState.uid !== user.uid) return 0;
+    return toMillis(adminDeleteReadState.lastSeenAt);
+  }, [adminDeleteReadState, user]);
+
   const qaNotis = useMemo(() => {
     const items = [];
     posts.forEach((p) => {
@@ -390,13 +521,55 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     return items;
   }, [posts, qaLastSeenMillis, user]);
 
+  const adminDeleteNotis = useMemo(() => {
+    const items = [];
+    const rawItems = user?.uid && adminDeleteState.uid === user.uid
+      ? (Array.isArray(adminDeleteState.items) ? adminDeleteState.items : [])
+      : [];
+
+    rawItems.forEach((item) => {
+      if (item.type !== 'delete') return;
+      if (!item.createdAtMillis) return;
+      if (!item.postType) return;
+
+      const before = item.before && typeof item.before === 'object' ? item.before : {};
+      const authorId = before.authorId || before.author?.uid || null;
+      if (!authorId || authorId !== user?.uid) return;
+
+      // When someone else deletes the post (author cannot delete as another user), treat it as admin action.
+      const editorId = item.editorId || null;
+      if (!editorId || editorId === authorId) return;
+
+      const postLabel = item.postType === 'qa' ? 'Q&A post' : 'Tutor post';
+      const rawTitle = item.postType === 'qa'
+        ? (before.question || before.subject || '')
+        : (before.title || before.subject || '');
+      const postTitle = String(rawTitle || '').trim();
+      const actorName = String(item.editorName || 'Admin').trim() || 'Admin';
+
+      items.push({
+        id: `admin-delete-${item.path}`,
+        kind: 'admin_delete',
+        ts: item.createdAtMillis,
+        unread: item.createdAtMillis > adminDeleteLastSeenMillis,
+        title: 'Post removed by admin',
+        body: postTitle
+          ? `${actorName} removed your ${postLabel.toLowerCase()}: ${postTitle}`
+          : `${actorName} removed your ${postLabel.toLowerCase()}.`,
+        targetHash: item.postType === 'qa' ? '/qa' : '/tutor',
+      });
+    });
+
+    return items;
+  }, [adminDeleteLastSeenMillis, adminDeleteState, user?.uid]);
+
   const notis = useMemo(() => {
-    const next = [...groupNotis, ...qaNotis]
+    const next = [...groupNotis, ...qaNotis, ...adminDeleteNotis]
       .filter((n) => n.ts)
       .sort((a, b) => b.ts - a.ts)
       .slice(0, 60);
     return next;
-  }, [groupNotis, qaNotis]);
+  }, [groupNotis, qaNotis, adminDeleteNotis]);
 
   const notisCount = useMemo(() => {
     return notis.filter((n) => n.unread).length;
@@ -423,10 +596,15 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
 
     const latestGroupTsById = {};
     let latestQaTs = 0;
+    let latestAdminDeleteTs = 0;
 
     unreadItems.forEach((n) => {
       if (n.kind === 'group' && n.groupId) {
         latestGroupTsById[n.groupId] = Math.max(latestGroupTsById[n.groupId] || 0, n.ts || 0);
+        return;
+      }
+      if (n.kind === 'admin_delete') {
+        latestAdminDeleteTs = Math.max(latestAdminDeleteTs, n.ts || 0);
         return;
       }
       latestQaTs = Math.max(latestQaTs, n.ts || 0);
@@ -439,13 +617,16 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     if (latestQaTs > 0) {
       writes.push(markQaNotificationsAsRead(latestQaTs));
     }
+    if (latestAdminDeleteTs > 0) {
+      writes.push(markAdminDeleteNotificationsAsRead(latestAdminDeleteTs));
+    }
 
     if (writes.length === 0) return;
     void Promise.all(writes).catch((err) => {
       console.warn('Failed to mark notifications as read', err);
       markSignatureRef.current = '';
     });
-  }, [isOpen, markGroupAsRead, markQaNotificationsAsRead, notis, user?.uid]);
+  }, [isOpen, markAdminDeleteNotificationsAsRead, markGroupAsRead, markQaNotificationsAsRead, notis, user?.uid]);
 
   useEffect(() => {
     onCountChange?.(notisCount);
@@ -455,6 +636,8 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     try {
       if (n.kind === 'group' && n.groupId) {
         await markGroupAsRead(n.groupId, n.ts);
+      } else if (n.kind === 'admin_delete') {
+        await markAdminDeleteNotificationsAsRead(n.ts);
       } else {
         await markQaNotificationsAsRead(n.ts);
       }
@@ -484,8 +667,8 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
 
           {!user?.uid ? (
             <p className="notification-hint">Please log in to see notifications.</p>
-          ) : notis.length === 0 && (groupError || qaError) ? (
-            <p className="notification-error">{groupError || qaError}</p>
+          ) : notis.length === 0 && (groupError || qaError || adminDeleteError) ? (
+            <p className="notification-error">{groupError || qaError || adminDeleteError}</p>
           ) : notis.length === 0 ? (
             <>
               <p>No notifications</p>
@@ -493,9 +676,9 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
             </>
           ) : (
             <div className="notification-list" role="list" aria-label="Notifications">
-              {(groupError || qaError) && (
+              {(groupError || qaError || adminDeleteError) && (
                 <div className="notification-error" role="status">
-                  {groupError || qaError}
+                  {groupError || qaError || adminDeleteError}
                 </div>
               )}
               {notis.map((n) => (

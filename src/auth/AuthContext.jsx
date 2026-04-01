@@ -69,9 +69,9 @@ export function AuthProvider({ children }) {
         const data = snap.exists() ? snap.data() : null;
         setProfile(data);
         setProfileLoading(false);
-        if (data && data.banned) {
+        if (data && (data.banned || data.deleted)) {
           signOutUser().catch((e) => {
-            console.error('Failed to sign out banned user', e);
+            console.error('Failed to sign out blocked user', e);
           });
         }
       },

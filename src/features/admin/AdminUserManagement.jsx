@@ -3,7 +3,7 @@ import { FaSearch, FaTrashAlt, FaUserCheck, FaUserSlash } from 'react-icons/fa';
 import './AdminUserManagement.css';
 import { useAuth } from '../../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../../api/firebaseConfig.js';
-import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 
 const normalize = (v) => String(v || '').toLowerCase().normalize('NFC');
 
@@ -31,6 +31,7 @@ const AdminUserManagement = () => {
             year: data.year || data.education?.year || '',
             role: data.role || '',
             banned: Boolean(data.banned),
+            deleted: Boolean(data.deleted),
           };
         });
         next.sort((a, b) => a.name.localeCompare(b.name));
@@ -56,15 +57,31 @@ const AdminUserManagement = () => {
   const handleDelete = async (uid) => {
     if (!isFirebaseConfigured()) return;
 
-    const ok = window.confirm('Delete this user document? (Firestore only)');
+    const ok = window.confirm('Soft-delete this user? They will no longer be able to sign in.');
     if (!ok) return;
 
     try {
       const { db } = getFirebaseServices();
-      await deleteDoc(doc(db, 'users', uid));
+      const userRef = doc(db, 'users', uid);
+      try {
+        await setDoc(
+          userRef,
+          {
+            banned: true,
+            deleted: true,
+            deletedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        // Fallback for rulesets that only permit admin updates to `banned`.
+        if (err?.code !== 'permission-denied') throw err;
+        await setDoc(userRef, { banned: true }, { merge: true });
+      }
     } catch (err) {
-      console.error('Failed to delete user', err);
-      alert(err?.message || 'Failed to delete user');
+      console.error('Failed to soft-delete user', err);
+      alert(err?.message || 'Failed to soft-delete user');
     }
   };
 
@@ -147,10 +164,11 @@ const AdminUserManagement = () => {
                         <button
                           type="button"
                           className="admin-users-delete"
-                          aria-label="Delete user"
+                          aria-label={u.deleted ? 'User already soft-deleted' : 'Soft delete user'}
                           onClick={() => handleDelete(u.uid)}
-                          disabled={Boolean(currentUser?.uid) && u.uid === currentUser.uid}
-                          aria-disabled={Boolean(currentUser?.uid) && u.uid === currentUser.uid}
+                          disabled={(Boolean(currentUser?.uid) && u.uid === currentUser.uid) || Boolean(u.deleted)}
+                          aria-disabled={(Boolean(currentUser?.uid) && u.uid === currentUser.uid) || Boolean(u.deleted)}
+                          title={u.deleted ? 'User is already soft-deleted' : 'Soft delete user'}
                         >
                           <FaTrashAlt />
                         </button>
