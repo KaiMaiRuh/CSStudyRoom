@@ -430,12 +430,12 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
 
           <div className="contact-section">
             <h2>Contact</h2>
-            <p>{userProfile.contactText || '-'}</p>
+            <p className="profile-multiline-text">{userProfile.contactText || '-'}</p>
           </div>
 
           <div className="bio-section">
             <h2>Bio/Experience</h2>
-            <p>{userProfile.bio || '-'}</p>
+            <p className="profile-multiline-text">{userProfile.bio || '-'}</p>
           </div>
         </div>
 

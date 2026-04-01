@@ -13,19 +13,79 @@ import {
 } from 'firebase/firestore';
 import { updateProfile as updateAuthProfile } from 'firebase/auth';
 
-function toCommaString(value) {
-  if (Array.isArray(value)) return value.filter(Boolean).join(', ');
-  return '';
+function toUniqueStringArray(value) {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set();
+  return value
+    .map((item) => String(item || '').trim())
+    .filter((item) => {
+      if (!item) return false;
+      if (seen.has(item)) return false;
+      seen.add(item);
+      return true;
+    });
 }
 
-function toStringArray(value) {
-  return String(value || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+function SubjectPicker({
+  label,
+  selectedSubjects,
+  allSubjects,
+  pendingSubject,
+  onPendingSubjectChange,
+  onAddSubject,
+  onRemoveSubject,
+}) {
+  const availableSubjects = allSubjects.filter((subject) => !selectedSubjects.includes(subject));
+
+  return (
+    <label className="edit-profile-field edit-profile-field-full">
+      <span>{label}</span>
+
+      <div className="subject-picker-control">
+        <select
+          value={pendingSubject}
+          onChange={(e) => onPendingSubjectChange(e.target.value)}
+          disabled={availableSubjects.length === 0}
+        >
+          <option value="">Select a subject</option>
+          {availableSubjects.map((subject) => (
+            <option key={subject} value={subject}>{subject}</option>
+          ))}
+        </select>
+        <button
+          className="subject-add-btn"
+          type="button"
+          onClick={onAddSubject}
+          disabled={!pendingSubject}
+          aria-label={`Add ${label}`}
+        >
+          +
+        </button>
+      </div>
+
+      <div className="subject-tags">
+        {selectedSubjects.map((subject) => (
+          <span key={subject} className="subject-tag">
+            {subject}
+            <button
+              className="subject-tag-remove"
+              type="button"
+              onClick={() => onRemoveSubject(subject)}
+              aria-label={`Remove ${subject}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {selectedSubjects.length === 0 ? <div className="subject-empty">No subjects selected yet.</div> : null}
+    </label>
+  );
 }
 
-export default function EditProfile({ onCancel, onDone }) {
+export default function EditProfile({ onCancel, onDone, allSubjects = [] }) {
   const { user } = useAuth();
   const [profileDoc, setProfileDoc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,8 +96,10 @@ export default function EditProfile({ onCancel, onDone }) {
   const [year, setYear] = useState('');
   const [major, setMajor] = useState('');
   const [university, setUniversity] = useState('');
-  const [subjectsToTutor, setSubjectsToTutor] = useState('');
-  const [subjectsNeedingHelp, setSubjectsNeedingHelp] = useState('');
+  const [subjectsToTutor, setSubjectsToTutor] = useState([]);
+  const [subjectsNeedingHelp, setSubjectsNeedingHelp] = useState([]);
+  const [pendingTutorSubject, setPendingTutorSubject] = useState('');
+  const [pendingNeedingHelpSubject, setPendingNeedingHelpSubject] = useState('');
   const [role, setRole] = useState('');
   const [contact, setContact] = useState('');
   const [bio, setBio] = useState('');
@@ -114,8 +176,8 @@ export default function EditProfile({ onCancel, onDone }) {
       year: profileData.year || data.year || education.year || '',
       major: education.major || '',
       university: education.university || '',
-      subjectsToTutor: toCommaString(profileData.subjectsToTutor || data.subjectsToTutor),
-      subjectsNeedingHelp: toCommaString(profileData.subjectsNeedingHelp || data.subjectsNeedingHelp),
+      subjectsToTutor: toUniqueStringArray(profileData.subjectsToTutor || data.subjectsToTutor),
+      subjectsNeedingHelp: toUniqueStringArray(profileData.subjectsNeedingHelp || data.subjectsNeedingHelp),
       role: profileData.role || data.role || '',
       contact: profileData.contactText || data.contactText || contactFromLegacy || '',
       bio: profileData.bio || data.bio || '',
@@ -131,11 +193,28 @@ export default function EditProfile({ onCancel, onDone }) {
     setUniversity(initial.university);
     setSubjectsToTutor(initial.subjectsToTutor);
     setSubjectsNeedingHelp(initial.subjectsNeedingHelp);
+    setPendingTutorSubject('');
+    setPendingNeedingHelpSubject('');
     setRole(initial.role);
     setContact(initial.contact);
     setBio(initial.bio);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
+
+  const handleAddSubject = (pendingSubject, setPendingSubject, setSubjects) => {
+    const cleaned = String(pendingSubject || '').trim();
+    if (!cleaned) return;
+
+    setSubjects((prev) => {
+      if (prev.includes(cleaned)) return prev;
+      return [...prev, cleaned];
+    });
+    setPendingSubject('');
+  };
+
+  const handleRemoveSubject = (subject, setSubjects) => {
+    setSubjects((prev) => prev.filter((item) => item !== subject));
+  };
 
   const handleSave = async () => {
     if (!uid) return;
@@ -183,8 +262,8 @@ export default function EditProfile({ onCancel, onDone }) {
           major: major ? String(major).trim() : null,
           university: university ? String(university).trim() : null,
         },
-        subjectsToTutor: toStringArray(subjectsToTutor),
-        subjectsNeedingHelp: toStringArray(subjectsNeedingHelp),
+        subjectsToTutor: toUniqueStringArray(subjectsToTutor),
+        subjectsNeedingHelp: toUniqueStringArray(subjectsNeedingHelp),
         role: role ? String(role).trim() : null,
         contactText: contact ? String(contact).trim() : null,
         bio: bio ? String(bio).trim() : null,
@@ -293,19 +372,29 @@ export default function EditProfile({ onCancel, onDone }) {
             </select>
           </label>
 
-          <label className="edit-profile-field edit-profile-field-full">
-            <span>Subjects to Tutor (comma-separated)</span>
-            <input value={subjectsToTutor} onChange={(e) => setSubjectsToTutor(e.target.value)} type="text" />
-          </label>
+          <SubjectPicker
+            label="Subjects to Tutor"
+            selectedSubjects={subjectsToTutor}
+            allSubjects={allSubjects}
+            pendingSubject={pendingTutorSubject}
+            onPendingSubjectChange={setPendingTutorSubject}
+            onAddSubject={() => handleAddSubject(pendingTutorSubject, setPendingTutorSubject, setSubjectsToTutor)}
+            onRemoveSubject={(subject) => handleRemoveSubject(subject, setSubjectsToTutor)}
+          />
 
-          <label className="edit-profile-field edit-profile-field-full">
-            <span>Subjects Needing Help (comma-separated)</span>
-            <input value={subjectsNeedingHelp} onChange={(e) => setSubjectsNeedingHelp(e.target.value)} type="text" />
-          </label>
+          <SubjectPicker
+            label="Subjects Needing Help"
+            selectedSubjects={subjectsNeedingHelp}
+            allSubjects={allSubjects}
+            pendingSubject={pendingNeedingHelpSubject}
+            onPendingSubjectChange={setPendingNeedingHelpSubject}
+            onAddSubject={() => handleAddSubject(pendingNeedingHelpSubject, setPendingNeedingHelpSubject, setSubjectsNeedingHelp)}
+            onRemoveSubject={(subject) => handleRemoveSubject(subject, setSubjectsNeedingHelp)}
+          />
 
           <label className="edit-profile-field edit-profile-field-full">
             <span>Contact</span>
-            <input value={contact} onChange={(e) => setContact(e.target.value)} type="text" />
+            <textarea value={contact} onChange={(e) => setContact(e.target.value)} rows={3} />
           </label>
 
           <label className="edit-profile-field edit-profile-field-full">

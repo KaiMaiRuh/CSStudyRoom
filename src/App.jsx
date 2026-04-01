@@ -831,6 +831,7 @@ function App() {
 
               {showEditProfile && (
                 <EditProfile
+                  allSubjects={allSubjects}
                   onCancel={() => {
                     setShowEditProfile(false);
                     setShowProfile(true);

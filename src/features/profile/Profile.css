@@ -405,6 +405,10 @@
   word-break: break-word;
 }
 
+.profile-multiline-text {
+  white-space: pre-wrap;
+}
+
 .info-section p {
   margin: 6px 2px;
   color: #2d3642;
