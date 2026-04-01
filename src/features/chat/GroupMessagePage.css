@@ -6,6 +6,29 @@
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.group-message-page.gmp-enter {
+  animation: gmpPageIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.group-message-page.gmp-leave {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes gmpPageIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .gmp-header {
@@ -109,6 +132,21 @@
   transition: background-color 0.2s;
   border-radius: 8px;
   text-align: left;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: gmpCardIn 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc((var(--gmp-index, 0) * 26ms) + 40ms);
+}
+
+@keyframes gmpCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .gmp-group-card:hover {

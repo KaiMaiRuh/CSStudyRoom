@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MdArrowBack, MdLocationOn } from 'react-icons/md';
 import { FaRegUserCircle, FaTrashAlt } from 'react-icons/fa';
 import './TutorPostDetail.css';
@@ -18,6 +18,7 @@ import { readActorFromDoc, readTutorSchedule } from '../../api/dbModels.js';
 const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const { user, profile, isAdmin } = useAuth();
   const [isJoinInfoOpen, setIsJoinInfoOpen] = useState(false);
+  const [isJoinInfoClosing, setIsJoinInfoClosing] = useState(false);
   const [previewSrc, setPreviewSrc] = useState(null);
   const [authorBio, setAuthorBio] = useState('');
   const [isJoining, setIsJoining] = useState(false);
@@ -26,6 +27,23 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const [hasJoined, setHasJoined] = useState(false);
   const [livePost, setLivePost] = useState(post);
   const [resolvedJoiners, setResolvedJoiners] = useState({});
+  const joinInfoCloseTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (joinInfoCloseTimerRef.current) {
+        window.clearTimeout(joinInfoCloseTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, [post?.id]);
 
   useEffect(() => {
     const authorId = post?.authorId || post?.user?.uid || null;
@@ -368,16 +386,41 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const leaveButtonText = isLeaving ? 'Leaving...' : 'Leave';
   const showLeaveButton = hasJoined && !isOwner;
 
+  const handleOpenJoinInfo = () => {
+    if (joinInfoCloseTimerRef.current) {
+      window.clearTimeout(joinInfoCloseTimerRef.current);
+      joinInfoCloseTimerRef.current = null;
+    }
+    setIsJoinInfoClosing(false);
+    setIsJoinInfoOpen(true);
+  };
+
+  const handleCloseJoinInfo = () => {
+    if (isJoinInfoClosing) return;
+
+    setIsJoinInfoClosing(true);
+
+    if (joinInfoCloseTimerRef.current) {
+      window.clearTimeout(joinInfoCloseTimerRef.current);
+    }
+
+    joinInfoCloseTimerRef.current = window.setTimeout(() => {
+      setIsJoinInfoOpen(false);
+      setIsJoinInfoClosing(false);
+      joinInfoCloseTimerRef.current = null;
+    }, 220);
+  };
+
   if (!displayPost) return null;
 
   if (isJoinInfoOpen) {
     return (
-      <div className="tutor-post-detail tutor-joininfo">
+      <div className={`tutor-post-detail tutor-joininfo ${isJoinInfoClosing ? 'tutor-joininfo-leave' : 'tutor-joininfo-enter'}`.trim()}>
         {previewSrc ? <ImagePreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} /> : null}
         <div className="joininfo-topbar">
           <button
             className="joininfo-back"
-            onClick={() => setIsJoinInfoOpen(false)}
+            onClick={handleCloseJoinInfo}
             type="button"
             aria-label="Back"
           >
@@ -555,7 +598,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
             <button
               className="see-all-button"
               type="button"
-              onClick={() => setIsJoinInfoOpen(true)}
+              onClick={handleOpenJoinInfo}
             >
               See All
             </button>

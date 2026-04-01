@@ -92,6 +92,14 @@ const QAFeed = ({
   const loadMoreRef = useRef(null);
   const observerBusyRef = useRef(false);
 
+  const scrollWindowToTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  };
+
   const getPostAuthorName = (post) => {
     const fallback = post.user?.displayName || post.user?.name || post.authorName || 'Unknown';
     const otherLabel = post.user?.username ? `@${post.user.username}` : fallback;
@@ -103,6 +111,8 @@ const QAFeed = ({
   };
 
   const handleOpenDetail = (post) => {
+    scrollWindowToTop();
+
     const id = post?.id || null;
     if (id) {
       try {
@@ -136,6 +146,7 @@ const QAFeed = ({
 
     if (selectedPost?.id === openPostId) return;
     const found = (Array.isArray(posts) ? posts : []).find((p) => p?.id === openPostId) || { id: openPostId };
+    scrollWindowToTop();
     setSelectedPost(found);
     onDetailOpen?.();
   }, [openPostId]); // eslint-disable-line react-hooks/exhaustive-deps

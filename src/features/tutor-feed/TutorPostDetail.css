@@ -116,13 +116,35 @@
 /* Full-screen Join Info page (opened from See All) */
 .tutor-post-detail.tutor-joininfo {
   min-height: 100vh;
-  animation: tutorDetailEnter 220ms ease-out both;
   background-color: #ecf1f6;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   padding: 0;
   box-sizing: border-box;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.tutor-post-detail.tutor-joininfo.tutor-joininfo-enter {
+  animation: tutorJoinInfoIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.tutor-post-detail.tutor-joininfo.tutor-joininfo-leave {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes tutorJoinInfoIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .joininfo-card {

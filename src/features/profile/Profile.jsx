@@ -27,6 +27,8 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
   const [avatarError, setAvatarError] = useState('');
   const [previewSrc, setPreviewSrc] = useState(null);
   const [selectedPostType, setSelectedPostType] = useState('tutor');
+  const [profilePostsState, setProfilePostsState] = useState({ uid: null, tutor: [], qa: [] });
+  const [isPostsLoading, setIsPostsLoading] = useState(false);
 
   const targetUid = viewUid || user?.uid || null;
   const isOwnProfile = Boolean(user?.uid && targetUid && user.uid === targetUid);
@@ -50,6 +52,91 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
   }, [targetUid]);
 
   const profileDoc = targetUid && profileState.uid === targetUid ? profileState.data : null;
+
+  useEffect(() => {
+    let disposed = false;
+
+    if (!targetUid) {
+      Promise.resolve().then(() => {
+        if (disposed) return;
+        setProfilePostsState({ uid: null, tutor: [], qa: [] });
+        setIsPostsLoading(false);
+      });
+      return () => {
+        disposed = true;
+      };
+    }
+
+    if (!isFirebaseConfigured()) {
+      Promise.resolve().then(() => {
+        if (disposed) return;
+        setProfilePostsState({ uid: targetUid, tutor: [], qa: [] });
+        setIsPostsLoading(false);
+      });
+      return () => {
+        disposed = true;
+      };
+    }
+
+    Promise.resolve().then(() => {
+      if (disposed) return;
+      setIsPostsLoading(true);
+    });
+
+    const { db } = getFirebaseServices();
+
+    const readOwnedPosts = async (collectionName) => {
+      const byAuthorIdQ = query(collection(db, collectionName), where('authorId', '==', targetUid));
+      const byNestedAuthorUidQ = query(collection(db, collectionName), where('author.uid', '==', targetUid));
+
+      const [byAuthorIdSnap, byNestedAuthorUidSnap] = await Promise.all([
+        getDocs(byAuthorIdQ).catch((err) => {
+          console.warn(`Failed to read ${collectionName} by authorId`, err);
+          return null;
+        }),
+        getDocs(byNestedAuthorUidQ).catch((err) => {
+          console.warn(`Failed to read ${collectionName} by author.uid`, err);
+          return null;
+        }),
+      ]);
+
+      const mergedMap = new Map();
+      [byAuthorIdSnap, byNestedAuthorUidSnap].forEach((snap) => {
+        if (!snap) return;
+        snap.docs.forEach((docSnap) => {
+          mergedMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+        });
+      });
+
+      return Array.from(mergedMap.values());
+    };
+
+    void Promise.all([
+      readOwnedPosts('tutorPosts'),
+      readOwnedPosts('qaPosts'),
+    ])
+      .then(([tutorDocs, qaDocs]) => {
+        if (disposed) return;
+        setProfilePostsState({
+          uid: targetUid,
+          tutor: Array.isArray(tutorDocs) ? tutorDocs : [],
+          qa: Array.isArray(qaDocs) ? qaDocs : [],
+        });
+      })
+      .catch((err) => {
+        console.error('Failed to load profile posts', err);
+        if (disposed) return;
+        setProfilePostsState({ uid: targetUid, tutor: [], qa: [] });
+      })
+      .finally(() => {
+        if (disposed) return;
+        setIsPostsLoading(false);
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [targetUid]);
 
   const userProfile = useMemo(() => {
     const docData = profileDoc || {};
@@ -150,6 +237,17 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
   const pastPosts = useMemo(() => {
     const uid = targetUid;
     if (!uid) return [];
+
+    const isOwnedByUid = (post, ownerUid) => {
+      if (!post || !ownerUid) return false;
+      return (
+        post.authorId === ownerUid
+        || post.author?.uid === ownerUid
+        || post.user?.uid === ownerUid
+        || post.uid === ownerUid
+      );
+    };
+
     const toIsoDate = (dateObj) => {
       const year = dateObj.getFullYear();
       const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -174,8 +272,33 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
       return '';
     };
 
-    const tutor = (Array.isArray(tutorPosts) ? tutorPosts : [])
-      .filter((p) => p?.authorId === uid)
+    const tutorSource = [
+      ...(Array.isArray(tutorPosts) ? tutorPosts : []),
+      ...(profilePostsState.uid === uid && Array.isArray(profilePostsState.tutor) ? profilePostsState.tutor : []),
+    ];
+    const qaSource = [
+      ...(Array.isArray(qaPosts) ? qaPosts : []),
+      ...(profilePostsState.uid === uid && Array.isArray(profilePostsState.qa) ? profilePostsState.qa : []),
+    ];
+
+    const tutorUnique = Array.from(
+      new Map(
+        tutorSource
+          .filter((p) => p && p.id != null)
+          .map((p) => [String(p.id), p])
+      ).values()
+    );
+
+    const qaUnique = Array.from(
+      new Map(
+        qaSource
+          .filter((p) => p && p.id != null)
+          .map((p) => [String(p.id), p])
+      ).values()
+    );
+
+    const tutor = tutorUnique
+      .filter((p) => isOwnedByUid(p, uid))
       .map((p) => ({
         id: `tutor-${p.id}`,
         rawId: p.id,
@@ -186,8 +309,8 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
         raw: p,
       }));
 
-    const qa = (Array.isArray(qaPosts) ? qaPosts : [])
-      .filter((p) => p?.authorId === uid)
+    const qa = qaUnique
+      .filter((p) => isOwnedByUid(p, uid))
       .map((p) => ({
         id: `qa-${p.id}`,
         rawId: p.id,
@@ -199,7 +322,7 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
       }));
 
     return [...tutor, ...qa].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  }, [tutorPosts, qaPosts, targetUid]);
+  }, [tutorPosts, qaPosts, profilePostsState, targetUid]);
 
   const normalizedRole = String(userProfile.role || '').toLowerCase();
   const showTutorSubjects = normalizedRole === 'tutor' || normalizedRole === 'both';
@@ -344,6 +467,9 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
           </div>
           
           <div className="posts-list">
+            {isPostsLoading ? (
+              <div className="post-empty-state">Loading posts...</div>
+            ) : null}
             {filteredPastPosts.map((post) => (
               <div key={post.id} className="post-card">
                 <div className="post-icon"><FaUserCircle /></div>

@@ -1,6 +1,6 @@
 /* App component */
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './App.css';
 
 /* imports */
@@ -53,12 +53,16 @@ function App() {
   const [activePage, setActivePage] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [isFeedDetailOpen, setIsFeedDetailOpen] = useState(false);
   const [initialRouteApplied, setInitialRouteApplied] = useState(false);
   const [openPostRef, setOpenPostRef] = useState(null);
   const [viewProfileUid, setViewProfileUid] = useState(null);
   const [displayFeed, setDisplayFeed] = useState(() => (activeFeed === 'qa' ? 'qa' : 'tutor'));
   const [feedTransitionPhase, setFeedTransitionPhase] = useState('idle');
+  const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
+  const hasFilterInitializedRef = useRef(false);
+  const categoryMenuRef = useRef(null);
 
   const isHome = activePage === 'home';
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
@@ -67,6 +71,7 @@ function App() {
   const isCalendarPage = activePage === 'calendar';
   const isResetPasswordPage = activePage === 'resetPassword';
   const showFooter = !showCreatePost;
+  const categoryDisplayLabel = category || 'หมวดหมู่วิชา';
 
   // Filter posts based on search and category
   const filteredTutorPosts = tutorPosts.filter(post => {
@@ -476,6 +481,53 @@ function App() {
     };
   }, [activeFeed, displayFeed]);
 
+  useEffect(() => {
+    if (!isHome) return;
+
+    if (!hasFilterInitializedRef.current) {
+      hasFilterInitializedRef.current = true;
+      return;
+    }
+
+    setIsFilterTransitioning(true);
+    const timerId = window.setTimeout(() => {
+      setIsFilterTransitioning(false);
+    }, 220);
+
+    return () => window.clearTimeout(timerId);
+  }, [searchQuery, category, isHome]);
+
+  useEffect(() => {
+    if (!isCategoryMenuOpen) return;
+
+    const handleOutsidePointer = (event) => {
+      if (!categoryMenuRef.current) return;
+      if (categoryMenuRef.current.contains(event.target)) return;
+      setIsCategoryMenuOpen(false);
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsCategoryMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handleOutsidePointer);
+    window.addEventListener('touchstart', handleOutsidePointer);
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      window.removeEventListener('mousedown', handleOutsidePointer);
+      window.removeEventListener('touchstart', handleOutsidePointer);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isCategoryMenuOpen]);
+
+  useEffect(() => {
+    if (isHome && !isFeedDetailOpen) return;
+    setIsCategoryMenuOpen(false);
+  }, [isHome, isFeedDetailOpen]);
+
 
 
   const handleShowCreatePost = () => {
@@ -584,6 +636,7 @@ function App() {
   }, [user, activePage, logActivity]);
 
   const pageTransitionKey = activePage;
+  const pageTransitionClassName = `app-page-transition ${isGroupMessagePage ? 'app-page-transition-static' : ''}`.trim();
 
   return (
     <div className="app-shell">
@@ -602,9 +655,9 @@ function App() {
         onCreatePost={handleShowCreatePost}
       />
       <div
-        className={`app-root ${(isFeedDetailOpen || Boolean(openPostRef)) ? 'app-root-detail-open' : ''} ${isResetPasswordPage ? 'app-root-reset-password' : ''}`.trim()}
+        className={`app-root ${(isFeedDetailOpen || Boolean(openPostRef) || isGroupMessagePage) ? 'app-root-detail-open' : ''} ${isResetPasswordPage ? 'app-root-reset-password' : ''}`.trim()}
       >
-        <div key={pageTransitionKey} className="app-page-transition">
+        <div key={pageTransitionKey} className={pageTransitionClassName}>
           {isGroupMessagePage ? (
             <GroupMessagePage onBack={() => {
               navigateTo('home');
@@ -649,16 +702,53 @@ function App() {
                       <span className="search-icon"><FaSearch /></span>
                     </form>
 
-                    <select
-                      className="category-dropdown"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
+                    <div
+                      ref={categoryMenuRef}
+                      className={`category-dropdown-wrap ${isCategoryMenuOpen ? 'open' : ''}`.trim()}
                     >
-                      <option value="">หมวดหมู่วิชา</option>
-                      {allSubjects.map(subject => (
-                        <option key={subject} value={subject}>{subject}</option>
-                      ))}
-                    </select>
+                      <button
+                        className={`category-dropdown-trigger ${category ? 'has-value' : ''}`.trim()}
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded={isCategoryMenuOpen}
+                        aria-label="เลือกหมวดหมู่วิชา"
+                        onClick={() => setIsCategoryMenuOpen((prev) => !prev)}
+                      >
+                        <span className="category-dropdown-text">{categoryDisplayLabel}</span>
+                        <span className="category-dropdown-caret" aria-hidden="true">▾</span>
+                      </button>
+
+                      <div
+                        className={`category-dropdown-menu ${isCategoryMenuOpen ? 'open' : ''}`.trim()}
+                        role="listbox"
+                        aria-label="รายการหมวดหมู่วิชา"
+                      >
+                        <button
+                          type="button"
+                          className={`category-option ${category === '' ? 'active' : ''}`.trim()}
+                          onClick={() => {
+                            setCategory('');
+                            setIsCategoryMenuOpen(false);
+                          }}
+                        >
+                          หมวดหมู่วิชา (ทั้งหมด)
+                        </button>
+
+                        {allSubjects.map((subject) => (
+                          <button
+                            key={subject}
+                            type="button"
+                            className={`category-option ${category === subject ? 'active' : ''}`.trim()}
+                            onClick={() => {
+                              setCategory(subject);
+                              setIsCategoryMenuOpen(false);
+                            }}
+                          >
+                            {subject}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
@@ -666,7 +756,7 @@ function App() {
               {/* Feed (still renders while viewing a detail) */}
               {isHome && (
                 <div
-                  className={`feed-switch-transition ${feedTransitionPhase === 'out' ? 'is-out' : ''} ${feedTransitionPhase === 'in' ? 'is-in' : ''}`.trim()}
+                  className={`feed-switch-transition ${feedTransitionPhase === 'out' ? 'is-out' : ''} ${feedTransitionPhase === 'in' ? 'is-in' : ''} ${isFilterTransitioning ? 'is-filtering' : ''}`.trim()}
                 >
                   {displayFeed === 'tutor' ? (
                     <TutorFeed

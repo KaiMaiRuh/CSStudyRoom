@@ -46,3 +46,4 @@ docs/firestore.rules
 docs/storage.rules
 docs/firebase-setup.md
 docs/firestore-backend-design.md
+docs/firestore-data-map.md

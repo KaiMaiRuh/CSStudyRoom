@@ -23,6 +23,14 @@ const TutorFeed = ({
   const loadMoreRef = useRef(null);
   const observerBusyRef = useRef(false);
 
+  const scrollWindowToTop = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  };
+
   const getUniqueJoiners = (post) => {
     const joiners = Array.isArray(post?.joiners) ? post.joiners : [];
     const ownerUid = post?.user?.uid || post?.authorId || null;
@@ -45,6 +53,8 @@ const TutorFeed = ({
   };
 
   const handleOpenDetail = (post) => {
+    scrollWindowToTop();
+
     const id = post?.id || null;
     if (id) {
       try {
@@ -78,6 +88,7 @@ const TutorFeed = ({
 
     const found = (Array.isArray(posts) ? posts : []).find((p) => p?.id === openPostId) || { id: openPostId };
     Promise.resolve().then(() => {
+      scrollWindowToTop();
       setSelectedPost(found);
       onDetailOpen?.();
     });

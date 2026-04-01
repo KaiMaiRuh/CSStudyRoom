@@ -1,5 +1,5 @@
 // GroupMessagePage.jsx - Full page group messaging
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaArrowLeft, FaPlus } from 'react-icons/fa';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -22,6 +22,16 @@ const GroupMessagePage = ({ onBack }) => {
   const [error, setError] = useState(null);
   const [shareContext, setShareContext] = useState(null);
   const [latestMessagesByGroupId, setLatestMessagesByGroupId] = useState({});
+  const [isLeavingPage, setIsLeavingPage] = useState(false);
+  const leaveTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (leaveTimerRef.current) {
+        window.clearTimeout(leaveTimerRef.current);
+      }
+    };
+  }, []);
 
   const groups = useMemo(() => {
     return user?.uid && groupsState.uid === user.uid ? (Array.isArray(groupsState.data) ? groupsState.data : []) : [];
@@ -212,6 +222,15 @@ const GroupMessagePage = ({ onBack }) => {
     }
   };
 
+  const handleBackToHome = () => {
+    if (isLeavingPage) return;
+    setIsLeavingPage(true);
+
+    leaveTimerRef.current = window.setTimeout(() => {
+      onBack?.();
+    }, 220);
+  };
+
   const handleShareToGroup = async (groupId) => {
     if (!shareContext) return;
     if (!user?.uid) {
@@ -248,9 +267,9 @@ const GroupMessagePage = ({ onBack }) => {
   }
 
   return (
-    <div className="group-message-page">
+    <div className={`group-message-page ${isLeavingPage ? 'gmp-leave' : 'gmp-enter'}`.trim()}>
       <div className="gmp-header">
-        <button className="gmp-back-btn" onClick={onBack}>
+        <button className="gmp-back-btn" onClick={handleBackToHome}>
           <FaArrowLeft />
         </button>
         <h1 className="gmp-title">Group Messages</h1>
@@ -275,7 +294,7 @@ const GroupMessagePage = ({ onBack }) => {
           </div>
         ) : (
           <div className="gmp-groups-list">
-            {groupsWithLatest.map((group) => {
+            {groupsWithLatest.map((group, index) => {
               const latestMessage = latestMessagesByGroupId[group.id] || null;
               const latestText = latestMessage
                 ? (latestMessage.type === 'share'
@@ -290,6 +309,7 @@ const GroupMessagePage = ({ onBack }) => {
                 <button
                   key={group.id}
                   className="gmp-group-card"
+                  style={{ '--gmp-index': index }}
                   onClick={() => {
                     if (shareContext) {
                       void handleShareToGroup(group.id);
