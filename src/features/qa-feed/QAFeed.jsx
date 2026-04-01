@@ -77,6 +77,7 @@ const QALikeAction = ({ postId, busy, onToggle }) => {
 const QAFeed = ({
   posts = [],
   openPostId = null,
+  detailBackHash = null,
   onDetailOpen,
   onDetailClose,
   hasMore = false,
@@ -127,7 +128,7 @@ const QAFeed = ({
 
   const handleCloseDetail = () => {
     try {
-      window.location.hash = '/qa';
+      window.location.hash = detailBackHash ? detailBackHash.replace(/^#/, '') : '/qa';
     } catch {
       // ignore
     }

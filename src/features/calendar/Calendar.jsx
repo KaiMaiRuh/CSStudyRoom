@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FaArrowLeft, FaMapMarkerAlt, FaTrashAlt, FaUserCircle, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import './Calendar.css';
@@ -17,6 +17,36 @@ const parseDateString = (value) => {
   if (typeof value !== 'string' || !value.trim()) return null;
   const d = new Date(`${value.trim()}T00:00:00`);
   return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const buildCalendarDetailTarget = (post, selectedDateKey, normalizedFeed) => {
+  if (!post?.id) return '';
+
+  const basePath = post.type === 'qa' ? `/qa/${post.id}` : `/tutor/${post.id}`;
+  const params = new URLSearchParams();
+  params.set('origin', 'calendar');
+  if (selectedDateKey) params.set('calendarDate', selectedDateKey);
+  if (normalizedFeed === 'qa' || normalizedFeed === 'tutor') params.set('calendarFeed', normalizedFeed);
+
+  return `${basePath}?${params.toString()}`;
+};
+
+const clearCalendarDateFromHash = () => {
+  try {
+    const rawHash = window.location.hash || '#/calendar';
+    const normalizedHash = rawHash.startsWith('#') ? rawHash.slice(1) : rawHash;
+    const [pathPart = '/calendar', queryPart = ''] = normalizedHash.split('?');
+    const params = new URLSearchParams(queryPart);
+
+    if (!params.has('date')) return;
+
+    params.delete('date');
+    const nextQuery = params.toString();
+    const nextHash = `#${pathPart}${nextQuery ? `?${nextQuery}` : ''}`;
+    window.history.replaceState(window.history.state, '', nextHash);
+  } catch {
+    // ignore
+  }
 };
 
 const parseDateTime = (dateValue, timeValue) => {
@@ -55,10 +85,57 @@ const formatPostedAgo = (minutesAgo) => {
   return `posted ${days} ${days === 1 ? 'day' : 'days'} ago`;
 };
 
-const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminView = false, onDeletePost, onChangeFeedType }) => {
-  const { isAdmin } = useAuth();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDateKey, setSelectedDateKey] = useState(null);
+const getTutorPostOwnerUid = (post) => post?.user?.uid || post?.authorId || null;
+
+const getUniqueTutorJoinerIds = (post) => {
+  const ownerUid = getTutorPostOwnerUid(post);
+  const joiners = Array.isArray(post?.joiners) ? post.joiners : [];
+  const uniqueJoinerIds = new Set();
+
+  joiners.forEach((joiner) => {
+    const joinerUid = typeof joiner === 'string' ? joiner : (joiner?.uid || joiner?.id || '');
+    if (!joinerUid || joinerUid === ownerUid) return;
+    uniqueJoinerIds.add(joinerUid);
+  });
+
+  return uniqueJoinerIds;
+};
+
+const hasUserJoinedTutorPost = (post, userUid) => {
+  if (!userUid) return false;
+  return getUniqueTutorJoinerIds(post).has(userUid);
+};
+
+const isTutorPostFull = (post) => {
+  const capacity = Number(post?.capacity ?? 0);
+  if (!Number.isFinite(capacity) || capacity <= 0) return false;
+  const joinedTotalCount = getUniqueTutorJoinerIds(post).size + 1;
+  return joinedTotalCount >= capacity;
+};
+
+const getTutorCalendarStatus = (post, userUid) => {
+  const ownerUid = getTutorPostOwnerUid(post);
+
+  if (userUid && ownerUid && userUid === ownerUid) {
+    return 'owner';
+  }
+
+  if (isTutorPostFull(post)) {
+    return 'full';
+  }
+
+  if (hasUserJoinedTutorPost(post, userUid)) {
+    return 'joined';
+  }
+
+  return 'unjoined';
+};
+
+const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', routeSelectedDateKey = null, isAdminView = false, onDeletePost, onChangeFeedType }) => {
+  const { isAdmin, user } = useAuth();
+  const initialSelectedDate = parseDateString(routeSelectedDateKey);
+  const [currentMonth, setCurrentMonth] = useState(initialSelectedDate || new Date());
+  const [selectedDateKey, setSelectedDateKey] = useState(routeSelectedDateKey || null);
   const canUseAdminCalendar = Boolean(isAdminView && isAdmin);
 
   const normalizedFeed = feedType === 'qa' ? 'qa' : 'tutor';
@@ -167,9 +244,23 @@ const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminVi
     return text;
   };
 
+  useEffect(() => {
+    if (!routeSelectedDateKey) return;
+
+    setSelectedDateKey(routeSelectedDateKey);
+
+    const routeDate = parseDateString(routeSelectedDateKey);
+    if (routeDate) {
+      setCurrentMonth(routeDate);
+    }
+
+    clearCalendarDateFromHash();
+  }, [routeSelectedDateKey]);
+
   const openPostDetail = (post) => {
     if (!post?.id) return;
-    const target = post.type === 'qa' ? `/qa/${post.id}` : `/tutor/${post.id}`;
+    const target = buildCalendarDetailTarget(post, selectedDateKey, normalizedFeed);
+    if (!target) return;
     try {
       window.location.assign(`#${target}`);
     } catch {
@@ -206,9 +297,14 @@ const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminVi
               const dateTimeLabel = post.type === 'tutor' && post.time ? `${dateLabel} ${post.time}` : dateLabel;
               const postedLabel = formatPostedAgo(post.minutesAgo);
               const subject = post.subject || '';
+              const tutorStatus = post.type === 'tutor' ? getTutorCalendarStatus(post, user?.uid) : null;
+              const postCardClassName = [
+                'calendar-day-post-card',
+                tutorStatus ? `calendar-day-post-card-tutor-${tutorStatus}` : '',
+              ].filter(Boolean).join(' ');
 
               return (
-                <div key={post.id} className="calendar-day-post-card">
+                <div key={post.id} className={postCardClassName}>
                     {canUseAdminCalendar ? (
                     <button
                       type="button"
@@ -333,7 +429,10 @@ const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', isAdminVi
                       ? (session.question || session.subject || 'Q&A post')
                       : (session.title || session.subject || 'Tutor post');
                     const truncatedTitle = truncateSessionTitle(sessionTitle);
-                    const badgeClass = session.type === 'qa' ? 'session-badge-qa' : 'session-badge-tutor';
+                    const tutorStatus = session.type === 'tutor' ? getTutorCalendarStatus(session, user?.uid) : null;
+                    const badgeClass = session.type === 'qa'
+                      ? 'session-badge-qa'
+                      : `session-badge-tutor-${tutorStatus}`;
                     return (
                       <div key={sessionIdx} className={`session-badge ${badgeClass}`}>
                         {truncatedTitle} By {authorName}

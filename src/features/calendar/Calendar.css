@@ -200,8 +200,23 @@
   word-break: break-word;
 }
 
-.session-badge-tutor {
-  background: #51ab47;
+.session-badge-tutor-joined {
+  background: #2f9e44;
+  color: #ffffff;
+}
+
+.session-badge-tutor-unjoined {
+  background: #fcc419;
+  color: #1a2b48;
+}
+
+.session-badge-tutor-owner {
+  background: #adb5bd;
+  color: #1f2937;
+}
+
+.session-badge-tutor-full {
+  background: #e03131;
   color: #ffffff;
 }
 
@@ -280,6 +295,26 @@
   gap: 16px;
   align-items: center;
   min-width: 0;
+}
+
+.calendar-day-post-card-tutor-joined {
+  background-color: #dcfce7;
+  border-color: rgba(47, 158, 68, 0.28);
+}
+
+.calendar-day-post-card-tutor-unjoined {
+  background-color: #fff3bf;
+  border-color: rgba(252, 196, 25, 0.45);
+}
+
+.calendar-day-post-card-tutor-owner {
+  background-color: #e9ecef;
+  border-color: rgba(108, 117, 125, 0.35);
+}
+
+.calendar-day-post-card-tutor-full {
+  background-color: #ffe3e3;
+  border-color: rgba(224, 49, 49, 0.35);
 }
 
 .calendar-day-post-avatar {

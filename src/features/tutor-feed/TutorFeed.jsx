@@ -9,6 +9,7 @@ import { useAuth } from '../../auth/AuthContext.jsx';
 const TutorFeed = ({
   posts = [],
   openPostId = null,
+  detailBackHash = null,
   onDetailOpen,
   onDetailClose,
   hasMore = false,
@@ -70,7 +71,7 @@ const TutorFeed = ({
 
   const handleCloseDetail = () => {
     try {
-      window.location.hash = '/tutor';
+      window.location.hash = detailBackHash ? detailBackHash.replace(/^#/, '') : '/tutor';
     } catch {
       // ignore
     }

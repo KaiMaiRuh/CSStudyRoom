@@ -121,6 +121,16 @@ function App() {
     return params;
   };
 
+  const buildCalendarHash = ({ selectedDateKey = null, feed = null } = {}) => {
+    const params = new URLSearchParams();
+
+    if (selectedDateKey) params.set('date', selectedDateKey);
+    if (feed === 'qa' || feed === 'tutor') params.set('feed', feed);
+
+    const query = params.toString();
+    return `#/calendar${query ? `?${query}` : ''}`;
+  };
+
   const pageToPath = (page) => {
     switch (page) {
       case 'home': return '#/';
@@ -172,14 +182,34 @@ function App() {
 
   const extractPostRefFromRaw = (raw) => {
     const p = getNormalizedPath(raw);
+    const params = getActionParams(raw);
+
+    let backHash = null;
+    if (params.get('origin') === 'calendar') {
+      backHash = buildCalendarHash({
+        selectedDateKey: params.get('calendarDate') || null,
+        feed: params.get('calendarFeed') || null,
+      });
+    }
 
     const tutorMatch = p.match(/^\/tutor\/([^/]+)$/);
-    if (tutorMatch) return { type: 'tutor', id: tutorMatch[1] };
+    if (tutorMatch) return { type: 'tutor', id: tutorMatch[1], backHash };
 
     const qaMatch = p.match(/^\/qa\/([^/]+)$/);
-    if (qaMatch) return { type: 'qa', id: qaMatch[1] };
+    if (qaMatch) return { type: 'qa', id: qaMatch[1], backHash };
 
     return null;
+  };
+
+  const extractCalendarRouteState = (raw) => {
+    const params = getActionParams(raw);
+    const selectedDateKey = params.get('date') || null;
+    const feed = params.get('feed');
+
+    return {
+      selectedDateKey,
+      feed: feed === 'qa' || feed === 'tutor' ? feed : null,
+    };
   };
 
   const extractProfileUidFromRaw = (raw) => {
@@ -395,6 +425,11 @@ function App() {
       const feed = extractFeedFromRaw(raw);
       if (feed) setActiveFeed(feed);
 
+      const calendarState = extractCalendarRouteState(raw);
+      if (p === 'calendar' && calendarState.feed) {
+        setActiveFeed(calendarState.feed);
+      }
+
       if (p === 'profile') {
         setViewProfileUid(extractProfileUidFromRaw(raw));
       } else {
@@ -423,6 +458,11 @@ function App() {
     const initial = pathToPage(raw);
     const initialFeed = extractFeedFromRaw(raw);
     if (initialFeed) setActiveFeed(initialFeed);
+
+    const initialCalendarState = extractCalendarRouteState(raw);
+    if (initial === 'calendar' && initialCalendarState.feed) {
+      setActiveFeed(initialCalendarState.feed);
+    }
 
     if (initial === 'profile') {
       setViewProfileUid(extractProfileUidFromRaw(raw));
@@ -667,6 +707,7 @@ function App() {
               tutorPosts={tutorPosts}
               qaPosts={qaPosts}
               feedType={activeFeed}
+              routeSelectedDateKey={extractCalendarRouteState(window.location.hash || window.location.pathname).selectedDateKey}
               isAdminView={Boolean(isAdmin)}
               onBack={() => navigateTo('home')}
               onChangeFeedType={setActiveFeed}
@@ -762,6 +803,7 @@ function App() {
                     <TutorFeed
                       posts={filteredTutorPosts}
                       openPostId={displayFeed === 'tutor' && openPostRef?.type === 'tutor' ? openPostRef.id : null}
+                      detailBackHash={displayFeed === 'tutor' && openPostRef?.type === 'tutor' ? openPostRef.backHash : null}
                       onDetailOpen={() => setIsFeedDetailOpen(true)}
                       onDetailClose={() => setIsFeedDetailOpen(false)}
                       hasMore={hasMoreTutorPosts}
@@ -774,6 +816,7 @@ function App() {
                     <QAFeed
                       posts={filteredQaPosts}
                       openPostId={displayFeed === 'qa' && openPostRef?.type === 'qa' ? openPostRef.id : null}
+                      detailBackHash={displayFeed === 'qa' && openPostRef?.type === 'qa' ? openPostRef.backHash : null}
                       onDetailOpen={() => setIsFeedDetailOpen(true)}
                       onDetailClose={() => setIsFeedDetailOpen(false)}
                       hasMore={hasMoreQaPosts}
