@@ -1,25 +1,26 @@
 /* App component */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from 'react';
 import './App.css';
 
 /* imports */
-import FeedSelector from './components/FeedSelector';
+import FeedSelector from './components/common/FeedSelector';
 import { FaSearch } from 'react-icons/fa';
-import TutorFeed from './components/TutorFeed';
-import QAFeed from './components/QAFeed';
-import FeedData from './components/FeedData';
-import CreateAccount from './components/CreateAccount';
-import SignIn from './components/SignIn';
-import Profile from './components/Profile';
-import EditProfile from './components/EditProfile';
-import CreatePost from './components/CreatePost';
-import Navbar from './components/Navbar';
-import FloatingMenu from './components/FloatingMenu';
-import Footer from './components/Footer';
-import AdminPanel from './components/admin/AdminPanel';
-import GroupMessagePage from './components/GroupMessagePage';
-import Calendar from './components/Calendar';
-import ResetPassword from './components/ResetPassword';
+import TutorFeed from './features/tutor-feed/TutorFeed';
+import QAFeed from './features/qa-feed/QAFeed';
+import useFeedData from './hooks/useFeedData';
+import CreateAccount from './features/auth/CreateAccount';
+import SignIn from './features/auth/SignIn';
+import Profile from './features/profile/Profile';
+import EditProfile from './features/profile/EditProfile';
+import CreatePost from './features/auth/CreatePost';
+import Navbar from './components/layout/Navbar';
+import FloatingMenu from './components/layout/FloatingMenu';
+import Footer from './components/layout/Footer';
+import AdminPanel from './features/admin/AdminPanel';
+import GroupMessagePage from './features/chat/GroupMessagePage';
+import Calendar from './features/calendar/Calendar';
+import ResetPassword from './features/auth/ResetPassword';
 import { useAuth } from './auth/AuthContext.jsx';
 
 function App() {
@@ -42,7 +43,7 @@ function App() {
     updateQaPost,
     deleteTutorPost,
     deleteQaPost,
-  } = FeedData();
+  } = useFeedData();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
