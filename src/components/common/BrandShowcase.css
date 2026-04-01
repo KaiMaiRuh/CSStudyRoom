@@ -1,0 +1,62 @@
+.brand-showcase {
+  --brand-circle-size: clamp(320px, 32vw, 410px);
+  --brand-circle-padding: clamp(34px, 3vw, 40px);
+  --brand-logo-scale: 228%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-showcase--modal {
+  --brand-circle-size: clamp(220px, 24vw, 290px);
+  --brand-circle-padding: clamp(24px, 2vw, 30px);
+  --brand-logo-scale: 220%;
+}
+
+.brand-showcase__circle {
+  width: var(--brand-circle-size);
+  height: var(--brand-circle-size);
+  padding: var(--brand-circle-padding);
+  border-radius: 50%;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.brand-showcase__image {
+  width: var(--brand-logo-scale);
+  height: var(--brand-logo-scale);
+  object-fit: contain;
+  display: block;
+}
+
+.brand-media-frame {
+  padding: 10px;
+  border: 1px solid rgba(146, 174, 200, 0.9);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(220, 231, 240, 0.96));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .brand-showcase--hero {
+    --brand-circle-size: min(390px, calc(100vw - 88px));
+    --brand-circle-padding: 30px;
+  }
+
+  .brand-showcase--modal {
+    --brand-circle-size: min(240px, calc(100vw - 140px));
+    --brand-circle-padding: 22px;
+  }
+
+  .brand-media-frame {
+    padding: 8px;
+    border-radius: 16px;
+  }
+}

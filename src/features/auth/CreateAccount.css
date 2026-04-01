@@ -83,6 +83,32 @@
   font-weight: bold;
 }
 
+.signin-page .signin-logo-circle {
+  width: clamp(260px, 28vw, 340px);
+  height: clamp(260px, 28vw, 340px);
+  padding: 28px;
+  overflow: hidden;
+}
+
+.signin-page .signin-logo-image {
+  width: 210%;
+  height: 210%;
+  object-fit: contain;
+}
+
+.create-account-page .create-account-logo-circle {
+  width: clamp(260px, 28vw, 340px);
+  height: clamp(260px, 28vw, 340px);
+  padding: 28px;
+  overflow: hidden;
+}
+
+.create-account-page .create-account-logo-image {
+  width: 210%;
+  height: 210%;
+  object-fit: contain;
+}
+
 .right-panel {
   flex: 1;
   background-color: #fafafa;
@@ -147,7 +173,7 @@
 .form-group input,
 .form-group select {
   width: 100%;
-  padding: 12px 0;
+  padding: 12px 14px;
   border: none;
   border-bottom: 1px solid #ddd;
   font-size: 15px;
@@ -192,7 +218,8 @@
 }
 
 .input-with-icon input {
-  padding-right: 2.6rem;
+  padding-left: 14px;
+  padding-right: 3rem;
 }
 
 .toggle-password {
@@ -355,6 +382,18 @@
   .logo-circle {
     width: 300px;
     height: 300px;
+  }
+
+  .signin-page .signin-logo-circle {
+    width: min(340px, calc(100vw - 96px));
+    height: min(340px, calc(100vw - 96px));
+    padding: 24px;
+  }
+
+  .create-account-page .create-account-logo-circle {
+    width: min(340px, calc(100vw - 96px));
+    height: min(340px, calc(100vw - 96px));
+    padding: 24px;
   }
   
   .right-panel {

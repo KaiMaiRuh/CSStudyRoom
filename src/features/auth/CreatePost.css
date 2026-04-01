@@ -101,6 +101,16 @@
   text-align: center;
 }
 
+
+.create-post-brand-shell {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 24px;
+}
+
+.create-post-brand-showcase {
+  max-width: 100%;
+}
 .close-button {
   position: absolute;
   top: 50%;
@@ -177,7 +187,7 @@
   border-radius: 10px;
   font-size: 1.2rem;
   color: #213547;
-  background-color: #dbe6ef;
+  background-color: #c9dff0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 1px 2px rgba(30, 41, 59, 0.12);
   transition: border-color 120ms ease, box-shadow 120ms ease;
   box-sizing: border-box;
@@ -208,9 +218,9 @@
   font-weight: 600;
 }
 
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
+.form-group input,
+.form-group textarea,
+.form-group select{
   outline: none;
   border-color: #6d87a5;
   box-shadow: 0 0 0 3px rgba(73, 112, 151, 0.18);
@@ -356,6 +366,10 @@
     font-size: clamp(30px, 4.8vw, 40px);
   }
 
+  .create-post-brand-shell {
+    margin-bottom: 22px;
+  }
+
   .type-button {
     font-size: 1.35rem;
   }
@@ -386,6 +400,10 @@
 
   .modal-title {
     font-size: clamp(26px, 7vw, 34px);
+  }
+
+  .create-post-brand-shell {
+    margin-bottom: 18px;
   }
 
   .close-button {
@@ -457,17 +475,18 @@
 
 .image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
 
 .image-preview-item {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
 }
 
 .image-preview {
+  display: block;
   width: 100px;
   height: 100px;
   object-fit: cover;

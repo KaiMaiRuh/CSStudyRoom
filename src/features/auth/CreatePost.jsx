@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaCalendarAlt, FaClock } from 'react-icons/fa';
 import './CreatePost.css';
+import BrandShowcase from '../../components/common/BrandShowcase.jsx';
 import { imageFileToBase64DataUrl } from '../../utils/imageHelpers.js';
 
 const OVERLAY_EXIT_MS = 300;
@@ -169,6 +170,10 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
         <div className="modal-header">
           <h2 className="modal-title">{mode === 'edit' ? 'Edit Post' : 'Create New Post'}</h2>
           <button className="close-button" type="button" onClick={requestClose} disabled={isClosing}>×</button>
+        </div>
+
+        <div className="create-post-brand-shell">
+          <BrandShowcase size="modal" tone="light" className="create-post-brand-showcase" />
         </div>
         
         <div className="post-type-selector">
@@ -364,7 +369,7 @@ const CreatePost = ({ onCancel, onCreate, mode = 'create', initialPost = null, o
                   <p>Current images ({formData.images.length}/8):</p>
                   <div className="image-grid">
                     {formData.images.map((imageUrl, index) => (
-                      <div key={index} className="image-preview-item">
+                      <div key={index} className="image-preview-item brand-media-frame">
                         <img 
                           src={imageUrl} 
                           alt={`Preview ${index + 1}`} 

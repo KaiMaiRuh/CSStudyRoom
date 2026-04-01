@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './CreateAccount.css';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import LogoImg from '../../assets/Logo.png';
+import BrandShowcase from '../../components/common/BrandShowcase.jsx';
 
 const STRENGTH_MAP = {
   weak: { label: 'Weak', color: '#e74c3c', rank: 0 },
@@ -126,12 +126,10 @@ const CreateAccount = ({ onNavigate }) => {
   };
 
   return (
-    <div className="create-account-wrapper">
+    <div className="create-account-wrapper create-account-page">
       <div className="create-account-container">
         <div className="left-panel">
-          <div className="logo-circle">
-            <img src={LogoImg} alt="CS Study Room Logo" style={{ width: '180%', height: '180%', objectFit: 'contain' }} />
-          </div>
+          <BrandShowcase />
         </div>
         
         <div className="right-panel">
