@@ -62,6 +62,7 @@ function mapTutorPostDoc(d) {
   const schedule = readTutorSchedule(data);
   const stats = readTutorStats(data);
   const joiners = Array.isArray(data.joiners) ? data.joiners : [];
+  const authorName = author.displayName || author.username || 'Unknown';
 
   const createdAtDate = data.createdAt?.toDate?.() ?? null;
   const minutesAgo = createdAtDate
@@ -71,8 +72,8 @@ function mapTutorPostDoc(d) {
   return {
     id: d.id,
     user: {
-      name: author.username || author.displayName || 'Unknown',
-      displayName: author.displayName || 'Unknown',
+      name: authorName,
+      displayName: author.displayName || authorName,
       username: author.username || null,
       avatar: author.avatarUrl || '',
       uid: author.uid || null,

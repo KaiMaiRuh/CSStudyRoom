@@ -116,6 +116,17 @@ const TutorFeed = ({
     return `posted ${days} ${days === 1 ? 'day' : 'days'} ago`;
   };
 
+  const getPostAuthorName = (post) => {
+    const fallback = post.user?.displayName || post.user?.name || post.user?.username || 'Unknown';
+    const authorUid = post.user?.uid || post.authorId || null;
+
+    if (!authorUid || !user?.uid || authorUid !== user.uid) {
+      return fallback;
+    }
+
+    return profile?.displayName || profile?.name || user.displayName || fallback;
+  };
+
   useEffect(() => {
     if (!hasMore) return;
     if (isLoadingMore) return;
@@ -225,11 +236,7 @@ const TutorFeed = ({
               </div>
               <div className="subject-by">
                 <span className="subject">{post.subject}</span>
-                <span className="by-name">
-                  By {post.user?.uid === user?.uid
-                    ? (profile?.username ? `@${profile.username}` : (profile?.displayName || post.user?.displayName || post.user?.name || 'Unknown'))
-                    : (post.user?.username ? `@${post.user.username}` : (post.user?.displayName || post.user?.name || 'Unknown'))}
-                </span>
+                <span className="by-name">By {getPostAuthorName(post)}</span>
               </div>
               <div className="location">
                 <FaMapMarkerAlt style={{ marginRight: 6 }} /> {post.location}

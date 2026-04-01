@@ -85,13 +85,14 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
         if (docSnapshot.exists()) {
           const postData = docSnapshot.data();
           const actor = readActorFromDoc(postData || {});
+          const authorName = actor.displayName || postData.user?.displayName || postData.user?.name || actor.username || 'Unknown';
           const enrichedPost = {
             id: docSnapshot.id,
             ...postData,
             user: {
               ...(postData.user || {}),
-              name: actor.username || actor.displayName || postData.user?.name || 'Unknown',
-              displayName: actor.displayName || postData.user?.displayName || 'Unknown',
+              name: authorName,
+              displayName: actor.displayName || postData.user?.displayName || authorName,
               username: actor.username || postData.user?.username || null,
               avatar: actor.avatarUrl || postData.user?.avatar || '',
               uid: actor.uid || postData.user?.uid || null,

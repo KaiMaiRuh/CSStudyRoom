@@ -36,9 +36,11 @@ const parseCreatedAt = (createdAt) => {
 };
 
 const getAuthorLabel = (post) => {
+  const displayName = post?.user?.displayName || post?.user?.name || post?.authorName || null;
+  if (displayName) return displayName;
   const username = post?.user?.username || post?.authorUsername || null;
   if (username) return `@${username}`;
-  return post?.user?.name || post?.user?.displayName || post?.authorName || 'Unknown';
+  return 'Unknown';
 };
 
 const formatPostedAgo = (minutesAgo) => {
