@@ -136,7 +136,19 @@ const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', routeSele
   const initialSelectedDate = parseDateString(routeSelectedDateKey);
   const [currentMonth, setCurrentMonth] = useState(initialSelectedDate || new Date());
   const [selectedDateKey, setSelectedDateKey] = useState(routeSelectedDateKey || null);
+  const [prevRouteKey, setPrevRouteKey] = useState(routeSelectedDateKey);
   const canUseAdminCalendar = Boolean(isAdminView && isAdmin);
+
+  if (routeSelectedDateKey !== prevRouteKey) {
+    setPrevRouteKey(routeSelectedDateKey);
+    if (routeSelectedDateKey) {
+      setSelectedDateKey(routeSelectedDateKey);
+      const routeDate = parseDateString(routeSelectedDateKey);
+      if (routeDate) {
+        setCurrentMonth(routeDate);
+      }
+    }
+  }
 
   const normalizedFeed = feedType === 'qa' ? 'qa' : 'tutor';
 
@@ -246,14 +258,6 @@ const Calendar = ({ tutorPosts = [], qaPosts = [], feedType = 'tutor', routeSele
 
   useEffect(() => {
     if (!routeSelectedDateKey) return;
-
-    setSelectedDateKey(routeSelectedDateKey);
-
-    const routeDate = parseDateString(routeSelectedDateKey);
-    if (routeDate) {
-      setCurrentMonth(routeDate);
-    }
-
     clearCalendarDateFromHash();
   }, [routeSelectedDateKey]);
 
