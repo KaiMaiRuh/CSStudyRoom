@@ -433,7 +433,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
             <div className="location-icon" aria-hidden="true">
               <MdLocationOn size={24} color="#1a2b48" />
             </div>
-            <p className="location-text">สถานที่ติว : {location}</p>
+            <p className="location-text">Location: {location}</p>
           </div>
 
           <div className="joined-status">
@@ -607,14 +607,14 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
         </div>
 
         <div className="details-section">
-          <h2 className="section-title">รายละเอียด</h2>
+          <h2 className="section-title">Details</h2>
           <div className="detail-box">
             <p>{description}</p>
           </div>
         </div>
 
         <div className="experience-section">
-          <h2 className="section-title">แนะนำตัว/ประสบการณ์</h2>
+          <h2 className="section-title">Introduction / Experience</h2>
           <div className="experience-box">
             <p>{authorBio || experience || '-'}</p>
           </div>

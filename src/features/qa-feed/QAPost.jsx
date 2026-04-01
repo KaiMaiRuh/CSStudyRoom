@@ -18,10 +18,10 @@ export default function QAPost({ post }) {
       <h3 style={{ margin: '0 0 10px 0' }}><FaQuestionCircle style={{ marginRight: 8 }} />{post.question}</h3>
       <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#555', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <FaUserCircle />
-        <span>ถามโดย: {post.author}</span>
+        <span>Asked by: {post.author}</span>
       </p>
       <div style={{ textAlign: 'right', marginTop: '15px' }}>
-        <button style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><FaComment /> ดูคำตอบ ({post.answers})</button>
+        <button style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><FaComment /> View answers ({post.answers})</button>
       </div>
     </div>
   );

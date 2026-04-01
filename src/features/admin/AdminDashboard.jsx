@@ -516,7 +516,7 @@ const AdminDashboard = () => {
           const t = tutorCount.get(uid) || 0;
           const q = qaCount.get(uid) || 0;
           if (t > 0) role = 'tutor';
-          else if (q > 0) role = 'คนตอบคำถาม';
+          else if (q > 0) role = 'Q&A contributor';
           else role = 'student';
         }
 

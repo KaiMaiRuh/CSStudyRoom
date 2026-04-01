@@ -59,13 +59,13 @@ const Home = () => {
             className={`toggle-button ${activeTab === 'tutor' ? 'active' : ''}`}
             onClick={() => setActiveTab('tutor')}
           >
-            โพสต์นัดติว
+            Tutor Posts
           </button>
           <button 
             className={`toggle-button ${activeTab === 'qa' ? 'active' : ''}`}
             onClick={() => setActiveTab('qa')}
           >
-            โพสต์ถาม-ตอบ
+            Q&A Posts
           </button>
         </div>
         
@@ -88,7 +88,7 @@ const Home = () => {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
-            <option value="">หมวดหมู่วิชา</option>
+            <option value="">Subject Category</option>
             {allSubjects.map(subject => (
               <option key={subject} value={subject}>{subject}</option>
             ))}

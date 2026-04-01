@@ -220,7 +220,7 @@ const TutorFeed = ({
               <h3 className="post-title">{post.title}</h3>
               <p className="post-description">{post.description}</p>
               <div className="date-time">
-                <span className="date">{post.date}{post.time ? ` เวลา ${post.time}` : ''}</span>
+                <span className="date">{post.date}{post.time ? ` at ${post.time}` : ''}</span>
                 <span className="ago">{formatPostedTime(post.minutesAgo)}</span>
               </div>
               <div className="subject-by">
@@ -282,7 +282,7 @@ const TutorFeed = ({
           
           <div className="card-footer">
             <div className="capacity">
-              เข้าร่วมแล้ว: {actualJoinedCount}/{post.capacity} คน
+              Joined: {actualJoinedCount}/{post.capacity} people
             </div>
             <div className="tutor-card-actions">
               <button className="read-more-button" type="button" onClick={() => handleOpenDetail(post)}>

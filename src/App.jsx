@@ -71,7 +71,7 @@ function App() {
   const isCalendarPage = activePage === 'calendar';
   const isResetPasswordPage = activePage === 'resetPassword';
   const showFooter = !showCreatePost;
-  const categoryDisplayLabel = category || 'หมวดหมู่วิชา';
+  const categoryDisplayLabel = category || 'Subject Category';
 
   // Filter posts based on search and category
   const filteredTutorPosts = tutorPosts.filter(post => {
@@ -711,7 +711,7 @@ function App() {
                         type="button"
                         aria-haspopup="listbox"
                         aria-expanded={isCategoryMenuOpen}
-                        aria-label="เลือกหมวดหมู่วิชา"
+                        aria-label="Choose subject category"
                         onClick={() => setIsCategoryMenuOpen((prev) => !prev)}
                       >
                         <span className="category-dropdown-text">{categoryDisplayLabel}</span>
@@ -721,7 +721,7 @@ function App() {
                       <div
                         className={`category-dropdown-menu ${isCategoryMenuOpen ? 'open' : ''}`.trim()}
                         role="listbox"
-                        aria-label="รายการหมวดหมู่วิชา"
+                        aria-label="Subject category list"
                       >
                         <button
                           type="button"
@@ -731,7 +731,7 @@ function App() {
                             setIsCategoryMenuOpen(false);
                           }}
                         >
-                          หมวดหมู่วิชา (ทั้งหมด)
+                          All Subjects
                         </button>
 
                         {allSubjects.map((subject) => (

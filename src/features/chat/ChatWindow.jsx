@@ -229,7 +229,7 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
         </div>
 
         <div className="chat-warning-banner">
-          <p>💭 โปรดสื่อสารด้วยความสุภาพและเคารพซึ่งกันและกัน</p>
+          <p>💭 Please communicate politely and respectfully with one another.</p>
         </div>
 
         <div className="chat-messages">

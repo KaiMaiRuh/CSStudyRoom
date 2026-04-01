@@ -9,13 +9,13 @@ export default function FeedSelector({ activeFeed, setActiveFeed }) {
         className={`selector-button ${activeFeed === 'tutor' ? 'active' : ''}`}
         onClick={() => setActiveFeed('tutor')}
       >
-        นัดติว / จับกลุ่ม
+        Tutor / Study Group
       </button>
       <button
         className={`selector-button ${activeFeed === 'qa' ? 'active' : ''}`}
         onClick={() => setActiveFeed('qa')}
       >
-        ถาม-ตอบ
+        Q&A
       </button>
     </div>
   );
