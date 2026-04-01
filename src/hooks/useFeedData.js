@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   collection,
+  doc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   startAfter,
@@ -141,6 +143,69 @@ function mergeUniquePosts(prev, next) {
   return merged;
 }
 
+function clearLivePostSubscriptions(subscriptionsRef) {
+  subscriptionsRef.current.forEach((unsubscribe) => {
+    if (typeof unsubscribe === 'function') {
+      unsubscribe();
+    }
+  });
+  subscriptionsRef.current.clear();
+}
+
+function syncLivePostSubscriptions({
+  db,
+  posts,
+  collectionName,
+  subscriptionsRef,
+  mapDoc,
+  setPosts,
+  errorLabel,
+}) {
+  const nextIds = new Set(
+    (Array.isArray(posts) ? posts : [])
+      .map((post) => post?.id)
+      .filter(Boolean)
+  );
+
+  subscriptionsRef.current.forEach((unsubscribe, postId) => {
+    if (nextIds.has(postId)) return;
+    if (typeof unsubscribe === 'function') {
+      unsubscribe();
+    }
+    subscriptionsRef.current.delete(postId);
+  });
+
+  nextIds.forEach((postId) => {
+    if (subscriptionsRef.current.has(postId)) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, collectionName, postId),
+      (snap) => {
+        if (!snap.exists()) {
+          setPosts((prev) => prev.filter((item) => item.id !== postId));
+          return;
+        }
+
+        const nextPost = mapDoc(snap);
+        setPosts((prev) => {
+          let hasMatch = false;
+          const next = prev.map((item) => {
+            if (item.id !== postId) return item;
+            hasMatch = true;
+            return nextPost;
+          });
+          return hasMatch ? next : prev;
+        });
+      },
+      (err) => {
+        console.error(`Failed to subscribe ${errorLabel}`, postId, err);
+      }
+    );
+
+    subscriptionsRef.current.set(postId, unsubscribe);
+  });
+}
+
 export default function useFeedData() {
   const [tutorPosts, setTutorPosts] = useState([]);
   const [qaPosts, setQaPosts] = useState([]);
@@ -153,6 +218,8 @@ export default function useFeedData() {
   const [isLoadingMoreQaPosts, setIsLoadingMoreQaPosts] = useState(false);
   const tutorLoadLockRef = useRef(false);
   const qaLoadLockRef = useRef(false);
+  const tutorSubscriptionsRef = useRef(new Map());
+  const qaSubscriptionsRef = useRef(new Map());
   const [activeFeed, setActiveFeed] = useState('tutor');
 
   useEffect(() => {
@@ -220,6 +287,51 @@ export default function useFeedData() {
 
     return () => {
       disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+
+    try {
+      const { db } = getFirebaseServices();
+      syncLivePostSubscriptions({
+        db,
+        posts: tutorPosts,
+        collectionName: COLLECTIONS.TUTOR_POSTS,
+        subscriptionsRef: tutorSubscriptionsRef,
+        mapDoc: mapTutorPostDoc,
+        setPosts: setTutorPosts,
+        errorLabel: 'tutor post',
+      });
+    } catch (err) {
+      console.error('Failed to sync live tutor post subscriptions', err);
+    }
+  }, [tutorPosts]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+
+    try {
+      const { db } = getFirebaseServices();
+      syncLivePostSubscriptions({
+        db,
+        posts: qaPosts,
+        collectionName: COLLECTIONS.QA_POSTS,
+        subscriptionsRef: qaSubscriptionsRef,
+        mapDoc: mapQaPostDoc,
+        setPosts: setQaPosts,
+        errorLabel: 'qa post',
+      });
+    } catch (err) {
+      console.error('Failed to sync live qa post subscriptions', err);
+    }
+  }, [qaPosts]);
+
+  useEffect(() => {
+    return () => {
+      clearLivePostSubscriptions(tutorSubscriptionsRef);
+      clearLivePostSubscriptions(qaSubscriptionsRef);
     };
   }, []);
 
