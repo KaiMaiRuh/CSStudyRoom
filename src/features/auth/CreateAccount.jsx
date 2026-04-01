@@ -40,6 +40,7 @@ const CreateAccount = ({ onNavigate }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const passwordStrength = useMemo(() => getPasswordStrength(formData.password), [formData.password]);
+  const hasPasswordValue = Boolean(formData.password);
   const canUsePassword = passwordStrength.rank >= STRENGTH_MAP.strong.rank;
 
   const handleChange = (e) => {
@@ -198,24 +199,26 @@ const CreateAccount = ({ onNavigate }) => {
                     {showPassword ? <FaEye /> : <FaEyeSlash />}
                   </button>
                 </div>
-                <div
-                  className="create-password-strength"
-                  style={{ '--create-strength-color': passwordStrength.color }}
-                  aria-live="polite"
-                >
-                  <div className="create-strength-bars" role="presentation">
-                    {[0, 1, 2, 3].map((index) => (
-                      <span
-                        key={index}
-                        className={`create-strength-bar ${index <= passwordStrength.rank ? 'is-active' : ''}`}
-                      />
-                    ))}
+                {hasPasswordValue && (
+                  <div
+                    className="create-password-strength"
+                    style={{ '--create-strength-color': passwordStrength.color }}
+                    aria-live="polite"
+                  >
+                    <div className="create-strength-bars" role="presentation">
+                      {[0, 1, 2, 3].map((index) => (
+                        <span
+                          key={index}
+                          className={`create-strength-bar ${index <= passwordStrength.rank ? 'is-active' : ''}`}
+                        />
+                      ))}
+                    </div>
+                    <p className={`create-strength-label create-strength-${passwordStrength.level}`}>
+                      {passwordStrength.label} Password
+                    </p>
+                    <p className="create-strength-hint">Password must contain at least 8 characters including upper case,lowercase,numbers,special character(Optional).</p>
                   </div>
-                  <p className={`create-strength-label create-strength-${passwordStrength.level}`}>
-                    {passwordStrength.label} Password
-                  </p>
-                  <p className="create-strength-hint">Only Strong and Very Strong passwords are allowed.</p>
-                </div>
+                )}
                 {errors.password && <span className="error-message">{errors.password}</span>}
               </div>
 

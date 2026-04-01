@@ -87,15 +87,18 @@ export default function SignIn({ onNavigate }) {
                 {forgotSuccess ? <p className="success-message">{forgotSuccess}</p> : null}
                 {forgotError ? <p className="error-message">{forgotError}</p> : null}
 
-                <form onSubmit={handleForgotSubmit}>
-                  <div className="form-group">
+                <form onSubmit={handleForgotSubmit} className="signin-forgot-form">
+                  <div className="form-group signin-forgot-field">
                     <label htmlFor="forgotEmail">Email address</label>
                     <input
+                      className="signin-forgot-input"
                       id="forgotEmail"
                       name="forgotEmail"
                       type="email"
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      autoComplete="email"
                     />
                   </div>
 
