@@ -91,6 +91,20 @@
   font-weight: 500;
 }
 
+.chat-ended-banner {
+  background-color: #fee2e2;
+  border-bottom: 1px solid #fca5a5;
+  padding: 10px 16px;
+  text-align: center;
+}
+
+.chat-ended-banner p {
+  margin: 0;
+  font-size: 13px;
+  color: #7f1d1d;
+  font-weight: 600;
+}
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;

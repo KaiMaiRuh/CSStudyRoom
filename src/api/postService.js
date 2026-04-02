@@ -2,12 +2,14 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   addDoc,
   onSnapshot,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
+  where,
 } from 'firebase/firestore';
 import { getFirebaseServices, isFirebaseConfigured } from './firebaseConfig.js';
 import { createGroup, deleteGroupByPostId } from './chatService.js';
@@ -456,4 +458,53 @@ export async function deleteQaPost(postId) {
 
     tx.delete(postRef);
   });
+}
+
+export async function deletePostsByAuthorId(authorId) {
+  if (!authorId) throw new Error('authorId is required');
+  if (!isFirebaseConfigured()) {
+    return {
+      tutorDeleted: 0,
+      qaDeleted: 0,
+      failedCount: 0,
+      totalDeleted: 0,
+    };
+  }
+
+  const { db } = getFirebaseServices();
+  const [tutorSnap, qaSnap] = await Promise.all([
+    getDocs(query(collection(db, COLLECTIONS.TUTOR_POSTS), where('authorId', '==', authorId))),
+    getDocs(query(collection(db, COLLECTIONS.QA_POSTS), where('authorId', '==', authorId))),
+  ]);
+
+  let tutorDeleted = 0;
+  let qaDeleted = 0;
+  let failedCount = 0;
+
+  for (const tutorDoc of tutorSnap.docs) {
+    try {
+      await deleteTutorPost(tutorDoc.id);
+      tutorDeleted += 1;
+    } catch (err) {
+      failedCount += 1;
+      console.warn('Failed to delete tutor post for soft-deleted user', tutorDoc.id, err);
+    }
+  }
+
+  for (const qaDoc of qaSnap.docs) {
+    try {
+      await deleteQaPost(qaDoc.id);
+      qaDeleted += 1;
+    } catch (err) {
+      failedCount += 1;
+      console.warn('Failed to delete qa post for soft-deleted user', qaDoc.id, err);
+    }
+  }
+
+  return {
+    tutorDeleted,
+    qaDeleted,
+    failedCount,
+    totalDeleted: tutorDeleted + qaDeleted,
+  };
 }

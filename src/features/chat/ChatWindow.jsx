@@ -1,7 +1,7 @@
 // ChatWindow.jsx - Group chat interface
 import React, { useState, useEffect, useRef } from 'react';
 import { FaArrowLeft, FaTrashAlt, FaUserCircle } from 'react-icons/fa';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { getFirebaseServices, isFirebaseConfigured } from '../../api/firebaseConfig.js';
 import { userGroupReadDocPath } from '../../api/dbSchema.js';
@@ -13,6 +13,7 @@ import {
   getGroupById,
 } from '../../api/chatService.js';
 import { useUserProfiles } from '../../api/userService.js';
+import { getTutorSessionWindowFromPost } from '../../utils/tutorSession.js';
 import './ChatWindow.css';
 
 const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
@@ -24,6 +25,13 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
   const [deletingMessageId, setDeletingMessageId] = useState(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [sessionMeta, setSessionMeta] = useState(() => ({
+    hasTutorSchedule: false,
+    postMissing: false,
+    startAt: null,
+    endAt: null,
+  }));
   const messagesEndRef = useRef(null);
   const didScrollToInitialRef = useRef(false);
   const lastMarkedAtRef = useRef(0);
@@ -50,6 +58,16 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
   useEffect(() => {
     lastMarkedAtRef.current = 0;
   }, [groupId]);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, []);
 
   // Load group info
   useEffect(() => {
@@ -91,6 +109,66 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
 
     return () => unsubscribe();
   }, [groupId, initialMessageId]);
+
+  useEffect(() => {
+    setSessionMeta({
+      hasTutorSchedule: false,
+      postMissing: false,
+      startAt: null,
+      endAt: null,
+    });
+
+    if (!group?.postId) return;
+    if (!isFirebaseConfigured()) return;
+
+    let disposed = false;
+
+    const loadSessionMeta = async () => {
+      try {
+        const { db } = getFirebaseServices();
+        const tutorPostRef = doc(db, 'tutorPosts', group.postId);
+        const tutorPostSnap = await getDoc(tutorPostRef);
+        if (disposed) return;
+
+        if (!tutorPostSnap.exists()) {
+          setSessionMeta({
+            hasTutorSchedule: true,
+            postMissing: true,
+            startAt: null,
+            endAt: null,
+          });
+          return;
+        }
+
+        const session = getTutorSessionWindowFromPost(tutorPostSnap.data());
+        setSessionMeta({
+          hasTutorSchedule: Boolean(session.hasSchedule),
+          postMissing: false,
+          startAt: session.startAt || null,
+          endAt: session.endAt || null,
+        });
+      } catch (err) {
+        console.error('Failed to load tutor session info for chat window', err);
+      }
+    };
+
+    void loadSessionMeta();
+    return () => {
+      disposed = true;
+    };
+  }, [group?.id, group?.postId]);
+
+  const sessionEndMillis = sessionMeta.endAt?.getTime?.() || 0;
+  const isGroupEnded = Boolean(
+    sessionMeta.postMissing
+    || (sessionMeta.hasTutorSchedule && sessionEndMillis > 0 && nowTick >= sessionEndMillis)
+  );
+  const groupEndedMessage = sessionMeta.postMissing
+    ? 'This tutoring group is no longer available.'
+    : 'This tutoring session has ended. Group chat is now closed.';
+  const groupEndLabel = sessionMeta.endAt
+    ? sessionMeta.endAt.toLocaleString()
+    : '';
 
   // Mark this group as read based on latest visible message timestamp.
   useEffect(() => {
@@ -136,6 +214,11 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
+
+    if (isGroupEnded) {
+      setError(groupEndedMessage);
+      return;
+    }
 
     if (!messageText.trim() || !user?.uid) {
       return;
@@ -231,6 +314,15 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
         <div className="chat-warning-banner">
           <p>💭 Please communicate politely and respectfully with one another.</p>
         </div>
+
+        {isGroupEnded ? (
+          <div className="chat-ended-banner">
+            <p>
+              {groupEndedMessage}
+              {groupEndLabel ? ` Ended at ${groupEndLabel}.` : ''}
+            </p>
+          </div>
+        ) : null}
 
         <div className="chat-messages">
           {error && (
@@ -381,15 +473,15 @@ const ChatWindow = ({ groupId, initialMessageId = null, onClose }) => {
           <input
             type="text"
             className="chat-input"
-            placeholder="Type a message..."
+            placeholder={isGroupEnded ? 'This chat is closed' : 'Type a message...'}
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
-            disabled={sending}
+            disabled={sending || isGroupEnded}
           />
           <button
             type="submit"
             className="chat-send-btn"
-            disabled={!messageText.trim() || sending}
+            disabled={!messageText.trim() || sending || isGroupEnded}
           >
             {sending ? 'Sending...' : 'Send'}
           </button>

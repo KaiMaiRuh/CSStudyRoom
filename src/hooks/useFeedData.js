@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   collection,
   doc,
@@ -221,6 +221,31 @@ export default function useFeedData() {
   const tutorSubscriptionsRef = useRef(new Map());
   const qaSubscriptionsRef = useRef(new Map());
   const [activeFeed, setActiveFeed] = useState('tutor');
+  const [deletedUserIds, setDeletedUserIds] = useState(() => new Set());
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+
+    const { db } = getFirebaseServices();
+    const usersRef = collection(db, COLLECTIONS.USERS);
+
+    return onSnapshot(
+      usersRef,
+      (snap) => {
+        const next = new Set();
+        snap.docs.forEach((userDoc) => {
+          const data = userDoc.data() || {};
+          if (data.deleted) {
+            next.add(userDoc.id);
+          }
+        });
+        setDeletedUserIds(next);
+      },
+      (err) => {
+        console.error('Failed to subscribe deleted users', err);
+      }
+    );
+  }, []);
 
   useEffect(() => {
     const subjectsSet = new Set(BASE_SUBJECTS);
@@ -475,9 +500,27 @@ export default function useFeedData() {
     await deleteQaPostService(postId);
   };
 
+  const visibleTutorPosts = useMemo(() => {
+    if (!(deletedUserIds instanceof Set) || deletedUserIds.size === 0) return tutorPosts;
+
+    return tutorPosts.filter((post) => {
+      const authorUid = post?.authorId || post?.user?.uid || null;
+      return !authorUid || !deletedUserIds.has(authorUid);
+    });
+  }, [deletedUserIds, tutorPosts]);
+
+  const visibleQaPosts = useMemo(() => {
+    if (!(deletedUserIds instanceof Set) || deletedUserIds.size === 0) return qaPosts;
+
+    return qaPosts.filter((post) => {
+      const authorUid = post?.authorId || post?.user?.uid || null;
+      return !authorUid || !deletedUserIds.has(authorUid);
+    });
+  }, [deletedUserIds, qaPosts]);
+
   return {
-    tutorPosts,
-    qaPosts,
+    tutorPosts: visibleTutorPosts,
+    qaPosts: visibleQaPosts,
     allSubjects,
     activeFeed,
     setActiveFeed,

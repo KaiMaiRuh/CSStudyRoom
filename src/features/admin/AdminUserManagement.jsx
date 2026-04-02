@@ -4,6 +4,7 @@ import './AdminUserManagement.css';
 import { useAuth } from '../../auth/AuthContext';
 import { getFirebaseServices, isFirebaseConfigured } from '../../api/firebaseConfig.js';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { deletePostsByAuthorId } from '../../api/postService.js';
 
 const normalize = (v) => String(v || '').toLowerCase().normalize('NFC');
 
@@ -78,6 +79,11 @@ const AdminUserManagement = () => {
         // Fallback for rulesets that only permit admin updates to `banned`.
         if (err?.code !== 'permission-denied') throw err;
         await setDoc(userRef, { banned: true }, { merge: true });
+      }
+
+      const cleanup = await deletePostsByAuthorId(uid);
+      if (cleanup.failedCount > 0) {
+        alert(`User was soft-deleted, but ${cleanup.failedCount} post(s) could not be removed.`);
       }
     } catch (err) {
       console.error('Failed to soft-delete user', err);

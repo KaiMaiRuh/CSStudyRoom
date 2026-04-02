@@ -31,6 +31,32 @@ import {
   buildGroupDocument,
   buildGroupMessageDocument,
 } from './dbModels.js';
+import { getTutorSessionWindowFromPost } from '../utils/tutorSession.js';
+
+async function assertTutorGroupIsActive(db, groupId) {
+  if (!db || !groupId) return;
+
+  const groupRef = doc(db, ...groupDocPath(groupId));
+  const groupSnap = await getDoc(groupRef);
+  if (!groupSnap.exists()) {
+    throw new Error('Group not found');
+  }
+
+  const groupData = groupSnap.data() || {};
+  const postId = groupData.postId;
+  if (!postId) return;
+
+  const tutorPostRef = doc(db, ...tutorPostDocPath(postId));
+  const tutorPostSnap = await getDoc(tutorPostRef);
+  if (!tutorPostSnap.exists()) {
+    throw new Error('This tutoring group has ended');
+  }
+
+  const session = getTutorSessionWindowFromPost(tutorPostSnap.data());
+  if (session.hasSchedule && session.isEnded) {
+    throw new Error('This tutoring group has ended');
+  }
+}
 
 export async function createGroup(postId, postTitle, subject, ownerId, ownerName, ownerAvatar = null, ownerUsername = null) {
   if (!isFirebaseConfigured()) {
@@ -181,6 +207,7 @@ export async function sendGroupMessage(groupId, senderId, text, sender = null) {
   }
 
   const { db } = getFirebaseServices();
+  await assertTutorGroupIsActive(db, groupId);
 
   const senderActor = buildActorSnapshot({
     uid: senderId,
@@ -246,6 +273,7 @@ export async function sendSharedPostMessage({ groupId, senderId, senderName, sen
   void senderAvatar;
 
   const { db } = getFirebaseServices();
+  await assertTutorGroupIsActive(db, groupId);
 
   const postRef = doc(db, ...(postType === 'qa' ? qaPostDocPath(postId) : tutorPostDocPath(postId)));
   const postSnap = await getDoc(postRef);

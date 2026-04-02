@@ -22,6 +22,7 @@ import {
   userNotificationReadDocPath,
 } from '../../api/dbSchema.js';
 import { subscribeToLatestGroupMessage, subscribeToUserGroups } from '../../api/chatService.js';
+import { getTutorSessionWindowFromPost } from '../../utils/tutorSession.js';
 
 const toMillis = (ts) => (ts?.toMillis?.() ? ts.toMillis() : 0);
 const toTimestamp = (millis) => {
@@ -39,16 +40,20 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
   const { user } = useAuth();
   const [isRendered, setIsRendered] = useState(Boolean(isOpen));
   const [isClosing, setIsClosing] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [groupState, setGroupState] = useState({ uid: null, groups: [] });
+  const [groupTutorPostState, setGroupTutorPostState] = useState({ uid: null, map: {} });
   const [qaState, setQaState] = useState({ uid: null, posts: [] });
   const [adminDeleteState, setAdminDeleteState] = useState({ uid: null, items: [] });
   const [groupReadsState, setGroupReadsState] = useState({ uid: null, map: {} });
   const [qaReadState, setQaReadState] = useState({ uid: null, lastSeenAt: null });
   const [adminDeleteReadState, setAdminDeleteReadState] = useState({ uid: null, lastSeenAt: null });
+  const [tutorReminderReadState, setTutorReminderReadState] = useState({ uid: null, lastSeenAt: null });
   const [latestMessagesByGroupId, setLatestMessagesByGroupId] = useState({});
   const [groupError, setGroupError] = useState(null);
   const [qaError, setQaError] = useState(null);
   const [adminDeleteError, setAdminDeleteError] = useState(null);
+  const [tutorReminderError, setTutorReminderError] = useState(null);
   const markSignatureRef = useRef('');
 
   useEffect(() => {
@@ -69,6 +74,16 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
       window.clearTimeout(timerId);
     };
   }, [isOpen, isRendered]);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setNowTick(Date.now());
+    }, 30000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, []);
 
   const markGroupAsRead = useCallback(async (groupId, tsMillis) => {
     if (!groupId) return;
@@ -117,6 +132,24 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     const { db } = getFirebaseServices();
     await setDoc(
       doc(db, ...userNotificationReadDocPath(user.uid, 'adminDelete')),
+      {
+        lastSeenAt: ts,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }, [user?.uid]);
+
+  const markTutorReminderNotificationsAsRead = useCallback(async (tsMillis) => {
+    if (!user?.uid) return;
+    if (!isFirebaseConfigured()) return;
+
+    const ts = toTimestamp(tsMillis);
+    if (!ts) return;
+
+    const { db } = getFirebaseServices();
+    await setDoc(
+      doc(db, ...userNotificationReadDocPath(user.uid, 'tutorReminder')),
       {
         lastSeenAt: ts,
         updatedAt: serverTimestamp(),
@@ -198,6 +231,32 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
       (err) => {
         console.error('Failed to subscribe admin-delete notification read state', err);
         setAdminDeleteReadState({ uid: user.uid, lastSeenAt: null });
+      }
+    );
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      return;
+    }
+    if (!isFirebaseConfigured()) {
+      return;
+    }
+
+    const { db } = getFirebaseServices();
+    const tutorReminderReadRef = doc(db, ...userNotificationReadDocPath(user.uid, 'tutorReminder'));
+
+    return onSnapshot(
+      tutorReminderReadRef,
+      (snap) => {
+        setTutorReminderReadState({
+          uid: user.uid,
+          lastSeenAt: snap.exists() ? snap.data()?.lastSeenAt || null : null,
+        });
+      },
+      (err) => {
+        console.error('Failed to subscribe tutor reminder read state', err);
+        setTutorReminderReadState({ uid: user.uid, lastSeenAt: null });
       }
     );
   }, [user?.uid]);
@@ -373,6 +432,80 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     return groupReadsState.map && typeof groupReadsState.map === 'object' ? groupReadsState.map : {};
   }, [groupReadsState, user]);
 
+  const groupTutorPostMap = useMemo(() => {
+    if (!user?.uid || groupTutorPostState.uid !== user.uid) return {};
+    return groupTutorPostState.map && typeof groupTutorPostState.map === 'object' ? groupTutorPostState.map : {};
+  }, [groupTutorPostState, user]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      return;
+    }
+    if (!isFirebaseConfigured()) {
+      return;
+    }
+
+    const groupPairs = (Array.isArray(groups) ? groups : [])
+      .map((group) => ({
+        groupId: group?.id || '',
+        postId: group?.postId || '',
+      }))
+      .filter((item) => item.groupId && item.postId);
+
+    if (groupPairs.length === 0) {
+      setGroupTutorPostState({ uid: user.uid, map: {} });
+      setTutorReminderError(null);
+      return;
+    }
+
+    const { db } = getFirebaseServices();
+
+    setGroupTutorPostState((prev) => {
+      const nextMap = {};
+      if (prev.uid === user.uid && prev.map && typeof prev.map === 'object') {
+        groupPairs.forEach(({ groupId }) => {
+          if (Object.prototype.hasOwnProperty.call(prev.map, groupId)) {
+            nextMap[groupId] = prev.map[groupId];
+          }
+        });
+      }
+      return { uid: user.uid, map: nextMap };
+    });
+
+    const unsubs = groupPairs.map(({ groupId, postId }) => {
+      const ref = doc(db, 'tutorPosts', postId);
+      return onSnapshot(
+        ref,
+        (snap) => {
+          const nextPost = snap.exists() ? { id: snap.id, ...snap.data() } : null;
+          setGroupTutorPostState((prev) => {
+            const prevMap = prev.uid === user.uid && prev.map && typeof prev.map === 'object' ? prev.map : {};
+            return {
+              uid: user.uid,
+              map: {
+                ...prevMap,
+                [groupId]: nextPost,
+              },
+            };
+          });
+          setTutorReminderError(null);
+        },
+        (err) => {
+          console.error('Failed to subscribe tutor post for reminders', groupId, err);
+          setTutorReminderError(err?.message || 'Failed to load tutor reminders');
+        }
+      );
+    });
+
+    return () => {
+      unsubs.forEach((unsub) => {
+        if (typeof unsub === 'function') unsub();
+      });
+      setGroupTutorPostState({ uid: null, map: {} });
+      setTutorReminderError(null);
+    };
+  }, [groups, user?.uid]);
+
   useEffect(() => {
     const groupIds = (Array.isArray(groups) ? groups : [])
       .map((g) => g?.id)
@@ -472,6 +605,11 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     return toMillis(adminDeleteReadState.lastSeenAt);
   }, [adminDeleteReadState, user]);
 
+  const tutorReminderLastSeenMillis = useMemo(() => {
+    if (!user?.uid || tutorReminderReadState.uid !== user.uid) return 0;
+    return toMillis(tutorReminderReadState.lastSeenAt);
+  }, [tutorReminderReadState, user]);
+
   const qaNotis = useMemo(() => {
     const items = [];
     posts.forEach((p) => {
@@ -563,13 +701,51 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     return items;
   }, [adminDeleteLastSeenMillis, adminDeleteState, user?.uid]);
 
+  const tutorReminderNotis = useMemo(() => {
+    const nowMillis = Number(nowTick);
+    if (!Number.isFinite(nowMillis)) return [];
+
+    return (Array.isArray(groups) ? groups : [])
+      .map((group) => {
+        const groupId = group?.id || '';
+        if (!groupId) return null;
+
+        const post = groupTutorPostMap[groupId];
+        if (!post || !post.id) return null;
+
+        const session = getTutorSessionWindowFromPost(post, nowMillis);
+        if (!session.hasSchedule || !session.isReminderWindow) return null;
+
+        const startMillis = session.startAt?.getTime?.() || 0;
+        if (!startMillis) return null;
+
+        const titleText = String(post.title || post.subject || group?.name || 'Tutoring session').trim();
+        const startLabel = session.startAt
+          ? session.startAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : '';
+
+        return {
+          id: `tutor-reminder-${groupId}-${post.id}-${startMillis}`,
+          kind: 'tutor_reminder',
+          ts: startMillis,
+          unread: startMillis > tutorReminderLastSeenMillis,
+          title: 'Tutoring starts in 1 hour',
+          body: startLabel
+            ? `${titleText} starts at ${startLabel}.`
+            : `${titleText} starts soon.`,
+          targetHash: `/tutor/${post.id}`,
+        };
+      })
+      .filter(Boolean);
+  }, [groupTutorPostMap, groups, nowTick, tutorReminderLastSeenMillis]);
+
   const notis = useMemo(() => {
-    const next = [...groupNotis, ...qaNotis, ...adminDeleteNotis]
+    const next = [...groupNotis, ...qaNotis, ...adminDeleteNotis, ...tutorReminderNotis]
       .filter((n) => n.ts)
       .sort((a, b) => b.ts - a.ts)
       .slice(0, 60);
     return next;
-  }, [groupNotis, qaNotis, adminDeleteNotis]);
+  }, [groupNotis, qaNotis, adminDeleteNotis, tutorReminderNotis]);
 
   const notisCount = useMemo(() => {
     return notis.filter((n) => n.unread).length;
@@ -597,6 +773,7 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     const latestGroupTsById = {};
     let latestQaTs = 0;
     let latestAdminDeleteTs = 0;
+    let latestTutorReminderTs = 0;
 
     unreadItems.forEach((n) => {
       if (n.kind === 'group' && n.groupId) {
@@ -605,6 +782,10 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
       }
       if (n.kind === 'admin_delete') {
         latestAdminDeleteTs = Math.max(latestAdminDeleteTs, n.ts || 0);
+        return;
+      }
+      if (n.kind === 'tutor_reminder') {
+        latestTutorReminderTs = Math.max(latestTutorReminderTs, n.ts || 0);
         return;
       }
       latestQaTs = Math.max(latestQaTs, n.ts || 0);
@@ -620,13 +801,24 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
     if (latestAdminDeleteTs > 0) {
       writes.push(markAdminDeleteNotificationsAsRead(latestAdminDeleteTs));
     }
+    if (latestTutorReminderTs > 0) {
+      writes.push(markTutorReminderNotificationsAsRead(latestTutorReminderTs));
+    }
 
     if (writes.length === 0) return;
     void Promise.all(writes).catch((err) => {
       console.warn('Failed to mark notifications as read', err);
       markSignatureRef.current = '';
     });
-  }, [isOpen, markAdminDeleteNotificationsAsRead, markGroupAsRead, markQaNotificationsAsRead, notis, user?.uid]);
+  }, [
+    isOpen,
+    markAdminDeleteNotificationsAsRead,
+    markGroupAsRead,
+    markQaNotificationsAsRead,
+    markTutorReminderNotificationsAsRead,
+    notis,
+    user?.uid,
+  ]);
 
   useEffect(() => {
     onCountChange?.(notisCount);
@@ -638,6 +830,8 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
         await markGroupAsRead(n.groupId, n.ts);
       } else if (n.kind === 'admin_delete') {
         await markAdminDeleteNotificationsAsRead(n.ts);
+      } else if (n.kind === 'tutor_reminder') {
+        await markTutorReminderNotificationsAsRead(n.ts);
       } else {
         await markQaNotificationsAsRead(n.ts);
       }
@@ -667,8 +861,8 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
 
           {!user?.uid ? (
             <p className="notification-hint">Please log in to see notifications.</p>
-          ) : notis.length === 0 && (groupError || qaError || adminDeleteError) ? (
-            <p className="notification-error">{groupError || qaError || adminDeleteError}</p>
+          ) : notis.length === 0 && (groupError || qaError || adminDeleteError || tutorReminderError) ? (
+            <p className="notification-error">{groupError || qaError || adminDeleteError || tutorReminderError}</p>
           ) : notis.length === 0 ? (
             <>
               <p>No notifications</p>
@@ -676,9 +870,9 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
             </>
           ) : (
             <div className="notification-list" role="list" aria-label="Notifications">
-              {(groupError || qaError || adminDeleteError) && (
+              {(groupError || qaError || adminDeleteError || tutorReminderError) && (
                 <div className="notification-error" role="status">
-                  {groupError || qaError || adminDeleteError}
+                  {groupError || qaError || adminDeleteError || tutorReminderError}
                 </div>
               )}
               {notis.map((n) => (

@@ -14,6 +14,7 @@ import {
   sendSystemMessage,
 } from '../../api/chatService.js';
 import { readActorFromDoc, readTutorSchedule } from '../../api/dbModels.js';
+import { getTutorSessionWindowFromRaw } from '../../utils/tutorSession.js';
 
 const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const { user, profile, isAdmin } = useAuth();
@@ -26,8 +27,16 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const [joinError, setJoinError] = useState(null);
   const [hasJoined, setHasJoined] = useState(false);
   const [livePost, setLivePost] = useState(post);
+  const [isPostUnavailable, setIsPostUnavailable] = useState(false);
+  const [isAuthorDeleted, setIsAuthorDeleted] = useState(false);
   const [resolvedJoiners, setResolvedJoiners] = useState({});
   const joinInfoCloseTimerRef = useRef(null);
+
+  useEffect(() => {
+    setIsPostUnavailable(false);
+    setIsAuthorDeleted(false);
+    setLivePost(post);
+  }, [post?.id]);
 
   useEffect(() => {
     return () => {
@@ -49,11 +58,13 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     const authorId = post?.authorId || post?.user?.uid || null;
     if (!authorId) {
       setAuthorBio('');
+      setIsAuthorDeleted(false);
       return undefined;
     }
 
     if (!isFirebaseConfigured()) {
       setAuthorBio('');
+      setIsAuthorDeleted(false);
       return undefined;
     }
 
@@ -63,12 +74,20 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     return onSnapshot(
       userRef,
       (snap) => {
-        const data = snap.exists() ? snap.data() : null;
+        if (!snap.exists()) {
+          setAuthorBio('');
+          setIsAuthorDeleted(true);
+          return;
+        }
+
+        const data = snap.data() || {};
         setAuthorBio(data?.bio || '');
+        setIsAuthorDeleted(Boolean(data?.deleted));
       },
       (err) => {
         console.error('Failed to load author profile bio', err);
         setAuthorBio('');
+        setIsAuthorDeleted(false);
       }
     );
   }, [post?.authorId, post?.user]);
@@ -83,6 +102,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       postRef,
       (docSnapshot) => {
         if (docSnapshot.exists()) {
+          setIsPostUnavailable(false);
           const postData = docSnapshot.data();
           const actor = readActorFromDoc(postData || {});
           const authorName = actor.displayName || postData.user?.displayName || postData.user?.name || actor.username || 'Unknown';
@@ -100,7 +120,11 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
           };
 
           setLivePost(enrichedPost);
+          return;
         }
+
+        setIsPostUnavailable(true);
+        setLivePost(null);
       },
       (err) => {
         console.error('Failed to listen to post changes', err);
@@ -132,6 +156,10 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     }
     if (!user?.uid) {
       setJoinError('Please log in first');
+      return;
+    }
+    if (isJoinLeaveLocked) {
+      setJoinError(joinLeaveLockReason);
       return;
     }
 
@@ -226,6 +254,10 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       setJoinError('Please log in first');
       return;
     }
+    if (isJoinLeaveLocked) {
+      setJoinError(joinLeaveLockReason);
+      return;
+    }
 
     const actorLabel = profile?.username
       ? `@${profile.username}`
@@ -286,6 +318,11 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   };
 
   const tutorSchedule = readTutorSchedule(displayPost || {});
+  const sessionWindow = getTutorSessionWindowFromRaw({
+    date: tutorSchedule.date,
+    time: tutorSchedule.time,
+    hours: tutorSchedule.hours,
+  });
   const {
     user: legacyPostAuthor,
     subject,
@@ -312,6 +349,10 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
 
   const hours = tutorSchedule.hours;
   const postOwnerUid = postAuthor?.uid || null;
+  const isJoinLeaveLocked = sessionWindow.hasSchedule && !sessionWindow.canJoinLeave;
+  const joinLeaveLockReason = sessionWindow.isEnded
+    ? 'This tutoring session has ended'
+    : 'Join/leave is available up to 24 hours before the tutoring start time';
 
   const rawJoiners = Array.isArray(displayPost.joiners) ? displayPost.joiners : [];
   const normalizedJoiners = rawJoiners
@@ -372,11 +413,13 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   }, [uniqueJoiners]);
 
   const joinButtonDisabled = isJoining || hasJoined || isFull || isOwner || isAdmin;
-  const leaveButtonDisabled = isLeaving || !hasJoined || isOwner;
+  const leaveButtonDisabled = isLeaving || !hasJoined || isOwner || isJoinLeaveLocked;
   const joinButtonText = isOwner
     ? 'Owner'
     : isAdmin
     ? 'Admin'
+    : isJoinLeaveLocked
+    ? 'Closed'
     : isFull
     ? 'Full'
     : isJoining
@@ -386,6 +429,8 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
     : 'join';
   const leaveButtonText = isLeaving ? 'Leaving...' : 'Leave';
   const showLeaveButton = hasJoined && !isOwner;
+
+  const effectiveJoinButtonDisabled = joinButtonDisabled || isJoinLeaveLocked;
 
   const handleOpenJoinInfo = () => {
     if (joinInfoCloseTimerRef.current) {
@@ -411,6 +456,21 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
       joinInfoCloseTimerRef.current = null;
     }, 220);
   };
+
+  if (isPostUnavailable || isAuthorDeleted) {
+    return (
+      <div className="tutor-post-detail">
+        <div className="top-section">
+          <button className="back-button" onClick={onBack} type="button" aria-label="Back">
+            <MdArrowBack size={24} />
+          </button>
+        </div>
+        <div style={{ padding: '24px 20px', color: '#1a2b48', fontWeight: 700 }}>
+          This post is no longer available.
+        </div>
+      </div>
+    );
+  }
 
   if (!displayPost) return null;
 
@@ -494,12 +554,24 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
             {joinError}
           </div>
         )}
+        {isJoinLeaveLocked ? (
+          <div style={{
+            backgroundColor: '#f7f4e2',
+            color: '#1a2b48',
+            padding: '10px',
+            borderRadius: '6px',
+            margin: '6px 16px 0',
+            fontSize: '13px',
+          }}>
+            {joinLeaveLockReason}
+          </div>
+        ) : null}
         <div className="action-button-row">
           <button
             className="join-button"
             type="button"
             onClick={handleJoinPost}
-            disabled={joinButtonDisabled}
+            disabled={effectiveJoinButtonDisabled}
           >
             {joinButtonText}
           </button>
@@ -639,12 +711,26 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
             {joinError}
           </div>
         )}
+        {isJoinLeaveLocked ? (
+          <div style={{
+            backgroundColor: '#f7f4e2',
+            color: '#1a2b48',
+            padding: '10px',
+            borderRadius: '6px',
+            marginBottom: '10px',
+            fontSize: '13px',
+            marginLeft: '16px',
+            marginRight: '16px',
+          }}>
+            {joinLeaveLockReason}
+          </div>
+        ) : null}
         <div className="action-button-row">
           <button
             className="join-button"
             type="button"
             onClick={handleJoinPost}
-            disabled={joinButtonDisabled}
+            disabled={effectiveJoinButtonDisabled}
           >
             {joinButtonText}
           </button>
