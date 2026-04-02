@@ -633,6 +633,17 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
                       <h3>{post.title}</h3>
                       <p>{post.description}</p>
                       <p className="post-date">{post.date}</p>
+                      <div className="past-post-actions">
+                        <button
+                          type="button"
+                          className="joined-group-action joined-group-action-secondary"
+                          onClick={() => {
+                            window.location.hash = `/${post.type}/${post.rawId}?origin=profile`;
+                          }}
+                        >
+                          View Post
+                        </button>
+                      </div>
                     </div>
                     {isOwnProfile ? (
                       <div className="post-actions">

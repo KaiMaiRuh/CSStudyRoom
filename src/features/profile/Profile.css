@@ -298,6 +298,13 @@
   outline-offset: 2px;
 }
 
+.past-post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .joined-group-actions {
   display: flex;
   flex-wrap: wrap;
