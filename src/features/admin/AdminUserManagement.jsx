@@ -49,8 +49,9 @@ const AdminUserManagement = () => {
 
   const filtered = useMemo(() => {
     const q = normalize(queryText);
-    if (!q) return users;
-    return users.filter((u) => {
+    const activeUsers = users.filter((u) => !u.deleted);
+    if (!q) return activeUsers;
+    return activeUsers.filter((u) => {
       return normalize(u.name).includes(q) || normalize(u.email).includes(q) || normalize(u.role).includes(q) || normalize(u.year).includes(q);
     });
   }, [users, queryText]);
