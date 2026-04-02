@@ -597,6 +597,16 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
           onChange={(e) => setCommentText(e.target.value)}
           placeholder="Comment..."
           type="text"
+          onFocus={() => {
+            const scroller = detailScrollRef.current;
+            if (!scroller) return;
+            const savedTop = scroller.scrollTop;
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                scroller.scrollTop = savedTop;
+              });
+            });
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleSendComment();
           }}

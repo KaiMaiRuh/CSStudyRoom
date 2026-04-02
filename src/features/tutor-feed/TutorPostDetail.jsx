@@ -372,7 +372,7 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
 
   const plainAuthor = {
     uid: postOwnerUid,
-    name: authorActor.username ? `@${authorActor.username}` : (authorActor.displayName || 'Unknown'),
+    name: authorActor.displayName || 'Unknown',
     avatar: authorActor.avatarUrl || '',
   };
 
