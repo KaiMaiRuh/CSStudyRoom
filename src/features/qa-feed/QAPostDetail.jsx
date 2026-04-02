@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MdArrowBack } from 'react-icons/md';
 import {
   FaUserCircle,
@@ -8,6 +8,8 @@ import {
   FaImage,
   FaPaperPlane,
   FaTrashAlt,
+  FaReply,
+  FaTimes,
 } from 'react-icons/fa';
 import './QAPostDetail.css';
 import ImagePreviewModal from '../../components/common/ImagePreviewModal.jsx';
@@ -36,10 +38,12 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
   const [commentImageUrl, setCommentImageUrl] = useState(null);
   const [composerError, setComposerError] = useState('');
   const [previewSrc, setPreviewSrc] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
   const { user, profile, isAdmin } = useAuth();
 
   const imageInputRef = useRef(null);
   const detailScrollRef = useRef(null);
+  const composerInputRef = useRef(null);
   const shouldAutoScrollRef = useRef(false);
   const previousCommentCountRef = useRef(0);
 
@@ -246,6 +250,44 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
 
   const canDeleteLiveComments = isFirebaseConfigured() && Boolean(postId) && Array.isArray(liveComments) && Boolean(user?.uid);
 
+  // Group comments into threads: top-level comments + their replies
+  const threadedComments = useMemo(() => {
+    const topLevel = [];
+    const repliesByParent = {};
+
+    for (const c of comments) {
+      if (c.parentId) {
+        if (!repliesByParent[c.parentId]) repliesByParent[c.parentId] = [];
+        repliesByParent[c.parentId].push(c);
+      } else {
+        topLevel.push(c);
+      }
+    }
+
+    // Attach orphaned replies (parent deleted) as top-level
+    const topLevelIds = new Set(topLevel.map((c) => c.id));
+    for (const [parentId, replies] of Object.entries(repliesByParent)) {
+      if (!topLevelIds.has(parentId)) {
+        topLevel.push(...replies);
+        delete repliesByParent[parentId];
+      }
+    }
+
+    return topLevel.map((c) => ({
+      ...c,
+      replies: repliesByParent[c.id] || [],
+    }));
+  }, [comments]);
+
+  const handleStartReply = useCallback((comment, resolvedName) => {
+    setReplyingTo({ id: comment.id, name: resolvedName });
+    composerInputRef.current?.focus();
+  }, []);
+
+  const handleCancelReply = useCallback(() => {
+    setReplyingTo(null);
+  }, []);
+
   useEffect(() => {
     const scrollContainer = detailScrollRef.current;
     if (!scrollContainer) {
@@ -344,9 +386,11 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         uid: user.uid,
         text: cleanedText,
         imageUrl: commentImageUrl,
+        parentId: replyingTo?.id || null,
       });
       setCommentText('');
       setCommentImageUrl(null);
+      setReplyingTo(null);
     } catch (err) {
       console.error('Failed to add comment', err);
       setComposerError(err?.message || 'Failed to add comment');
@@ -509,7 +553,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         <div className="qa-comments-title">All comments</div>
 
         <div className="qa-comments">
-          {comments.map((c) => {
+          {threadedComments.map((c) => {
             const profileFromCache = c.user?.uid ? commentAuthorProfiles[c.user.uid] : null;
             const resolvedCommentName = profileFromCache?.username
               ? `@${profileFromCache.username}`
@@ -518,69 +562,143 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
             const canDeleteThisComment = canDeleteLiveComments && Boolean(c.id) && (isAdmin || (user?.uid && c.user?.uid === user.uid));
 
             return (
-              <div key={c.id} className="qa-comment">
-                <button
-                  type="button"
-                  className="qa-comment-avatar qa-comment-avatar-btn"
-                  aria-label="Open profile"
-                  onClick={() => openUserProfile(c.user?.uid)}
-                  disabled={!c.user?.uid}
-                >
-                  {resolvedCommentAvatar ? (
-                    <img className="qa-comment-avatar-img" src={resolvedCommentAvatar} alt="" />
-                  ) : (
-                    <FaUserCircle size={34} />
-                  )}
-                </button>
-                <div className="qa-comment-content">
-                  <div className="qa-comment-head">
-                    <button
-                      type="button"
-                      className="qa-comment-name qa-comment-name-btn"
-                      onClick={() => openUserProfile(c.user?.uid)}
-                      disabled={!c.user?.uid}
-                    >
-                      {resolvedCommentName}
-                    </button>
-                    {canDeleteThisComment ? (
+              <div key={c.id} className="qa-comment-thread">
+                <div className="qa-comment">
+                  <button
+                    type="button"
+                    className="qa-comment-avatar qa-comment-avatar-btn"
+                    aria-label="Open profile"
+                    onClick={() => openUserProfile(c.user?.uid)}
+                    disabled={!c.user?.uid}
+                  >
+                    {resolvedCommentAvatar ? (
+                      <img className="qa-comment-avatar-img" src={resolvedCommentAvatar} alt="" />
+                    ) : (
+                      <FaUserCircle size={34} />
+                    )}
+                  </button>
+                  <div className="qa-comment-content">
+                    <div className="qa-comment-head">
                       <button
-                        className="qa-comment-delete"
                         type="button"
-                        onClick={() => handleDeleteComment(c)}
+                        className="qa-comment-name qa-comment-name-btn"
+                        onClick={() => openUserProfile(c.user?.uid)}
+                        disabled={!c.user?.uid}
                       >
-                        Delete
+                        {resolvedCommentName}
+                      </button>
+                      {canDeleteThisComment ? (
+                        <button
+                          className="qa-comment-delete"
+                          type="button"
+                          onClick={() => handleDeleteComment(c)}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                    {c.text ? <div className="qa-comment-text">{c.text}</div> : null}
+
+                    {c.imageUrl ? (
+                      <button
+                        className="qa-comment-image-link"
+                        type="button"
+                        aria-label="Open comment image"
+                        onClick={() => setPreviewSrc(c.imageUrl)}
+                      >
+                        <img className="qa-comment-image" src={c.imageUrl} alt="" />
+                      </button>
+                    ) : null}
+
+                    {user?.uid ? (
+                      <button
+                        className="qa-comment-reply-btn"
+                        type="button"
+                        onClick={() => handleStartReply(c, resolvedCommentName)}
+                      >
+                        <FaReply size={12} /> Reply
                       </button>
                     ) : null}
                   </div>
-                  {c.text ? <div className="qa-comment-text">{c.text}</div> : null}
+                </div>
 
-                  {c.imageUrl ? (
-                    <button
-                      className="qa-comment-image-link"
-                      type="button"
-                      aria-label="Open comment image"
-                      onClick={() => setPreviewSrc(c.imageUrl)}
-                    >
-                      <img className="qa-comment-image" src={c.imageUrl} alt="" />
-                    </button>
-                  ) : null}
+                {c.replies.length > 0 ? (
+                  <div className="qa-replies">
+                    {c.replies.map((r) => {
+                      const replyProfile = r.user?.uid ? commentAuthorProfiles[r.user.uid] : null;
+                      const resolvedReplyName = replyProfile?.username
+                        ? `@${replyProfile.username}`
+                        : (replyProfile?.displayName || r.user?.name || 'Unknown');
+                      const resolvedReplyAvatar = replyProfile?.avatarUrl || r.user?.avatar || '';
+                      const canDeleteReply = canDeleteLiveComments && Boolean(r.id) && (isAdmin || (user?.uid && r.user?.uid === user.uid));
 
-                  {Array.isArray(c.replies) && c.replies.length > 0 && (
-                    <div className="qa-replies">
-                      {c.replies.map((r) => (
+                      return (
                         <div key={r.id} className="qa-comment qa-reply">
-                          <div className="qa-comment-avatar" aria-hidden="true">
-                            <FaUserCircle size={28} />
-                          </div>
+                          <button
+                            type="button"
+                            className="qa-comment-avatar qa-comment-avatar-btn"
+                            aria-label="Open profile"
+                            onClick={() => openUserProfile(r.user?.uid)}
+                            disabled={!r.user?.uid}
+                          >
+                            {resolvedReplyAvatar ? (
+                              <img className="qa-comment-avatar-img" src={resolvedReplyAvatar} alt="" />
+                            ) : (
+                              <FaUserCircle size={28} />
+                            )}
+                          </button>
                           <div className="qa-comment-content">
-                            <div className="qa-comment-name">{r.user?.name}</div>
-                            <div className="qa-comment-text">{r.text}</div>
+                            <div className="qa-comment-head">
+                              <button
+                                type="button"
+                                className="qa-comment-name qa-comment-name-btn"
+                                onClick={() => openUserProfile(r.user?.uid)}
+                                disabled={!r.user?.uid}
+                              >
+                                {resolvedReplyName}
+                              </button>
+                              {canDeleteReply ? (
+                                <button
+                                  className="qa-comment-delete"
+                                  type="button"
+                                  onClick={() => handleDeleteComment(r)}
+                                >
+                                  Delete
+                                </button>
+                              ) : null}
+                            </div>
+                            {r.text ? (
+                              <div className="qa-comment-text">
+                                <span className="qa-reply-mention">{resolvedCommentName}</span> {r.text}
+                              </div>
+                            ) : null}
+
+                            {r.imageUrl ? (
+                              <button
+                                className="qa-comment-image-link"
+                                type="button"
+                                aria-label="Open reply image"
+                                onClick={() => setPreviewSrc(r.imageUrl)}
+                              >
+                                <img className="qa-comment-image" src={r.imageUrl} alt="" />
+                              </button>
+                            ) : null}
+
+                            {user?.uid ? (
+                              <button
+                                className="qa-comment-reply-btn"
+                                type="button"
+                                onClick={() => handleStartReply(c, resolvedReplyName)}
+                              >
+                                <FaReply size={12} /> Reply
+                              </button>
+                            ) : null}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -591,11 +709,28 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
       </div>
 
       <div className="qa-composer" onClick={(e) => e.stopPropagation()}>
+        {replyingTo ? (
+          <div className="qa-composer-reply-indicator">
+            <span className="qa-composer-reply-text">
+              <FaReply size={11} /> Replying to <strong>{replyingTo.name}</strong>
+            </span>
+            <button
+              className="qa-composer-reply-cancel"
+              type="button"
+              aria-label="Cancel reply"
+              onClick={handleCancelReply}
+            >
+              <FaTimes size={12} />
+            </button>
+          </div>
+        ) : null}
+        <div className="qa-composer-row">
         <input
+          ref={composerInputRef}
           className="qa-input"
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          placeholder="Comment..."
+          placeholder={replyingTo ? `Reply to ${replyingTo.name}...` : 'Comment...'}
           type="text"
           onFocus={() => {
             const scroller = detailScrollRef.current;
@@ -663,6 +798,7 @@ const QAPostDetail = ({ post, onBack, onDelete }) => {
         >
           <FaPaperPlane />
         </button>
+        </div>
       </div>
 
       {composerError ? <div className="qa-composer-error">{composerError}</div> : null}

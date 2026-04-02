@@ -201,7 +201,7 @@ export function buildQaPostDocument(post, actor) {
   };
 }
 
-export function buildQaCommentDocument({ uid, text, imageUrl = null, actor = null }) {
+export function buildQaCommentDocument({ uid, text, imageUrl = null, actor = null, parentId = null }) {
   const resolvedActor = actor ? buildActorSnapshot(actor) : null;
   const cleanedText = asString(text || '');
 
@@ -213,7 +213,7 @@ export function buildQaCommentDocument({ uid, text, imageUrl = null, actor = nul
     authorAvatar: resolvedActor?.avatarUrl || null,
     text: cleanedText,
     imageUrl: asNullableString(imageUrl),
-    parentId: null,
+    parentId: asNullableString(parentId),
     createdAt: serverTimestamp(),
   };
 }

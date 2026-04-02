@@ -139,7 +139,7 @@ export async function toggleQaPostLike({ db, postId, uid, authorName }) {
   });
 }
 
-export async function addQaPostComment({ db, postId, uid, text, imageUrl = null }) {
+export async function addQaPostComment({ db, postId, uid, text, imageUrl = null, parentId = null }) {
   if (!db) throw new Error('Firestore is not available');
   if (!postId) throw new Error('postId is required');
   if (!uid) throw new Error('Please log in to comment');
@@ -181,6 +181,7 @@ export async function addQaPostComment({ db, postId, uid, text, imageUrl = null 
         text: cleaned,
         imageUrl: hasImage ? cleanedImageUrl : null,
         actor: commentActor,
+        parentId: parentId || null,
       })
     );
 
