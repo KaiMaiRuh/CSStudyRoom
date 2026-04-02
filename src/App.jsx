@@ -201,6 +201,8 @@ function App() {
         selectedDateKey: params.get('calendarDate') || null,
         feed: params.get('calendarFeed') || null,
       });
+    } else if (params.get('origin') === 'profile') {
+      backHash = '#/profile';
     }
 
     const tutorMatch = p.match(/^\/tutor\/([^/]+)$/);
@@ -717,7 +719,12 @@ function App() {
         <div key={pageTransitionKey} className={pageTransitionClassName}>
           {isGroupMessagePage ? (
             <GroupMessagePage onBack={() => {
-              navigateTo('home');
+              const _params = getActionParams(window.location.hash || window.location.pathname);
+              if (_params.get('origin') === 'profile') {
+                navigateTo('profile');
+              } else {
+                navigateTo('home');
+              }
             }} />
           ) : isCalendarPage ? (
             <Calendar

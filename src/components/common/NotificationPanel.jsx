@@ -852,22 +852,23 @@ const NotificationPanel = ({ onClose, isOpen = true, onCountChange }) => {
   return (
     <div className={`notification-panel-overlay ${isClosing ? 'is-closing' : 'is-open'}`}>
       <div className={`notification-panel ${isClosing ? 'is-closing' : 'is-open'}`}>
-        <button className="back-button" onClick={onClose}>
-          <FaArrowLeft />
-        </button>
+        <div className="notification-header">
+          <button className="back-button" onClick={onClose}>
+            <FaArrowLeft />
+          </button>
+          <h2 className="notification-title">Notifications</h2>
+        </div>
 
         <div className="notification-content">
-          <h2 className="notification-title">Notifications</h2>
-
           {!user?.uid ? (
             <p className="notification-hint">Please log in to see notifications.</p>
           ) : notis.length === 0 && (groupError || qaError || adminDeleteError || tutorReminderError) ? (
             <p className="notification-error">{groupError || qaError || adminDeleteError || tutorReminderError}</p>
           ) : notis.length === 0 ? (
-            <>
+            <div className="notification-empty">
               <p>No notifications</p>
               <p>Any new notifications will appear here</p>
-            </>
+            </div>
           ) : (
             <div className="notification-list" role="list" aria-label="Notifications">
               {(groupError || qaError || adminDeleteError || tutorReminderError) && (

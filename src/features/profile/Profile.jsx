@@ -448,7 +448,7 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
           memberCount: Number.isFinite(memberCount) ? memberCount : 0,
           sourcePostId,
           sourcePostType,
-          sourcePostHash: sourcePostId ? `/${sourcePostType}/${sourcePostId}` : null,
+          sourcePostHash: sourcePostId ? `/${sourcePostType}/${sourcePostId}?origin=profile` : null,
           dateLabel: formatDateLabel(group?.updatedAt) || formatDateLabel(group?.createdAt),
           sortValue: group?.updatedAt?.toMillis?.() || group?.createdAt?.toMillis?.() || 0,
         };
@@ -699,7 +699,7 @@ const Profile = ({ viewUid = null, tutorPosts = [], qaPosts = [], onEdit, onEdit
                           disabled={!group.groupId}
                           onClick={() => {
                             if (!group.groupId) return;
-                            window.location.hash = `/groupmessage/${group.groupId}`;
+                            window.location.hash = `/groupmessage/${group.groupId}?origin=profile`;
                           }}
                         >
                           Open Group chat

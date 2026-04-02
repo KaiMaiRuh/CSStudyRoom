@@ -169,7 +169,7 @@ const GroupMessagePage = ({ onBack }) => {
   useEffect(() => {
     const parse = () => {
       const raw = String(window.location.hash || '').replace(/^#/, '');
-      const path = raw || '/groupmessage';
+      const path = (raw.split('?')[0]) || '/groupmessage';
 
       const shareMatch = path.match(/^\/groupmessage\/share\/(qa|tutor)\/([^/]+)$/);
       if (shareMatch) {
@@ -202,11 +202,21 @@ const GroupMessagePage = ({ onBack }) => {
     return () => window.removeEventListener('hashchange', parse);
   }, []);
 
+  // Extract origin query param from current hash to preserve across internal navigation
+  const getOriginSuffix = () => {
+    const raw = String(window.location.hash || '').replace(/^#/, '');
+    const qIndex = raw.indexOf('?');
+    if (qIndex === -1) return '';
+    const params = new URLSearchParams(raw.slice(qIndex));
+    const origin = params.get('origin');
+    return origin ? `?origin=${encodeURIComponent(origin)}` : '';
+  };
+
   const handleOpenGroup = (groupId) => {
     setSelectedGroupId(groupId);
     setSelectedMessageId(null);
     try {
-      window.location.hash = `/groupmessage/${groupId}`;
+      window.location.hash = `/groupmessage/${groupId}${getOriginSuffix()}`;
     } catch {
       // ignore
     }
@@ -216,7 +226,7 @@ const GroupMessagePage = ({ onBack }) => {
     setSelectedGroupId(null);
     setSelectedMessageId(null);
     try {
-      window.location.hash = '/groupmessage';
+      window.location.hash = `/groupmessage${getOriginSuffix()}`;
     } catch {
       // ignore
     }
