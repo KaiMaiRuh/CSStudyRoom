@@ -31,12 +31,15 @@ const TutorPostDetail = ({ post, onBack, onDelete }) => {
   const [isAuthorDeleted, setIsAuthorDeleted] = useState(false);
   const [resolvedJoiners, setResolvedJoiners] = useState({});
   const joinInfoCloseTimerRef = useRef(null);
+  const activePostIdRef = useRef(null);
 
   useEffect(() => {
+    if (activePostIdRef.current === post?.id) return;
+    activePostIdRef.current = post?.id || null;
     setIsPostUnavailable(false);
     setIsAuthorDeleted(false);
     setLivePost(post);
-  }, [post?.id]);
+  }, [post]);
 
   useEffect(() => {
     return () => {

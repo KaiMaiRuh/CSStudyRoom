@@ -47,3 +47,8 @@ docs/storage.rules
 docs/firebase-setup.md
 docs/firestore-backend-design.md
 docs/firestore-data-map.md
+
+
+csstudyroom-firebase-adminsdk-fbsvc-43888b02f3.json
+scripts/migrate-firestore.mjs
+READMEEE.md
