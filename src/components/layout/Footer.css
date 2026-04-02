@@ -97,6 +97,17 @@
   margin: 0;
 }
 
+.footer-link-disabled {
+  color: #ecf2fb;
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+  opacity: 0.55;
+}
+
 .footer-brand-highlight {
   color: #f6c742;
 }

@@ -13,16 +13,16 @@ const Footer = () => {
         <div className="footer-section footer-middle">
           <h3>Content</h3>
           <ul>
-            <li><a href="#qa-posts">Q&A Posts</a></li>
-            <li><a href="#study-session-posts">Study Session Posts</a></li>
+            <li><span className="footer-link-disabled">Q&A Posts</span></li>
+            <li><span className="footer-link-disabled">Study Session Posts</span></li>
           </ul>
         </div>
 
         <div className="footer-section footer-right">
           <h3>More</h3>
           <ul>
-            <li><a href="#contact">Contact</a></li>
-            <li><a href="#report-issue">Report an Issue</a></li>
+            <li><span className="footer-link-disabled">Contact</span></li>
+            <li><span className="footer-link-disabled">Report an Issue</span></li>
           </ul>
         </div>
       </div>
