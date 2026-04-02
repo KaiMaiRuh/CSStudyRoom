@@ -2,12 +2,18 @@ version: '3.8'
 
 services:
   frontend:
+    # สั่งให้ Build Image จาก Dockerfile ที่อยู่ในโฟลเดอร์ปัจจุบัน [cite: 1]
     build: .
+    # ตั้งชื่อ Container ให้จำง่ายว่า react-vite-app [cite: 1]
     container_name: react-vite-app
+    # เชื่อมต่อ Port 5173 จากเครื่อง Host (ซ้าย) เข้ากับ Port 5173 ใน Container (ขวา) [cite: 1]
     ports:
       - "5173:5173"
     volumes:
+      # เชื่อมโฟลเดอร์ปัจจุบันเข้ากับ /app เพื่อให้เกิด Hot Reload เวลาแก้โค้ด [cite: 1]
       - .:/app
+      # แยก node_modules ใน Container ไว้ต่างหาก เพื่อไม่ให้ตีกับ node_modules ในเครื่อง Host [cite: 1]
       - /app/node_modules
+    # เปิดโหมด Interactive และ TTY เพื่อให้ Container ทำงานค้างไว้และรับคำสั่งได้ [cite: 1]
     stdin_open: true
     tty: true

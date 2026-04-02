@@ -74,6 +74,7 @@ function App() {
   const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
   const hasFilterInitializedRef = useRef(false);
   const categoryMenuRef = useRef(null);
+  const appNavCountRef = useRef(0);
 
   const isHome = activePage === 'home';
   const isAuthPage = activePage === 'createAccount' || activePage === 'signin';
@@ -396,6 +397,15 @@ function App() {
     }
   };
 
+  const navigateBack = () => {
+    if (appNavCountRef.current > 0) {
+      appNavCountRef.current -= 1;
+      window.history.back();
+    } else {
+      navigateTo('home');
+    }
+  };
+
   const navigateTo = (page, { push = true, replace = false } = {}) => {
     applyPageState(page);
     if (push) {
@@ -404,6 +414,7 @@ function App() {
         if (replace) {
           window.history.replaceState({ page }, '', hash);
         } else {
+          appNavCountRef.current += 1;
           // set hash (creates history entry)
           window.location.hash = hash.replace(/^#/, '');
         }
@@ -718,14 +729,7 @@ function App() {
       >
         <div key={pageTransitionKey} className={pageTransitionClassName}>
           {isGroupMessagePage ? (
-            <GroupMessagePage onBack={() => {
-              const _params = getActionParams(window.location.hash || window.location.pathname);
-              if (_params.get('origin') === 'profile') {
-                navigateTo('profile');
-              } else {
-                navigateTo('home');
-              }
-            }} />
+            <GroupMessagePage onBack={navigateBack} />
           ) : isCalendarPage ? (
             <Calendar
               tutorPosts={tutorPosts}
@@ -733,7 +737,7 @@ function App() {
               feedType={activeFeed}
               routeSelectedDateKey={extractCalendarRouteState(window.location.hash || window.location.pathname).selectedDateKey}
               isAdminView={Boolean(isAdmin)}
-              onBack={() => navigateTo('home')}
+              onBack={navigateBack}
               onChangeFeedType={setActiveFeed}
               onDeletePost={(post) => {
                 const postType = post?.type === 'qa' ? 'qa' : 'tutor';
